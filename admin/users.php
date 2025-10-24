@@ -29,7 +29,7 @@ if ($result === false) {
 
 <style>
 body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-.sidebar { width: 240px; position: fixed; left:0; top:0; bottom:0; background:#343a40; color:#fff; padding-top:20px; }
+.sidebar { width: 240px; position: fixed; left:0; top:0; bottom:0; background:#430160ff; color:#fff; padding-top:20px; }
 .sidebar a { display:block; padding:12px 18px; color:#cfd8dc; text-decoration:none; }
 .sidebar a.active { background:#007bff; color:#fff; }
 .main { margin-left:240px; padding:28px; min-height:100vh; }
@@ -40,7 +40,7 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
 <body>
 
 <div class="sidebar">
-  <h4 class="text-center mb-3">Admin Panel</h4>
+  <h4 class="text-center mb-3">Ceylon Fashion</h4>
   <a href="dashboard.php">🏠 Dashboard</a>
   <a href="products.php">📦 Products</a>
   <a href="orders.php">🧾 Orders</a>

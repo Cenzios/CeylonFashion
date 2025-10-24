@@ -53,7 +53,7 @@ if (!$userData || $userData['type'] !== 'admin') {
       position: fixed;
       top: 0;
       left: 0;
-      background: #343a40;
+      background: #430160ff;
       color: white;
       padding-top: 20px;
     }
@@ -82,7 +82,7 @@ if (!$userData || $userData['type'] !== 'admin') {
 
   <!-- Sidebar -->
   <div class="sidebar">
-    <h4 class="text-center text-light mb-4">Admin Panel</h4>
+    <h4 class="text-center text-light mb-4">Ceylon Fashion</h4>
     <a href="dashboard.php" class="active">🏠 Dashboard</a>
     <a href="products.php">📦 Products</a>
     <a href="orders.php">🧾 Orders</a>
