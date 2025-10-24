@@ -1,0 +1,650 @@
+/* Make navbar background purple */
+.navbar-purple {
+    background-color: #430562; /* Purple */
+}
+
+/* Style all navbar links */
+.navbar-purple .nav-link,
+.navbar-purple .nav-link:link,
+.navbar-purple .nav-link:visited,
+.navbar-purple .nav-link:active,
+.navbar-purple .nav-link:focus {
+    color: white !important; /* keep all states white */
+    font-weight: 500; /* consistent base weight */
+    text-decoration: none; /* remove underline */
+    opacity: 0.7; /* default opacity */
+    transition: color 0.3s ease, text-shadow 0.2s ease, opacity 0.3s ease;
+}
+
+/* Hover effect */
+.navbar-purple .nav-link:hover {
+    opacity: 1; /* Fully visible on hover */
+}
+
+/* Navbar styles */
+.navbar img {
+    height: 60px !important;
+    width: 80px !important;
+}
+
+/* Search input styles */
+.search-input:focus {
+    border-color: #ac05bb !important;
+    box-shadow: 0 0 0 0.005rem #ac05bb !important;
+    outline: 0;
+}
+
+/* Button styles */
+.btn-search {
+    color: white !important;
+    border-color: #ac05bb !important;
+    background-color: #ac05bb !important;
+}
+
+
+
+.btn-primary {
+    background: linear-gradient(45deg, #561fbc, #8b5fbf);
+    border: none;
+    border-radius: 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-align:center ;
+    max-width : 200px;         
+    max-height: 40px; 
+}
+
+/* Custom button styles for circular buttons */
+.custom-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    text-transform: capitalize;
+    border: none;
+    box-shadow: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.custom-btn:hover {
+    transform: scale(1.1);
+    opacity: 0.9;
+}
+
+/* Make the buttons perfect circles */
+.custom-btn {
+  width: 50px;       /* Fixed width */
+  height: 50px;      /* Fixed height */
+  border-radius: 50%; /* Perfect circle */
+  padding: 0;        /* Remove padding */
+  border: none;      /* Remove border */
+  display: inline-block; /* Keep them inline */
+}
+
+.custom-btn.btn-secondary {
+  background-color: grey;
+}
+
+.custom-btn.btn-success {
+  background-color: green;
+}
+
+.custom-btn.btn-danger {
+  background-color: red;
+}
+
+.custom-btn.btn-warning {
+  background-color: orange;
+}
+
+.custom-btn.btn-info {
+  background-color: blue;
+}
+
+.custom-btn.btn-light {
+  background-color: white;
+}
+
+.custom-btn.btn-dark {
+  background-color: black;
+}
+
+.custom-btn.btn-pink {
+  background-color: pink;
+}
+
+.custom-btn.btn-purple {
+  background-color: purple;
+}
+
+.custom-btn.btn-brown {
+  background-color: brown;
+}
+
+.custom-btn.btn-yellow {
+  background-color: yellow;
+}
+
+/* Button color variations */
+.btn-secondary { background-color: #6c757d; }
+.btn-success { background-color: #28a745; }
+.btn-danger { background-color: #dc3545; }
+.btn-warning { background-color: #fd7e14; }
+.btn-info { background-color: #17a2b8; }
+.btn-light { background-color: #f1f1f1; }
+.btn-dark { background-color: #343a40; }
+.btn-pink { background-color: #e83e8c; }
+.btn-purple { background-color: #6f42c1; }
+.btn-brown { background-color: #8b4513; }
+.btn-yellow { background-color: #ffc107; color: #000; }
+
+
+/* Card Styling */
+.card {
+    background-color: #fff;
+    border: 1px solid #ddd; /* Light gray border for each card */
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative; /* For positioning heart icon and buttons */
+}
+
+/* Heart Icon */
+.wishlist-wrapper {
+    top: 10px;
+    right: 10px;
+}
+
+.wishlist-btn {
+    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent white background */
+    border-radius: 50%;
+    padding: 8px;
+    border: none;
+    cursor: pointer;
+}
+
+.wishlist-btn:hover {
+    background-color: rgba(255, 0, 0, 0.1); /* Slight red hover effect */
+}
+
+/* Add to Cart Button */
+.add-to-cart-btn {
+    width: 100%;
+    background-color: #0078A0;
+    color: white;
+    border-radius: 4px;
+    border: none;
+    padding: 10px;
+}
+
+.add-to-cart-btn:hover {
+    background-color: #005f73; /* Darker blue on hover */
+}
+
+/* Image Container */
+.image-container {
+    position: relative;
+}
+
+/* Card Text and Button Styling */
+.card-body h6 {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.card-footer {
+    padding: 10px 0;
+}
+
+/* Optional: Card shadow effect for a subtle 3D look */
+.card.shadow-sm {
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+}
+
+
+
+
+
+.list-group-item {
+    border: none !important;
+    padding: 6px 0;
+    background-color: transparent !important;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    color: #07073e !important;
+    font-weight: bold;
+    font-style: italic;
+    margin: 1px 0;
+    line-height: 1;
+    padding-top: 5px;
+}
+
+/* Card styles */
+.card {
+    position: relative;
+    overflow: hidden;
+    border: none;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #c59cca 0%, #d3b6d0 100%);
+}
+
+
+.card-body .item-price {
+  font-size: 0.9rem;
+  color: #555555;       /* subtle look */
+}
+
+
+
+/* Headings */
+h2 {
+    text-align: center;
+    color: #330a75 !important;
+    font-family: 'Georgia', serif;
+    font-size: 28px;
+    font-weight: bold;
+    padding: 1cap;
+    margin-top: 30px;
+    margin-bottom: 2rem;
+}
+
+/* Headings */
+h3 {
+    text-align: left;
+    color: #330a75 !important;
+    font-family: 'Georgia', serif;
+    font-size: 28px;
+    font-weight: bold;
+    padding: 1cap;
+    margin-top: 30px;
+    margin-bottom: 2rem;
+}
+
+/* Text styles */
+.card-text {
+    color: #6c757d;
+    line-height: 1.6;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 992px) {
+    .carousel-item img {
+        height: 50vh;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .row.g-3.pt-3 {
+        flex-direction: column;
+    }
+
+    .overlay-list {
+        position: static !important;
+        margin-top: 10px;
+    }
+
+    .col-12.col-md-6:last-child .card-body {
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: flex-start;
+    }
+
+    .col-12.col-md-6:last-child .card-body img {
+        margin-bottom: 15px;
+        width: 100%;
+        height: auto;
+    }
+
+    .row.g-3.pt-3 > [class*="col-"]:nth-child(2) .card-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .row.g-3.pt-3 > [class*="col-"]:nth-child(2) .image-custom {
+        order: 1;
+        display: block;
+        width: 100%;
+        height: auto;
+        margin-bottom: 12px;
+    }
+
+    .row.g-3.pt-3 > [class*="col-"]:nth-child(2) .card-title {
+        order: 2;
+        margin-bottom: 8px;
+    }
+
+    .row.g-3.pt-3 > [class*="col-"]:nth-child(2) .overlay-list {
+        order: 3;
+        position: static !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        transform: none !important;
+        z-index: auto !important;
+        margin-top: 4px;
+    }
+}
+
+@media (max-width: 576px) {
+    .carousel-item img {
+        height: 35vh;
+    }
+}
+
+
+
+.item-title {
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-size: 1.2rem;
+    color: #020103 !important;
+    margin-bottom: 5px;
+    text-align: left;
+}
+
+.item-price {
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-size: 1.1rem;
+    color: #430562 !important;
+    text-align: left;
+    margin-bottom: 0;
+}
+
+
+.cards-container {
+    max-width: 100%;
+    margin: 0 auto;
+    margin-bottom: 2px; /* adjust px value as needed */
+}
+
+.testomonial-card {
+    border: 1px solid #ccc;  /* Light gray border */
+    border-radius: 10px;     /* Rounded corners */
+    padding: 15px;           /* Space inside the card */
+    background-color: #fff;  /* White background */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+    min-height: 230px; /* Adjust based on your design */
+}
+footer.custom-footer {
+  background-color: #e9ecef; /* slightly darker than bg-light (#f8f9fa) */
+  color: #212529; /* keep text readable */
+}
+
+
+.carousel-caption {
+  position: absolute;
+  top: 50%;                               
+  transform: translateY(-50%);         
+  color: #000;               
+  width: 40%;                
+  margin-left: -50px;  /* adjust px as needed */
+}
+
+
+.carousel-caption h5 {
+    color:purple
+}
+.carousel-caption p {
+  color: #000 !important;    /* Force dark text */
+  font-style: italic;
+
+}
+
+/* Dropdown button styling */
+
+/* Dropdown button styling */
+.btn-black {
+  min-width: 190px !important;          /* fixed width, won't change on text select */
+  border: 2px solid black !important;   /* black border */
+  border-radius: 5px;        /* rounded corners */
+  padding: 8px 12px;         /* inner spacing */
+  background-color: #f8f9fa; /* light grey background */
+  color: #000;               /* black text */
+  text-align: left;          /* align text to left */
+  font-weight: 500;          /* slightly bold text */
+  transition: background-color 0.2s ease; /* smooth hover effect */
+}
+
+.btn-black:focus, 
+.btn-black:active {
+  box-shadow: none;          /* remove default focus/active shadow */
+  outline: none;             /* remove outline */
+}
+
+.dropdown-item:hover {
+  background-color: #9bbbe8 !important; /* subtle hover effect */
+  color: #000 !important;               /* keep text black */
+  font-weight: 600px !important;
+}
+
+
+
+/* Increase checkbox size */
+.form-check-input {
+    margin-right: 8px !important; /* adds space between checkbox and text */
+    width: 23px !important;       /* optional: size */
+    height: 23px !important;      /* optional: size */
+    border: 2px solid black !important;
+    cursor: pointer;
+}
+
+.Resale-price{
+    color: maroon !important;
+}
+
+
+
+/* Main product image */
+#mainImage {
+  max-width: 600px;  /* Adjust as needed */
+  height: auto;
+}
+
+/* Thumbnail images */
+.thumb {
+  width: 200px;   /* Fixed width */
+  height: auto;  /* Maintain aspect ratio */
+  object-fit: cover; /* Optional: keeps the image from stretching */
+  transition: filter 0.3s;
+}
+
+
+
+.thumb:hover {
+  box-shadow: 0 4px 15px rgba(82, 112, 143, 0.5);
+}
+
+/* Lightbox container */
+.lightbox {
+  display: none; /* Hidden by default */
+  position: fixed;
+  z-index: 1050;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+/* Image inside lightbox */
+.lightbox-content {
+  margin: auto;
+  display: block;
+  max-width: 90%;
+  max-height: 80%;
+  margin-top: 5%;
+  transition: transform 0.3s;
+}
+
+/* Close button */
+.close {
+  position: absolute;
+  top: 20px;
+  right: 40px;
+  font-size: 40px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Next & previous buttons */
+.prev, .next {
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  width: auto;
+  padding: 16px;
+  margin-top: -30px;
+  color: #f7f2f2e8;
+  font-weight: bold;
+  font-size: 30px;
+  transition: 0.3s;
+  user-select: none;
+}
+
+.prev { left: 20px; }
+.next { right: 20px; }
+
+.prev:hover, .next:hover, .close:hover {
+  color: #dde1e5;
+}
+
+
+/* Selected state for circular colour buttons */
+.custom-btn.selected {
+    border: 3px solid #131408;   /* black border around selected */
+    box-shadow: 0 0 8px rgba(133, 141, 148, 0.4); 
+    transform: scale(1.15);  /* slightly bigger */
+}
+
+
+.fabric-btn.selected,
+.size-btn.selected {
+  background-color: #8d96a3; /* filled color */
+  color: white;
+  border-color: #040d1c;
+}
+
+button.inactive {
+  opacity: 0.5;            /* makes button look greyed out */
+  pointer-events: none;    /* prevents clicking */
+}
+button.active {
+  opacity: 1;
+  pointer-events: auto;    /* enable clicking */
+}
+
+
+#addToCartWrapper,
+#buyNowWrapper {
+    display: inline-block;   /* Ensure proper width */
+    cursor: not-allowed;     /* Optional: shows disabled cursor */
+    pointer-events: auto;    /* Allow hover events */
+  }
+
+
+.placeholder-space {
+  display: inline-block;
+  min-width: 150px; /* adjust width depending on expected data */
+  padding: 2px 4px;
+}
+
+#loginSidebar {
+  width: 350px; /* Adjust as needed */
+}
+
+
+.quick-add-btn {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;               /* ensures full width of image */
+  background: rgb(36, 4, 65) !important;
+  color: white !important;
+  font-weight: 600;
+  border: 1px solid rgb(85, 15, 129) !important;
+  border-radius: 0;       /* optional: no rounded corners */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+
+.image-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.image-container img {
+  display: block;
+  width: 100%;
+}
+
+/* Wishlist wrapper (hidden by default like quick-add) */
+.wishlist-wrapper {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  opacity: 0;                    /* hidden until hover */
+  transition: opacity 0.3s ease; /* smooth fade */
+  z-index: 5;
+}
+
+/* Show wishlist + quick add on hover */
+.image-container:hover .wishlist-wrapper,
+.image-container:hover .quick-add-btn {
+  opacity: 1;
+}
+
+/* Heart button */
+.wishlist-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  position: left; /* anchor for message */
+}
+
+/* Message appears on image, below icon */
+.wishlist-msg {
+  position: absolute;
+  top: 50%;                /* vertically center with button */
+  right: 100%;             /* place immediately left of button */
+  transform: translateY(-50%);  /* center align */
+  margin-right: 8px;       /* space between icon and message */
+
+  background: rgb(36, 4, 65);
+  color: white !important;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 6px;
+  display: none;           /* toggled via JS */
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+ iframe {
+      border: 0;
+      width: 100%;
+      height: 400px;
+    }
+
+
+/* Banner image height */
+.contact-banner img {
+  height: 650px;
+  object-fit: cover;
+}
+
+/* Contact Us button styling (kept same size as your H1) */
+#scrollBtn {
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+
