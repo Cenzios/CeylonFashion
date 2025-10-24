@@ -77,13 +77,16 @@ $result = $mysqli->query($sql);
       </button>
       <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
         <div class="navbar-nav">
-          <a class="nav-link" href="#">New Arrivals</a>
-          <a class="nav-link" href="#">Bridal Attire</a>
-          <a class="nav-link" href="#">Bridemaids Attire</a>
-          <a class="nav-link" href="#">Party Wear</a>
-          <a class="nav-link" href="#">Used Collection</a>
+    <a class="nav-link" href="#newArrivalsSection">New Arrivals</a>
+        <a class="nav-link" href="#newArrivalsSection">Bridal Attire</a>
+
+            <a class="nav-link" href="#brideMaidsSection">Bridemaids Attire</a>
+
+                <a class="nav-link" href="#newArrivalsSection">Party Wear</a>
+
+                    <a class="nav-link" href="#usedCollectionSection">Used Collection</a>
           <div class="text-center">
-            <a href="/about.php" class="btn btn-primary">Start Reselling</a>
+            <a href="/start-reselling.php" class="btn btn-primary">Start Reselling</a>
           </div>
 
         </div>
@@ -235,7 +238,7 @@ $result = $mysqli->query($sql);
     </div>
   </div>
 
-  <div class="bg-light" style="background-color:blueviolet;">
+  <div class="bg-light" id="newArrivalsSection" style="background-color:blueviolet;">
     <div class="container-fluid pt-1">
       <div class="cards-container" style="width: 100%;">
         <h2>New Arrivals</h2>
@@ -449,7 +452,7 @@ $result = $mysqli->query($sql);
     });
   </script>
 
-  <div class="bg-light" style="background-color:blueviolet;">
+  <div class="bg-light" id="usedCollectionSection" style="background-color:blueviolet;">
     <div class="container-fluid pt-1">
       <div class="cards-container" style="width: 100%;">
         <h2>Used Collection</h2>
@@ -461,13 +464,13 @@ $result = $mysqli->query($sql);
 
           // Fetch new arrival products
           $sql = "SELECT * FROM products WHERE category = 'used' ORDER BY id DESC";
-          $newArrivals = $mysqli->query($sql);
+          $usedSection = $mysqli->query($sql);
 
           // Fallback image
           $fallback = 'assets/no-image.png'; // adjust path if needed
 
-          if ($newArrivals && $newArrivals->num_rows > 0):
-            while ($product = $newArrivals->fetch_assoc()):
+          if ($usedSection && $usedSection->num_rows > 0):
+            while ($product = $usedSection->fetch_assoc()):
               $pname = htmlentities($product['product_name'], ENT_QUOTES, 'UTF-8');
               $pimg  = htmlentities($product['product_img_name'], ENT_QUOTES, 'UTF-8');
               $price = number_format((float)$product['price'], 2);
@@ -629,7 +632,7 @@ $result = $mysqli->query($sql);
 
 
 
-  <div class="bg-light" style="background-color:blueviolet;">
+  <div class="bg-light" id="usedCollectionSection" style="background-color:blueviolet;">
     <div class="container-fluid pt-1">
       <div class="cards-container" style="width: 100%;">
         <h2>Bridal Attire</h2>
@@ -808,7 +811,7 @@ $result = $mysqli->query($sql);
 
   </div>
 
-  <div class="bg-light" style="background-color:blueviolet;">
+  <div class="bg-light" id="brideMaidsSection" style="background-color:blueviolet;">
     <div class="container-fluid pt-1">
       <div class="cards-container" style="width: 100%;">
         <h2>Bridemaid's Attire</h2>
@@ -986,7 +989,7 @@ $result = $mysqli->query($sql);
   </style>
 
 
-  <div class="bg-light" style="background-color:blueviolet;">
+  <div class="bg-light" id="" style="background-color:blueviolet;">
     <div class="container-fluid pt-1">
       <div class="cards-container" style="width: 100%;">
         <h2>Party Wear</h2>
@@ -1350,6 +1353,32 @@ $result = $mysqli->query($sql);
     </div>
   </footer>
 
+<script>
+  function showSection(section) {
+    // Hide both sections by default
+    document.getElementById('newArrivalsSection').style.display = 'none';
+    document.getElementById('usedCollectionSection').style.display = 'none';
+        document.getElementById('brideMaidsSection').style.display = 'none';
+    document.getElementById('partySection').style.display = 'none';
+        document.getElementById('bridalSection').style.display = 'none';
+
+    // Show the selected section
+    if (section === 'newArrivals') {
+      document.getElementById('newArrivalsSection').style.display = 'block';
+    } else if (section === 'usedCollection') {
+      document.getElementById('usedCollectionSection').style.display = 'block';
+
+        } else if (section === 'brideMaidCollection') {
+      document.getElementById('brideMaidsSection').style.display = 'block';
+
+        } else if (section === 'partyCollection') {
+      document.getElementById('partySection').style.display = 'block';
+
+        } else if (section === 'bridalCollection') {
+      document.getElementById('bridalSection').style.display = 'block';
+    }
+  }
+</script>
 
 
 
