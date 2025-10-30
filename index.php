@@ -1293,7 +1293,7 @@ $result = $mysqli->query($sql);
 
 
 
-<?php include_once $_SERVER['DOCUMENT_ROOT'] . '/footer.php'; ?>
+<?php include_once('footer.php'); ?>
 
 
 <script>
