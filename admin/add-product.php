@@ -53,12 +53,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     move_uploaded_file($_FILES['product_img_name']['tmp_name'], $target_file);
   }
 
-  $stmt = $pdo->prepare("INSERT INTO products (product_code, product_name, product_desc, product_img_name, qty, price, color, category) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-  if ($stmt->execute([$product_code, $product_name, $product_desc, $img_name, $qty, $price, $color, $category])) {
-    $success = "✅ Product added successfully!";
-  } else {
-    $error = "❌ Failed to add product.";
+  try {
+    $stmt = $pdo->prepare("INSERT INTO products (product_code, product_name, product_desc, product_img_name, qty, price, color, category)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    if ($stmt->execute([$product_code, $product_name, $product_desc, $img_name, $qty, $price, $color, $category])) {
+      $success = "✅ Product added successfully!";
+    } else {
+      $error = "❌ Failed to add product.";
+    }
+  } catch (Throwable $e) {
+    $error = "❌ Database error: " . $e->getMessage();
   }
 }
 ?>
@@ -69,52 +73,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Add Product - Admin Panel</title>
-
-  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
   <style>
-    body {
-      background-color: #f5f6fa;
-      font-family: 'Poppins', sans-serif;
-    }
-    .sidebar {
-      width: 240px;
-      height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
-      background: #343a40;
-      color: white;
-      padding-top: 20px;
-    }
-    .sidebar a {
-      display: block;
-      padding: 12px 20px;
-      color: #ccc;
-      text-decoration: none;
-      transition: 0.3s;
-    }
-    .sidebar a:hover {
-      background: #495057;
-      color: #fff;
-    }
-    .sidebar .active {
-      background: #007bff;
-      color: white;
-    }
-    .main-content {
-      margin-left: 240px;
-      padding: 40px;
-    }
-    .form-container {
-      background: #fff;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-      max-width: 700px;
-      margin: auto;
-    }
+    body { background-color: #f5f6fa; font-family: 'Poppins', sans-serif; }
+    .sidebar { width: 240px; height: 100vh; position: fixed; top: 0; left: 0; background: #343a40; color: white; padding-top: 20px; }
+    .sidebar a { display: block; padding: 12px 20px; color: #ccc; text-decoration: none; transition: 0.3s; }
+    .sidebar a:hover { background: #495057; color: #fff; }
+    .sidebar .active { background: #007bff; color: white; }
+    .main-content { margin-left: 240px; padding: 40px; }
+    .form-container { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); max-width: 700px; margin: auto; }
   </style>
 </head>
 <body>
@@ -145,7 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="alert alert-danger"><?= $error ?></div>
     <?php endif; ?>
 
-    <!-- Form directly on background -->
     <form method="POST" enctype="multipart/form-data">
       <div class="mb-3">
         <label class="form-label">Product Code</label>
@@ -167,9 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="form-label">Quantity</label>
           <input type="number" name="qty" min="1" class="form-control" required>
         </div>
-
         <div class="col-md-6 mb-3">
-          <label class="form-label">Price</label>
+          <label class="form-label">Price (Rs)</label>
           <input type="number" name="price" step="0.01" min="0" class="form-control" required>
         </div>
       </div>
@@ -215,13 +180,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a href="products.php" class="btn btn-outline-secondary ms-2">Cancel</a>
       </div>
     </form>
-
   </div>
 </div>
 
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
