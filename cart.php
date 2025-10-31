@@ -1,150 +1,111 @@
 <?php
-//if (session_status() !== PHP_SESSION_ACTIVE) {session_start();}
-if(session_id() == '' || !isset($_SESSION)){session_start();}
-include 'config.php';
+// cart.php - show user's cart
+session_start();
+require_once 'config.php'; // must define $mysqli (mysqli object)
+
+// Redirect to login if needed
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$user_id = (int) $_SESSION['user_id'];
+
+// Handle optional 'remove' via GET for quick testing (keeps form-based removal below as primary)
+if (isset($_GET['remove']) && ctype_digit($_GET['remove'])) {
+    $remove_id = (int) $_GET['remove'];
+    $del = $mysqli->prepare("DELETE FROM cart WHERE id = ? AND user_id = ?");
+    $del->bind_param("ii", $remove_id, $user_id);
+    $del->execute();
+    $del->close();
+    header('Location: cart.php');
+    exit;
+}
+
+// Fetch cart items for the user
+$sql = "
+    SELECT 
+        c.id AS cart_id,
+        c.product_id,
+        c.quantity,
+        p.product_name,
+        p.price,
+        p.product_img_name
+    FROM cart c
+    JOIN products p ON c.product_id = p.id
+    WHERE c.user_id = ?
+";
+$stmt = $mysqli->prepare($sql);
+if ($stmt === false) {
+    die("DB prepare error: " . $mysqli->error);
+}
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$items = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 ?>
-
 <!DOCTYPE html>
-<html class="no-js" lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shopping Cart || Ceylon Fashion.lk</title>
-    <link rel="stylesheet" href="css/foundation.css" />
-    <script src="js/vendor/modernizr.js"></script>
-  </head>
-  <body>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>My Cart - CeylonFashion</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body{ background:#f8f9fa; }
+    .cart-container{ max-width:980px; margin:40px auto; background:#fff; padding:24px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
+    .cart-item{ border-bottom:1px solid #eee; padding:16px 0; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .cart-item img{ width:90px; height:90px; object-fit:cover; border-radius:8px; }
+    .cart-item .meta{ flex:1; margin-left:12px; }
+    .cart-summary{ text-align:right; margin-top:18px; }
+    .btn-remove{ background:none; border:0; color:#d9534f; font-size:18px; }
+  </style>
+</head>
+<body>
+  <div class="container cart-container">
+    <h3 class="mb-4 text-center">🛒 My Shopping Cart</h3>
 
-    <nav class="top-bar" data-topbar role="navigation">
-      <ul class="title-area">
-        <li class="name">
-          <h1><a href="index.php">Ceylon Fashion.lk</a></h1>
-        </li>
-        <li class="toggle-topbar menu-icon"><a href="#"><span></span></a></li>
-      </ul>
-
-      <section class="top-bar-section">
-      <!-- Right Nav Section -->
-        <ul class="right">
-          <li><a href="about.php">About</a></li>
-          <li><a href="products.php">Products</a></li>
-          <li class="active"><a href="cart.php">View Cart</a></li>
-          <li><a href="orders.php">My Orders</a></li>
-          <li><a href="contact.php">Contact</a></li>
-          <?php
-
-          if(isset($_SESSION['username'])){
-            echo '<li><a href="account.php">My Account</a></li>';
-            echo '<li><a href="logout.php">Log Out</a></li>';
-          }
-          else{
-            echo '<li><a href="login.php">Log In</a></li>';
-            echo '<li><a href="register.php">Register</a></li>';
-          }
-          ?>
-        </ul>
-      </section>
-    </nav>
-
-
-
-
-    <div class="row" style="margin-top:10px;">
-      <div class="large-12">
+    <?php if (!empty($items)): ?>
+      <?php $grand = 0; ?>
+      <?php foreach ($items as $row): ?>
         <?php
+          $subtotal = $row['price'] * $row['quantity'];
+          $grand += $subtotal;
+          $imgPath = 'uploads/' . ($row['product_img_name'] ?: 'no-image.png');
+        ?>
+        <div class="cart-item">
+          <div class="d-flex align-items-center">
+            <img src="<?php echo htmlspecialchars($imgPath); ?>" alt="<?php echo htmlspecialchars($row['product_name']); ?>">
+            <div class="meta">
+              <h5 class="mb-1"><?php echo htmlspecialchars($row['product_name']); ?></h5>
+              <div class="small text-muted">Price: Rs. <?php echo number_format($row['price'],2); ?> &nbsp; • &nbsp; Qty: <?php echo (int)$row['quantity']; ?></div>
+            </div>
+          </div>
 
-          echo '<p><h3>Your Shopping Cart</h3></p>';
+          <div class="text-end">
+            <div class="fw-bold mb-2">Rs. <?php echo number_format($subtotal,2); ?></div>
 
-          if(isset($_SESSION['cart'])) {
+            <!-- Remove form (POST) -->
+            <form action="cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');">
+              <input type="hidden" name="cart_id" value="<?php echo (int)$row['cart_id']; ?>">
+              <button type="submit" class="btn-remove" title="Remove"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </div>
+      <?php endforeach; ?>
 
-            $total = 0;
-            echo '<table>';
-            echo '<tr>';
-            echo '<th>Code</th>';
-            echo '<th>Name</th>';
-            echo '<th>Quantity</th>';
-            echo '<th>Cost</th>';
-            echo '</tr>';
-            foreach($_SESSION['cart'] as $product_id => $quantity) {
-
-            $result = $mysqli->query("SELECT product_code, product_name, product_desc, qty, price FROM products WHERE id = ".$product_id);
-
-
-            if($result){
-
-              while($obj = $result->fetch_object()) {
-                $cost = $obj->price * $quantity; //work out the line cost
-                $total = $total + $cost; //add to the total cost
-
-                echo '<tr>';
-                echo '<td>'.$obj->product_code.'</td>';
-                echo '<td>'.$obj->product_name.'</td>';
-                echo '<td>'.$quantity.'&nbsp;<a class="button [secondary success alert]" style="padding:5px;" href="update-cart.php?action=add&id='.$product_id.'">+</a>&nbsp;<a class="button alert" style="padding:5px;" href="update-cart.php?action=remove&id='.$product_id.'">-</a></td>';
-                echo '<td>'.$cost.'</td>';
-                echo '</tr>';
-              }
-            }
-
-          }
-
-
-
-          echo '<tr>';
-          echo '<td colspan="3" align="right">Total</td>';
-          echo '<td>'.$total.'</td>';
-          echo '</tr>';
-
-          echo '<tr>';
-          echo '<td colspan="4" align="right"><a href="update-cart.php?action=empty" class="button alert">Empty Cart</a>&nbsp;<a href="products.php" class="button [secondary success alert]">Continue Shopping</a>';
-          if(isset($_SESSION['username'])) {
-            echo '<a href="orders-update.php"><button style="float:right;">COD</button></a>';
-          }
-
-          else {
-            echo '<a href="login.php"><button style="float:right;">Login</button></a>';
-          }
-
-          echo '</td>';
-
-          echo '</tr>';
-          echo '</table>';
-        }
-
-        else {
-          echo "You have no items in your shopping cart.";
-        }
-
-
-
-
-
-          echo '</div>';
-          echo '</div>';
-          ?>
-
-
-
-    <div class="row" style="margin-top:10px;">
-      <div class="small-12">
-
-
-
-
-        <footer style="margin-top:10px;">
-           <p style="text-align:center; font-size:0.8em;clear:both;">&copy; Ceylon Fashion.lk. All Rights Reserved.</p>
-        </footer>
-
+      <div class="cart-summary">
+        <h4>Total: Rs. <?php echo number_format($grand,2); ?></h4>
+        <a href="checkout.php" class="btn btn-success mt-3">Proceed to Checkout</a>
       </div>
-    </div>
-
-
-
-
-
-    <script src="js/vendor/jquery.js"></script>
-    <script src="js/foundation.min.js"></script>
-    <script>
-      $(document).foundation();
-    </script>
-  </body>
+    <?php else: ?>
+      <div class="text-center py-5">
+        <p class="lead">Your cart is empty.</p>
+        <a href="index.php" class="btn btn-primary">Continue Shopping</a>
+      </div>
+    <?php endif; ?>
+  </div>
+</body>
 </html>
