@@ -1,61 +1,62 @@
 <?php
-session_start();
-include 'config.php';
+if (session_id() == '' || !isset($_SESSION)) {
+    session_start();
+}
 
-// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+    header('Location: login.php?return=' . urlencode($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
+}
+
+require_once 'config.php';
+
+$product_id = isset($_GET['id']) && ctype_digit($_GET['id']) ? (int)$_GET['id'] : 0;
+$quantity = isset($_GET['qty']) && ctype_digit($_GET['qty']) ? (int)$_GET['qty'] : 1;
+
+if ($product_id <= 0) {
+    header('Location: index.php');
     exit;
 }
 
 $user_id = (int)$_SESSION['user_id'];
-$product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$quantity = isset($_GET['qty']) ? (int)$_GET['qty'] : 1;
 
-if ($product_id <= 0 || $quantity <= 0) {
-    die("Invalid product or quantity.");
+// ✅ Match actual column names in your products table
+$stmt = $mysqli->prepare("SELECT qty, price FROM products WHERE id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$product = $result->fetch_assoc();
+$stmt->close();
+
+if (!$product || $product['qty'] < $quantity) {
+    $_SESSION['cart_error'] = 'Product not available or insufficient stock.';
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
 }
 
-// 1️⃣ Check if the user already has an active cart (status = 'pending')
-$result = $mysqli->query("SELECT * FROM carts WHERE user_id = $user_id AND status = 'pending' LIMIT 1");
+// Check if item already in cart
+$stmt = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
+$stmt->bind_param("ii", $user_id, $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$existing = $result->fetch_assoc();
+$stmt->close();
 
-if ($result && $result->num_rows > 0) {
-    $cart = $result->fetch_assoc();
-    $cart_id = (int)$cart['id'];
-} else {
-    // Create new cart
-    $stmt = $mysqli->prepare("INSERT INTO carts (user_id, status, created_at, updated_at) VALUES (?, 'pending', NOW(), NOW())");
-    $stmt->bind_param("i", $user_id);
+if ($existing) {
+    $new_qty = $existing['quantity'] + $quantity;
+    $stmt = $mysqli->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->bind_param("ii", $new_qty, $existing['id']);
     $stmt->execute();
-    $cart_id = $mysqli->insert_id;
+    $stmt->close();
+} else {
+    $stmt = $mysqli->prepare("INSERT INTO cart (user_id, product_id, quantity, price, created_at) VALUES (?, ?, ?, ?, NOW())");
+    $stmt->bind_param("iiid", $user_id, $product_id, $quantity, $product['price']);
+    $stmt->execute();
     $stmt->close();
 }
 
-// 2️⃣ Check if product is already in cart
-$stmt = $mysqli->prepare("SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ? LIMIT 1");
-$stmt->bind_param("ii", $cart_id, $product_id);
-$stmt->execute();
-$res = $stmt->get_result();
-
-if ($res && $res->num_rows > 0) {
-    // Update quantity
-    $item = $res->fetch_assoc();
-    $new_qty = $item['qty'] + $quantity;
-    $stmtUpdate = $mysqli->prepare("UPDATE cart_items SET qty = ?, updated_at = NOW() WHERE id = ?");
-    $stmtUpdate->bind_param("ii", $new_qty, $item['id']);
-    $stmtUpdate->execute();
-    $stmtUpdate->close();
-} else {
-    // Insert new item
-    $stmtInsert = $mysqli->prepare("INSERT INTO cart_items (cart_id, product_id, qty, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())");
-    $stmtInsert->bind_param("iii", $cart_id, $product_id, $quantity);
-    $stmtInsert->execute();
-    $stmtInsert->close();
-}
-
-$stmt->close();
-
-// Redirect back to products page or cart
-header("Location: cart.php?added=1");
+$_SESSION['cart_success'] = 'Item added to cart successfully!';
+header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
 exit;
 ?>
