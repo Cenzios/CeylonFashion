@@ -1,7 +1,7 @@
 <?php
 // admin/products.php
 if (session_id() == '' || !isset($_SESSION)) { session_start(); }
-include_once '../config.php'; // adjust path if needed (this should define $mysqli and DB creds)
+include_once '../config.php'; // ensure this defines $mysqli
 
 // ---- Auth / admin check ----
 $isAdmin = isset($_SESSION['type']) && $_SESSION['type'] === 'admin';
@@ -10,15 +10,17 @@ if (!$isAdmin) {
   exit;
 }
 
-// ---- Fetch products (mysqli from your config.php) ----
-$sql = "SELECT id, product_name, product_code, product_desc, product_img_name, qty, price FROM products ORDER BY id DESC";
+// ---- Fetch products with fabric details ----
+$sql = "SELECT p.id, p.product_name, p.product_code, p.product_desc, p.product_img_name
+        FROM products p
+        ORDER BY p.id DESC";
 $result = $mysqli->query($sql);
 if ($result === false) {
-  die("DB error: " . $mysqli->error);
+  die('DB error: ' . $mysqli->error);
 }
 
-// helper fallback image path
-$fallback = '../assets/no-image.png'; // ensure this exists
+// fallback image path
+$fallback = '../assets/no-image.png';
 ?>
 <!doctype html>
 <html lang="en">
@@ -40,15 +42,13 @@ $fallback = '../assets/no-image.png'; // ensure this exists
     .card-img-top { height:200px; object-fit:cover; border-top-left-radius:.375rem; border-top-right-radius:.375rem; }
     .card { border: 0; border-radius:.5rem; transition: transform .12s ease, box-shadow .12s ease; }
     .card:hover { transform: translateY(-4px); box-shadow: 0 6px 20px rgba(0,0,0,.08); }
-    .card .meta-row { display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
     .card-icons { display:flex; gap:.5rem; }
     .card-icons a { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background: rgba(255,255,255,.95); color:#333; text-decoration:none; border:1px solid rgba(0,0,0,.06); }
     .card-icons a:hover { background:#007bff; color:#fff; transform:translateY(-1px); }
-    .price { font-size:1.1rem; font-weight:700; color:#0d6efd; }
-    .desc { min-height:3.2rem; } /* keep cards aligned */
-    @media (max-width: 575px) {
-      .card-img-top { height:160px; }
-    }
+    .fabric-box { background:#f1f3f5; border-radius:8px; padding:10px; font-size:0.9rem; }
+    .fabric-box table { width:100%; font-size:0.85rem; margin:0; }
+    .fabric-box th, .fabric-box td { padding:4px 6px; }
+    .fabric-box th { color:#555; }
   </style>
 </head>
 <body>
@@ -64,6 +64,7 @@ $fallback = '../assets/no-image.png'; // ensure this exists
     <a href="../logout.php" class="text-danger">🚪 Logout</a>
   </div>
 
+  <!-- Main Section -->
   <main class="main">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h3 class="mb-0">Manage Products</h3>
@@ -82,52 +83,73 @@ $fallback = '../assets/no-image.png'; // ensure this exists
           </div>
         </div>
       <?php else: ?>
-        <?php while ($obj = $result->fetch_object()): ?>
+        <?php while ($p = $result->fetch_assoc()): ?>
           <?php
-            $pid   = (int)$obj->id;
-            $pname = htmlentities($obj->product_name, ENT_QUOTES, 'UTF-8');
-            $pcode = htmlentities($obj->product_code, ENT_QUOTES, 'UTF-8');
-            $pdesc = htmlentities($obj->product_desc, ENT_QUOTES, 'UTF-8');
-            $pimg  = htmlentities($obj->product_img_name, ENT_QUOTES, 'UTF-8');
-            $qty   = (int)$obj->qty;
-            $price = number_format((float)$obj->price, 2);
+            $pid   = (int)$p['id'];
+            $pname = htmlentities($p['product_name'], ENT_QUOTES, 'UTF-8');
+            $pcode = htmlentities($p['product_code'], ENT_QUOTES, 'UTF-8');
+            $pdesc = htmlentities($p['product_desc'], ENT_QUOTES, 'UTF-8');
+            $pimg  = htmlentities($p['product_img_name'], ENT_QUOTES, 'UTF-8');
             $imgPath = '../images/products/' . $pimg;
             if (empty($pimg) || !file_exists($imgPath)) {
               $imgPath = $fallback;
+            }
+
+            // fetch fabric details for this product
+            $fabricSql = "SELECT fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = $pid";
+            $fabricRes = $mysqli->query($fabricSql);
+            $fabrics = [];
+            if ($fabricRes && $fabricRes->num_rows > 0) {
+              while ($f = $fabricRes->fetch_assoc()) {
+                $fabrics[] = $f;
+              }
             }
           ?>
           <div class="col">
             <div class="card h-100 shadow-sm">
               <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" class="card-img-top">
               <div class="card-body d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h5 class="card-title mb-0" title="<?php echo $pname; ?>"><?php echo $pname; ?></h5>
-                  <span class="price">Rs. <?php echo $price; ?></span>
-                </div>
+                <h5 class="card-title mb-1"><?php echo $pname; ?></h5>
+                <p class="text-muted small mb-1">Code: <?php echo $pcode; ?></p>
+                <p class="text-muted small mb-2"><?php echo (strlen($pdesc) > 100) ? substr($pdesc,0,100).'...' : $pdesc; ?></p>
 
-                <p class="text-muted small mb-2">Code: <?php echo $pcode; ?></p>
-
-                <p class="card-text desc text-muted small mb-3"><?php echo (strlen($pdesc) > 120) ? htmlentities(substr($pdesc,0,120), ENT_QUOTES, 'UTF-8').'...' : $pdesc; ?></p>
+                <?php if (!empty($fabrics)): ?>
+                  <div class="fabric-box mb-3">
+                    <strong>Fabric Details</strong>
+                    <table class="table table-sm mt-2 mb-0">
+                      <thead>
+                        <tr>
+                          <th>Type</th>
+                          <th>Qty</th>
+                          <th>Price (Rs)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php foreach ($fabrics as $f): ?>
+                          <tr>
+                            <td><?php echo htmlentities($f['fabric_type']); ?></td>
+                            <td><?php echo (int)$f['fabric_qty']; ?></td>
+                            <td><?php echo number_format((float)$f['fabric_price'], 2); ?></td>
+                          </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                <?php else: ?>
+                  <p class="text-muted small mb-3"><em>No fabric details</em></p>
+                <?php endif; ?>
 
                 <div class="mt-auto d-flex justify-content-between align-items-center">
-                  <div class="d-flex align-items-center small text-muted">
-                    <i class="bi bi-box-seam me-1"></i>
-                    <span><?php echo ($qty > 0) ? $qty . ' in stock' : '<span style="color:#c00;">Out of stock</span>'; ?></span>
-                  </div>
-
+                  <span class="text-muted small">ID: <?php echo $pid; ?></span>
                   <div class="card-icons">
-                    <a href="view-product.php?id=<?php echo $pid; ?>" class="text-decoration-none" title="View">
-                      <i class="bi bi-eye"></i>
-                    </a>
-                    <a href="edit-product.php?id=<?php echo $pid; ?>" class="text-decoration-none" title="Edit">
-                      <i class="bi bi-pencil-square"></i>
-                    </a>
-                    <!-- Delete Button -->
-                    <a href="#" class="text-decoration-none text-danger" title="Delete" onclick="showDeleteModal('<?php echo $pid; ?>','<?php echo addslashes($pname); ?>'); return false;">
+                    <a href="view-product.php?id=<?php echo $pid; ?>" title="View"><i class="bi bi-eye"></i></a>
+                    <a href="edit-product.php?id=<?php echo $pid; ?>" title="Edit"><i class="bi bi-pencil-square"></i></a>
+                    <a href="#" class="text-danger" title="Delete" onclick="showDeleteModal('<?php echo $pid; ?>','<?php echo addslashes($pname); ?>'); return false;">
                       <i class="bi bi-trash"></i>
                     </a>
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
@@ -155,9 +177,7 @@ $fallback = '../assets/no-image.png'; // ensure this exists
     </div>
   </div>
 
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
   <script>
     function showDeleteModal(productId, productName) {
       document.getElementById('deleteProductName').textContent = productName;
