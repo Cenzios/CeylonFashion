@@ -1,39 +1,61 @@
-<div class="container-fluid" style="padding: 0;">
-  <div class="row g-3 pt-3">
-    <div class="col-12 col-md-6">
-      <div class="card h-100">
-        <img src="Images/Banner image -01.png" class="card-img-top" alt="Background Image">
-        <div class="card-body">
-          <h5 class="card-title">
-            Resell Your Ceylon-Fashion Outfit - Earn Up to 60% Back!
-          </h5>
-          <ul class="list-group list-group-flush">
-            <li class="list-group-item">Only for verified City Fashion buyers</li>
-            <li class="list-group-item">List within 3 months of purchase — zero fees!</li>
-            <li class="list-group-item">Admin-approved listings for trust & quality</li>
-            <li class="list-group-item">Give luxury outfits a second life & earn cash</li>
-          </ul>
-          <div class="mt-3 text-center">
-            <a href="#" class="btn btn-primary" id="startResellingBtn">Start Reselling</a>
-          </div>
-        </div>
+<!-- Full-width two-card section with spacing -->
+<div style="display: flex; width: 100vw; margin: 20px 0; gap: 20px; padding: 0 20px; box-sizing: border-box;">
+  <!-- Left Card -->
+  <div style="flex: 1; overflow: hidden; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    <div style="height: 100%; width: 100%;">
+      <img
+        src="Images/Banner image -01.png"
+        alt="Resell Outfit"
+        style="width: 100%; height: 300px; object-fit: cover;"
+      />
+      <div
+        style="background-color: #d8b4f8; padding: 30px; text-align: center;"
+      >
+        <h5 style="font-weight: bold; margin-bottom: 20px;">
+          Resell Your Ceylon-Fashion Outfit - Earn Up to 60% Back!
+        </h5>
+        <ul style="list-style: none; padding: 0; font-style: italic; line-height: 1.8; font-size: 1rem; margin-bottom: 20px;">
+          <li>Only for verified City Fashion buyers</li>
+          <li>List within 3 months of purchase — zero fees!</li>
+          <li>Admin-approved listings for trust & quality</li>
+          <li>Give luxury outfits a second life & earn cash</li>
+        </ul>
+        <a
+          href="#"
+          style="display: inline-block; background-color: #7e22ce; color: white; padding: 10px 30px; border-radius: 25px; font-weight: 600; text-decoration: none;"
+        >
+          Start Reselling
+        </a>
       </div>
     </div>
+  </div>
 
-    <div class="col-12 col-md-6">
-      <div class="card h-100">
-        <img src="Images/Banner image -2.png" class="card-img-top" alt="Background Image">
-        <div class="card-body">
-          <h5 class="card-title">
-            Design Your Perfect outfit with Ceylon Fashion
-          </h5>
-          <ul class="list-group list-group-flush">
-            <li class="list-group-item">Design Yours in 3 steps</li>
-            <li class="list-group-item">Tailor Every Garment to Your style and size</li>
-            <li class="list-group-item">Start by selecting Your favourite design</li>
-            <li class="list-group-item">Make Your dream day reality with Unique a</li>
-          </ul>
-        </div>
+  <!-- Right Card -->
+  <div style="flex: 1; overflow: hidden; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    <div style="height: 100%; width: 100%;">
+      <img
+        src="Images/Banner image -2.png"
+        alt="Design Outfit"
+        style="width: 100%; height: 300px; object-fit: cover;"
+      />
+      <div
+        style="background-color: #d8b4f8; padding: 52px; text-align: center;"
+      >
+        <h5 style="font-weight: bold; margin-bottom: 20px;">
+          Design Your Perfect Outfit with Ceylon Fashion
+        </h5>
+        <ul style="list-style: none; padding: 0; font-style: italic; line-height: 1.8; font-size: 1rem; margin-bottom: 20px;">
+          <li>Design Yours in 3 steps</li>
+          <li>Tailor Every Garment to Your style and size</li>
+          <li>Start by selecting Your favourite design</li>
+          <li>Make Your dream day reality with Unique art</li>
+        </ul>
+        <!-- <a
+          href="#"
+          style="display: inline-block; background-color: #7e22ce; color: white; padding: 10px 30px; border-radius: 25px; font-weight: 600; text-decoration: none;"
+        >
+          Start Designing
+        </a> -->
       </div>
     </div>
   </div>
