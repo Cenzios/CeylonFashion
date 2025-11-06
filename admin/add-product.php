@@ -40,22 +40,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $product_name = trim($_POST['product_name']);
   $product_desc = trim($_POST['product_desc']);
   $category = $_POST['category'];
-  $img_name = '';
 
-  // Handle image upload
-  if (!empty($_FILES['product_img_name']['name'])) {
-    $target_dir = "../images/products/";
-    if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
-    $img_name = basename($_FILES['product_img_name']['name']);
-    $target_file = $target_dir . $img_name;
-    move_uploaded_file($_FILES['product_img_name']['tmp_name'], $target_file);
+  // Handle image uploads (4 images)
+  $image_fields = ['product_img1', 'product_img2', 'product_img3', 'product_img4'];
+  $uploaded_images = [];
+
+  $target_dir = "../images/products/";
+  if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+
+  foreach ($image_fields as $field) {
+    if (!empty($_FILES[$field]['name'])) {
+      $img_name = basename($_FILES[$field]['name']);
+      $target_file = $target_dir . $img_name;
+      if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_file)) {
+        $uploaded_images[$field] = $img_name;
+      } else {
+        $uploaded_images[$field] = null;
+      }
+    } else {
+      $uploaded_images[$field] = null;
+    }
   }
 
   try {
-    // Insert product (without qty, price, color)
-    $stmt = $pdo->prepare("INSERT INTO products (product_code, product_name, product_desc, product_img_name, category)
-                           VALUES (?, ?, ?, ?, ?)");
-    if ($stmt->execute([$product_code, $product_name, $product_desc, $img_name, $category])) {
+    // Insert product (with 4 images)
+    $stmt = $pdo->prepare("
+      INSERT INTO products (product_code, product_name, product_desc, product_img1, product_img2, product_img3, product_img4, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    if ($stmt->execute([
+      $product_code,
+      $product_name,
+      $product_desc,
+      $uploaded_images['product_img1'],
+      $uploaded_images['product_img2'],
+      $uploaded_images['product_img3'],
+      $uploaded_images['product_img4'],
+      $category
+    ])) {
       $product_id = $pdo->lastInsertId();
 
       // Insert fabric details
@@ -72,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       }
 
-      $success = "✅ Product added successfully with fabric details!";
+      $success = "✅ Product added successfully with all images and fabric details!";
     } else {
       $error = "❌ Failed to add product.";
     }
@@ -109,7 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <a href="products.php" class="active">📦 Products</a>
     <a href="orders.php">🧾 Orders</a>
     <a href="users.php">👥 Users</a>
-    <a href="settings.php">⚙️ Settings</a>
     <hr class="text-secondary">
     <a href="../logout.php" class="text-danger">🚪 Logout</a>
   </div>
@@ -155,12 +176,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </select>
       </div>
 
+      <!-- 🌸 Four Product Images -->
       <div class="mb-4">
-        <label class="form-label">Product Image</label>
-        <input type="file" name="product_img_name" class="form-control" accept="image/*" required>
+        <h5 class="fw-bold text-primary mb-3">Upload Product Images</h5>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Image 1</label>
+            <input type="file" name="product_img1" class="form-control" accept="image/*" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Image 2</label>
+            <input type="file" name="product_img2" class="form-control" accept="image/*">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Image 3</label>
+            <input type="file" name="product_img3" class="form-control" accept="image/*">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Image 4</label>
+            <input type="file" name="product_img4" class="form-control" accept="image/*">
+          </div>
+        </div>
+        <small class="text-muted">You can upload up to 4 images (Image 1 is required).</small>
       </div>
 
-      <!-- 🌸 New Fabric Type Section -->
+      <!-- 🌸 Fabric Type Section -->
       <div class="mb-4">
         <h5 class="fw-bold mb-3 text-primary">Fabric Types & Details</h5>
         <div class="table-responsive">
@@ -188,7 +228,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </tbody>
           </table>
         </div>
-        <small class="text-muted">Specify quantity and additional price for each fabric type.</small>
       </div>
 
       <div class="text-center">
