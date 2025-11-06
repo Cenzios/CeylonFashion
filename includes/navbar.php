@@ -34,8 +34,17 @@
               <li><a class="dropdown-item" href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
             </ul>
           </div>
+          
+          <!-- Wishlist and Cart links (logged in users) -->
+          <a href="wishlist.php" style="text-decoration: none; color: white;">
+            <i class="bi bi-heart" id="wishlistIcon" style="cursor: pointer;"></i>
+          </a>
+          <a href="cart.php" style="text-decoration: none; color: white;">
+            <i class="bi bi-cart2" id="cartIcon" style="cursor: pointer;"></i>
+          </a>
+          
         <?php else: ?>
-          <!-- Show Login button when not logged in - Opens sidebar -->
+          <!-- Show Login button when not logged in -->
           <button 
             class="btn btn-light btn-sm" 
             style="font-size: 14px; padding: 6px 16px;" 
@@ -45,14 +54,15 @@
             aria-controls="loginSidebar">
             Login
           </button>
+          
+          <!-- Wishlist and Cart icons (not logged in - trigger login) -->
+          <a href="#" onclick="requireLogin(event, 'wishlist.php')" style="text-decoration: none; color: white;">
+            <i class="bi bi-heart" id="wishlistIcon" style="cursor: pointer;"></i>
+          </a>
+          <a href="#" onclick="requireLogin(event, 'cart.php')" style="text-decoration: none; color: white;">
+            <i class="bi bi-cart2" id="cartIcon" style="cursor: pointer;"></i>
+          </a>
         <?php endif; ?>
-        
-        <a href="wishlist.php" style="text-decoration: none; color: white;">
-          <i class="bi bi-heart" id="wishlistIcon" style="cursor: pointer;"></i>
-        </a>
-        <a href="cart.php" style="text-decoration: none; color: white;">
-          <i class="bi bi-cart2" id="cartIcon" style="cursor: pointer;"></i>
-        </a>
       </div>
     </div>
   </div>
@@ -65,6 +75,11 @@
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
   </div>
   <div class="offcanvas-body">
+    <!-- Info message for required login -->
+    <div id="loginRequiredMessage" style="display:none; padding:10px; border-radius:6px; margin-bottom:15px; background-color: #fff3cd; border: 1px solid #ffc107; color: #856404;">
+      Please log in to access this feature.
+    </div>
+    
     <!-- Error/Success Messages -->
     <div id="loginMessage" style="display:none; padding:10px; border-radius:6px; margin-bottom:15px;"></div>
     
@@ -211,6 +226,27 @@
 </style>
 
 <script>
+// Store the intended destination after login
+let intendedDestination = null;
+
+// Function to require login before accessing a page
+function requireLogin(event, destination) {
+  event.preventDefault();
+  
+  // Store the destination
+  intendedDestination = destination;
+  
+  // Show the login required message
+  const loginRequiredMsg = document.getElementById('loginRequiredMessage');
+  if (loginRequiredMsg) {
+    loginRequiredMsg.style.display = 'block';
+  }
+  
+  // Open the login sidebar
+  const loginSidebar = new bootstrap.Offcanvas(document.getElementById('loginSidebar'));
+  loginSidebar.show();
+}
+
 // Smooth scroll to sections when coming from another page
 document.addEventListener('DOMContentLoaded', function() {
   // Check if there's a hash in the URL
@@ -232,9 +268,15 @@ document.addEventListener('DOMContentLoaded', function() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const messageDiv = document.getElementById('loginMessage');
+      const loginRequiredMsg = document.getElementById('loginRequiredMessage');
       const submitBtn = document.getElementById('loginSubmitBtn');
       const btnText = document.getElementById('loginBtnText');
       const spinner = document.getElementById('loginSpinner');
+      
+      // Hide the login required message
+      if (loginRequiredMsg) {
+        loginRequiredMsg.style.display = 'none';
+      }
       
       // Show loading state
       submitBtn.disabled = true;
@@ -263,7 +305,12 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // Redirect after short delay
           setTimeout(() => {
-            window.location.href = data.redirect || 'index.php';
+            // If there's an intended destination, go there
+            if (intendedDestination) {
+              window.location.href = intendedDestination;
+            } else {
+              window.location.href = data.redirect || 'index.php';
+            }
           }, 1000);
         } else {
           messageDiv.className = 'login-message-error';
@@ -283,5 +330,22 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
+  
+  // Reset messages when sidebar is closed
+  document.getElementById('loginSidebar')?.addEventListener('hidden.bs.offcanvas', function() {
+    const loginRequiredMsg = document.getElementById('loginRequiredMessage');
+    const loginMessage = document.getElementById('loginMessage');
+    
+    if (loginRequiredMsg) loginRequiredMsg.style.display = 'none';
+    if (loginMessage) loginMessage.style.display = 'none';
+    
+    // Don't clear intendedDestination here in case user wants to reopen
+  });
 });
+
+// Alternative: Global function that can be called from anywhere
+function showLoginModal() {
+  const loginSidebar = new bootstrap.Offcanvas(document.getElementById('loginSidebar'));
+  loginSidebar.show();
+}
 </script>
