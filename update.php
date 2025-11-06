@@ -1,71 +1,80 @@
 <?php
-
-//if (session_status() !== PHP_SESSION_ACTIVE) {session_start();}
-if(session_id() == '' || !isset($_SESSION)){session_start();}
+if (session_id() == '' || !isset($_SESSION)) {
+  session_start();
+}
 
 include 'config.php';
 
-$fname = $_POST["fname"];
-$lname = $_POST["lname"];
-$address = $_POST["address"];
-$city = $_POST["city"];
-$pin = $_POST["pin"];
-$email = $_POST["email"];
-$opwd = $_POST["opwd"];
-$pwd = $_POST["pwd"];
-
-
-if($fname!=""){
-  $result = $mysqli->query('UPDATE users SET fname ="'. $fname .'" WHERE id ='.$_SESSION['id']);
-  if($result){
-  }
+// ✅ Ensure user is logged in
+if (!isset($_SESSION['id']) || empty($_SESSION['id'])) {
+  header("Location: login.php");
+  exit;
 }
 
-if($lname!=""){
-  $result = $mysqli->query('UPDATE users SET lname ="'. $lname .'" WHERE id ='.$_SESSION['id']);
-  if($result){
-  }
+$id = (int)$_SESSION['id'];
+
+// ✅ Use null coalescing to avoid undefined key warnings
+$fname   = $_POST['fname']   ?? '';
+$lname   = $_POST['lname']   ?? '';
+$address = $_POST['address'] ?? '';
+$city    = $_POST['city']    ?? '';
+$pin     = $_POST['pin']     ?? '';
+$email   = $_POST['email']   ?? '';
+$pwd     = $_POST['pwd']     ?? '';
+
+// ✅ Update each field only if not empty
+if ($fname !== '') {
+  $stmt = $mysqli->prepare("UPDATE users SET fname = ? WHERE id = ?");
+  $stmt->bind_param("si", $fname, $id);
+  $stmt->execute();
 }
 
-if($address!=""){
-  $result = $mysqli->query('UPDATE users SET address ="'. $address .'" WHERE id ='.$_SESSION['id']);
-  if($result){
-  }
+if ($lname !== '') {
+  $stmt = $mysqli->prepare("UPDATE users SET lname = ? WHERE id = ?");
+  $stmt->bind_param("si", $lname, $id);
+  $stmt->execute();
 }
 
-if($city!=""){
-  $result = $mysqli->query('UPDATE users SET city ="'. $city .'" WHERE id ='.$_SESSION['id']);
-  if($result){
-  }
+if ($address !== '') {
+  $stmt = $mysqli->prepare("UPDATE users SET address = ? WHERE id = ?");
+  $stmt->bind_param("si", $address, $id);
+  $stmt->execute();
 }
 
-if($pin!=""){
-  $result = $mysqli->query('UPDATE users SET pin ='. $pin .' WHERE id ='.$_SESSION['id']);
-  if($result){
-  }
+if ($city !== '') {
+  $stmt = $mysqli->prepare("UPDATE users SET city = ? WHERE id = ?");
+  $stmt->bind_param("si", $city, $id);
+  $stmt->execute();
 }
 
-if($email!=""){
-  $result = $mysqli->query('UPDATE users SET email ="'. $email .'" WHERE id ='.$_SESSION['id']);
-  if($result) {
-  }
+if ($pin !== '') {
+  $stmt = $mysqli->prepare("UPDATE users SET pin = ? WHERE id = ?");
+  $stmt->bind_param("si", $pin, $id);
+  $stmt->execute();
 }
 
-//$result = $mysqli->query('Select password from users WHERE id ='.$_SESSION['id']);
+if ($email !== '') {
+  $stmt = $mysqli->prepare("UPDATE users SET email = ? WHERE id = ?");
+  $stmt->bind_param("si", $email, $id);
+  $stmt->execute();
 
-//$obj = $result->fetch_object();
-
-if(/*$opwd === $obj->password &&*/ $pwd!=""){
-  $query = $mysqli->query('UPDATE users SET password ="'. $pwd .'" WHERE id ='.$_SESSION['id']);
-  if($query){
-  }
+  // ✅ Update session email too
+  $_SESSION['username'] = $email;
 }
 
-//else {
-//  echo 'Wrong Password. Please try again. <a href="account.php">Go Back</a>';
-//}
+if ($pwd !== '') {
+  // Optional: Hash password (if you want)
+  // $hashed = password_hash($pwd, PASSWORD_DEFAULT);
+  $stmt = $mysqli->prepare("UPDATE users SET password = ? WHERE id = ?");
+  $stmt->bind_param("si", $pwd, $id);
+  $stmt->execute();
+}
 
-header("location:success.php");
+// ✅ Close prepared statement & redirect
+if (isset($stmt)) {
+  $stmt->close();
+}
 
-
+header("Location: success.php");
+exit;
 ?>
