@@ -21,16 +21,40 @@ if ($product_id <= 0) {
 
 $user_id = (int)$_SESSION['user_id'];
 
-// ✅ Match actual column names in your products table
-$stmt = $mysqli->prepare("SELECT qty, price FROM products WHERE id = ?");
+// Fetch product details
+$stmt = $mysqli->prepare("SELECT product_name, product_code FROM products WHERE id = ?");
 $stmt->bind_param("i", $product_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $product = $result->fetch_assoc();
 $stmt->close();
 
-if (!$product || $product['qty'] < $quantity) {
-    $_SESSION['cart_error'] = 'Product not available or insufficient stock.';
+if (!$product) {
+    $_SESSION['cart_error'] = 'Product not found.';
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
+}
+
+// Get total available quantity and lowest price from all fabrics
+$stmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total_qty, MIN(fabric_price) as min_price FROM product_fabrics WHERE product_id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$fabricData = $result->fetch_assoc();
+$stmt->close();
+
+if (!$fabricData || $fabricData['total_qty'] <= 0) {
+    $_SESSION['cart_error'] = 'Product is out of stock.';
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
+}
+
+$total_available = (int)$fabricData['total_qty'];
+$price = (float)$fabricData['min_price'];
+
+// Check if total quantity requested is available
+if ($total_available < $quantity) {
+    $_SESSION['cart_error'] = 'Insufficient stock. Available: ' . $total_available . ' units.';
     header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
     exit;
 }
@@ -44,14 +68,24 @@ $existing = $result->fetch_assoc();
 $stmt->close();
 
 if ($existing) {
+    // Update existing cart item
     $new_qty = $existing['quantity'] + $quantity;
+    
+    // Check if new quantity exceeds stock
+    if ($new_qty > $total_available) {
+        $_SESSION['cart_error'] = 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).';
+        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
+        exit;
+    }
+    
     $stmt = $mysqli->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?");
     $stmt->bind_param("ii", $new_qty, $existing['id']);
     $stmt->execute();
     $stmt->close();
 } else {
+    // Insert new cart item
     $stmt = $mysqli->prepare("INSERT INTO cart (user_id, product_id, quantity, price, created_at) VALUES (?, ?, ?, ?, NOW())");
-    $stmt->bind_param("iiid", $user_id, $product_id, $quantity, $product['price']);
+    $stmt->bind_param("iiid", $user_id, $product_id, $quantity, $price);
     $stmt->execute();
     $stmt->close();
 }
