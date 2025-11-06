@@ -1,61 +1,96 @@
 <?php
-session_start();
-include 'config.php';
+if (session_id() == '' || !isset($_SESSION)) {
+    session_start();
+}
 
-// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+    header('Location: login.php?return=' . urlencode($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
+}
+
+require_once 'config.php';
+
+$product_id = isset($_GET['id']) && ctype_digit($_GET['id']) ? (int)$_GET['id'] : 0;
+$quantity = isset($_GET['qty']) && ctype_digit($_GET['qty']) ? (int)$_GET['qty'] : 1;
+
+if ($product_id <= 0) {
+    header('Location: index.php');
     exit;
 }
 
 $user_id = (int)$_SESSION['user_id'];
-$product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$quantity = isset($_GET['qty']) ? (int)$_GET['qty'] : 1;
 
-if ($product_id <= 0 || $quantity <= 0) {
-    die("Invalid product or quantity.");
+// Fetch product details
+$stmt = $mysqli->prepare("SELECT product_name, product_code FROM products WHERE id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$product = $result->fetch_assoc();
+$stmt->close();
+
+if (!$product) {
+    $_SESSION['cart_error'] = 'Product not found.';
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
 }
 
-// 1️⃣ Check if the user already has an active cart (status = 'pending')
-$result = $mysqli->query("SELECT * FROM carts WHERE user_id = $user_id AND status = 'pending' LIMIT 1");
+// Get total available quantity and lowest price from all fabrics
+$stmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total_qty, MIN(fabric_price) as min_price FROM product_fabrics WHERE product_id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$fabricData = $result->fetch_assoc();
+$stmt->close();
 
-if ($result && $result->num_rows > 0) {
-    $cart = $result->fetch_assoc();
-    $cart_id = (int)$cart['id'];
-} else {
-    // Create new cart
-    $stmt = $mysqli->prepare("INSERT INTO carts (user_id, status, created_at, updated_at) VALUES (?, 'pending', NOW(), NOW())");
-    $stmt->bind_param("i", $user_id);
+if (!$fabricData || $fabricData['total_qty'] <= 0) {
+    $_SESSION['cart_error'] = 'Product is out of stock.';
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
+}
+
+$total_available = (int)$fabricData['total_qty'];
+$price = (float)$fabricData['min_price'];
+
+// Check if total quantity requested is available
+if ($total_available < $quantity) {
+    $_SESSION['cart_error'] = 'Insufficient stock. Available: ' . $total_available . ' units.';
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
+}
+
+// Check if item already in cart
+$stmt = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
+$stmt->bind_param("ii", $user_id, $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$existing = $result->fetch_assoc();
+$stmt->close();
+
+if ($existing) {
+    // Update existing cart item
+    $new_qty = $existing['quantity'] + $quantity;
+    
+    // Check if new quantity exceeds stock
+    if ($new_qty > $total_available) {
+        $_SESSION['cart_error'] = 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).';
+        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
+        exit;
+    }
+    
+    $stmt = $mysqli->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->bind_param("ii", $new_qty, $existing['id']);
     $stmt->execute();
-    $cart_id = $mysqli->insert_id;
+    $stmt->close();
+} else {
+    // Insert new cart item
+    $stmt = $mysqli->prepare("INSERT INTO cart (user_id, product_id, quantity, price, created_at) VALUES (?, ?, ?, ?, NOW())");
+    $stmt->bind_param("iiid", $user_id, $product_id, $quantity, $price);
+    $stmt->execute();
     $stmt->close();
 }
 
-// 2️⃣ Check if product is already in cart
-$stmt = $mysqli->prepare("SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ? LIMIT 1");
-$stmt->bind_param("ii", $cart_id, $product_id);
-$stmt->execute();
-$res = $stmt->get_result();
-
-if ($res && $res->num_rows > 0) {
-    // Update quantity
-    $item = $res->fetch_assoc();
-    $new_qty = $item['qty'] + $quantity;
-    $stmtUpdate = $mysqli->prepare("UPDATE cart_items SET qty = ?, updated_at = NOW() WHERE id = ?");
-    $stmtUpdate->bind_param("ii", $new_qty, $item['id']);
-    $stmtUpdate->execute();
-    $stmtUpdate->close();
-} else {
-    // Insert new item
-    $stmtInsert = $mysqli->prepare("INSERT INTO cart_items (cart_id, product_id, qty, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())");
-    $stmtInsert->bind_param("iii", $cart_id, $product_id, $quantity);
-    $stmtInsert->execute();
-    $stmtInsert->close();
-}
-
-$stmt->close();
-
-// Redirect back to products page or cart
-header("Location: cart.php?added=1");
+$_SESSION['cart_success'] = 'Item added to cart successfully!';
+header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
 exit;
 ?>

@@ -1,6 +1,6 @@
 <?php
 // ------------------------------
-// Product View (Secure + UX)
+// product-view.php (UPDATED - Main image wider, thumbnails on right side)
 // ------------------------------
 if (session_id() == '' || !isset($_SESSION)) { session_start(); }
 require_once 'config.php';
@@ -42,7 +42,7 @@ $product_id = (int)$_GET['id'];
 // ------------------------------
 // Fetch Product
 // ------------------------------
-$stmt = $mysqli->prepare("SELECT id, product_name, product_code, product_img_name, product_desc, price, qty FROM products WHERE id = ?");
+$stmt = $mysqli->prepare("SELECT id, product_name, product_code, product_img_name, product_desc, category FROM products WHERE id = ?");
 $stmt->bind_param("i", $product_id);
 $stmt->execute();
 $product = $stmt->get_result()->fetch_assoc();
@@ -52,6 +52,35 @@ if (!$product) {
   http_response_code(404);
   die("Product not found.");
 }
+
+// Parse images
+$img_field = trim((string)$product['product_img_name']);
+$images = [];
+if ($img_field !== '') {
+  $parts = array_filter(array_map('trim', explode(',', $img_field)));
+  foreach ($parts as $p) {
+    if ($p !== '') $images[] = $p;
+  }
+}
+if (empty($images)) {
+  $images[] = 'placeholder.png';
+}
+while (count($images) < 4) $images[] = $images[count($images)-1];
+
+// ------------------------------
+// Fetch Fabrics
+// ------------------------------
+$stmt = $mysqli->prepare("SELECT id, fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$fabricsResult = $stmt->get_result();
+$fabrics = [];
+$totalAvailableQty = 0;
+while ($f = $fabricsResult->fetch_assoc()) {
+  $fabrics[] = $f;
+  $totalAvailableQty += (int)$f['fabric_qty'];
+}
+$stmt->close();
 
 // ------------------------------
 // Handle POST (Reviews / Q&A)
@@ -68,29 +97,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect_self(['msg'=>'login_required']);
   }
 
-  // REVIEW SUBMIT
   if (isset($_POST['submit_review'])) {
-    // Sanitize input and ensure the values are correct
     $rating  = isset($_POST['rating']) ? (int)$_POST['rating'] : 0;
     $comment = isset($_POST['comment']) ? trim($_POST['comment']) : '';
 
-    // Ensure that both rating and comment are valid
     if ($rating >= 1 && $rating <= 5 && $comment !== '') {
-      // Prepare and execute the insert statement
       $stmt = $mysqli->prepare("INSERT INTO product_reviews (product_id, username, rating, comment, created_at) VALUES (?, ?, ?, ?, NOW())");
-      
-      if ($stmt === false) {
-        die('MySQL prepare failed: ' . $mysqli->error);
-      }
-
+      if ($stmt === false) { die('MySQL prepare failed: ' . $mysqli->error); }
       $stmt->bind_param("isis", $product_id, $currentUser, $rating, $comment);
-      $executeResult = $stmt->execute();
-
-      if ($executeResult) {
+      if ($stmt->execute()) {
         $stmt->close();
         redirect_self(['msg'=>'review_added']);
       } else {
-        // Error if the query fails
         die('Failed to insert review: ' . $stmt->error);
       }
     } else {
@@ -98,7 +116,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
   }
 
-  // Q&A SUBMIT
   if (isset($_POST['submit_question'])) {
     $question = isset($_POST['question']) ? trim($_POST['question']) : '';
     if ($question !== '') {
@@ -129,14 +146,11 @@ $avg = round((float)$avg, 1);
 // Pagination
 // ------------------------------
 $perPage = 5;
-
 $pageR = isset($_GET['pageR']) && ctype_digit($_GET['pageR']) ? max(1, (int)$_GET['pageR']) : 1;
 $offR  = ($pageR - 1) * $perPage;
-
 $pageQ = isset($_GET['pageQ']) && ctype_digit($_GET['pageQ']) ? max(1, (int)$_GET['pageQ']) : 1;
 $offQ  = ($pageQ - 1) * $perPage;
 
-// Count totals
 $stmt = $mysqli->prepare("SELECT COUNT(*) FROM product_reviews WHERE product_id = ?");
 $stmt->bind_param("i", $product_id);
 $stmt->execute();
@@ -151,7 +165,6 @@ $stmt->bind_result($questionsCount);
 $stmt->fetch();
 $stmt->close();
 
-// Fetch paginated reviews
 $stmt = $mysqli->prepare("
   SELECT username, rating, comment, created_at
   FROM product_reviews
@@ -165,7 +178,6 @@ $reviewsRes = $stmt->get_result();
 $reviews = $reviewsRes->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Fetch paginated questions
 $stmt = $mysqli->prepare("
   SELECT username, question, created_at
   FROM product_questions
@@ -179,7 +191,6 @@ $questionsRes = $stmt->get_result();
 $questions = $questionsRes->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Pagination helpers
 function render_pager($total, $perPage, $currentKey, $currentPage) {
   $pages = (int)ceil(max(1, $total)/$perPage);
   if ($pages <= 1) return '';
@@ -197,155 +208,139 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title><?= e($product['product_name']); ?> | Ceylon Fashion.lk</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
-  <link rel="stylesheet" href="css/foundation.css" />
-  <script src="js/vendor/modernizr.js"></script>
-  <style>
-    body { background:#f8f9fa; }
-    .product-view { max-width: 1000px; margin: 30px auto; padding: 20px; border-radius: 8px; background:#fff; box-shadow:0 0 10px rgba(0,0,0,0.1); }
-    .product-view img { width: 100%; max-width: 420px; border-radius: 8px; }
-    .product-info { padding: 20px; }
-    .price { color:#0078A0; font-size:1.3em; font-weight:700; }
-    .actions-row { display:flex; gap:10px; margin-top:15px; flex-wrap:wrap; align-items:center; }
-    .btn-cart, .btn-wishlist, .btn-login {
-      padding:10px 14px; border-radius:4px; text-decoration:none; border:none; display:inline-block;
-    }
-    .btn-cart { background:#0078A0; color:#fff; }
-    .btn-wishlist { background:#eee; color:#c00; }
-    .btn-login { background:#f3f3f3; color:#333; }
-    .badge { display:inline-block; background:#ffeeba; color:#856404; padding:4px 8px; border-radius:999px; font-size:12px; margin-left:8px; }
-    .stars { color:#f5c518; letter-spacing:2px; }
-    .edit-pill {
-      background:#2a75bb; color:#fff; padding:6px 10px; border-radius:4px; text-decoration:none; font-size:12px; float:right;
-    }
-
-    .container { margin-top: 30px; }
-    .tabs-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .tab-buttons { display:flex; gap:8px; }
-    .tab-button { border:1px solid #ddd; background:#fafafa; padding:8px 14px; border-radius:6px; }
-    .tab-button.active { background:#0078A0; color:#fff; border-color:#0078A0; }
-    .add-btn { background:#28a745; color:#fff; border:none; padding:8px 14px; border-radius:6px; }
-    .add-btn[disabled] { opacity:0.6; cursor:not-allowed; }
-    .tab-content .item { border-bottom:1px solid #eee; padding:12px 0; }
-    .meta { color:#666; font-size:12px; }
-    .pager { display:flex; gap:6px; margin-top:12px; }
-    .pager a { border:1px solid #ddd; padding:6px 10px; border-radius:999px; text-decoration:none; color:#333; }
-    .pager a.active { background:#0078A0; color:#fff; border-color:#0078A0; }
-
-    /* Dialog */
-    .dialog-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:999; }
-    .dialog-box { width: 96%; max-width: 520px; background:#fff; border-radius:10px; padding:20px; box-shadow:0 10px 40px rgba(0,0,0,0.25); }
-    .dialog-box h3 { margin-top:0; }
-    textarea, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; resize:vertical; }
-    button { background:#0078A0; color:#fff; border:none; padding:10px 16px; border-radius:4px; margin-top:10px; }
-    button:hover { filter:brightness(0.95); cursor:pointer; }
-    .cancel-btn { background:#e9ecef; color:#333; }
-  </style>
-</head>
+<?php include 'includes/head.php'; ?>
 <body>
 
-  <nav class="navbar navbar-expand-lg navbar-purple">
-    <div class="container-fluid">
-      <img src="logo.png" alt="Logo" width="30" height="24" class="d-inline-block align-text-top">
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-        <div class="navbar-nav">
-          <a class="nav-link" href="#">New Arrivals</a>
-          <a class="nav-link" href="#">Bridal Attire</a>
-          <a class="nav-link" href="#">Bridemaids Attire</a>
-          <a class="nav-link" href="#">Party Wear</a>
-          <a class="nav-link" href="#">Used Collection</a>
+<?php include 'includes/navbar.php'; ?>
 
+<div class="product-container">
+  <div class="product-top">
+    
+    <!-- Left: Main Image with thumbnails on the right -->
+    <div class="left-col">
+      <div class="image-layout">
+        <div class="main-image">
+          <img id="mainProductImage" src="images/products/<?= e($images[0]); ?>" alt="<?= e($product['product_name']); ?>">
         </div>
-        <div class="icons" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; gap: 15px; font-size: 32px; color: white; cursor: pointer;">
-          <i class="bi bi-person-circle" id="personIcon"></i>
-          <i class="bi bi-heart"></i>
-          <i class="bi bi-cart2"></i>
+        
+        <!-- Thumbnails on right side -->
+        <div class="thumbs-col">
+          <?php foreach (array_slice($images, 0, 3) as $idx => $img): ?>
+            <div class="thumb-item <?= $idx === 0 ? 'active' : ''; ?>" data-img="<?= e($img); ?>">
+              <img src="images/products/<?= e($img); ?>" alt="<?= e($product['product_name']); ?>">
+            </div>
+          <?php endforeach; ?>
         </div>
-
       </div>
     </div>
-  </nav>
 
-<div class="product-view row">
-  <div class="small-12 medium-6 columns">
-    <img src="images/products/<?= e($product['product_img_name']); ?>"
-         alt="<?= e($product['product_name']); ?>">
+    <!-- Right: Product Details (Narrower) -->
+    <div class="right-col">
+      <?php if ($isAdmin): ?>
+        <a href="admin/edit-product.php?id=<?= $product_id; ?>" class="edit-pill">✏️ Edit</a>
+      <?php endif; ?>
+
+      <h1 class="title"><?= e($product['product_name']); ?></h1>
+
+      <!-- Fabrics -->
+      <?php if (!empty($fabrics)): ?>
+      <div class="option-row">
+        <label class="opt-label">Select Fabric type</label>
+        <div class="fabric-list" id="fabricList">
+          <?php foreach ($fabrics as $f): ?>
+            <button type="button"
+                    class="fabric-btn"
+                    data-fabric-id="<?= (int)$f['id']; ?>"
+                    data-price="<?= number_format((float)$f['fabric_price'], 2, '.', ''); ?>"
+                    data-qty="<?= (int)$f['fabric_qty']; ?>">
+              <?= e($f['fabric_type']); ?>
+            </button>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <!-- Sizes -->
+      <div class="option-row">
+        <label class="opt-label">Select size</label>
+        <div class="size-list" id="sizeList">
+          <?php $sizes = ['XS','S','M','L','XL']; foreach ($sizes as $s): ?>
+            <button type="button" class="size-btn" data-size="<?= e($s); ?>"><?= e($s); ?></button>
+          <?php endforeach; ?>
+        </div>
+        <button type="button" class="view-size-grid">View Size Grid</button>
+      </div>
+
+      <!-- Info message -->
+      <div class="info-message">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+        </svg>
+        Please select <strong>colour</strong>, <strong>fabric</strong>, and <strong>size</strong> to check the price.
+      </div>
+
+      <!-- Quantity + Buttons at bottom -->
+      <form id="addToCartForm" action="cart-add.php" method="GET" onsubmit="return prepareCartForm(this);">
+        <input type="hidden" name="id" value="<?= $product_id; ?>">
+        <input type="hidden" name="fabric_id" id="formFabricId" value="">
+        <input type="hidden" name="color" id="formColor" value="">
+        <input type="hidden" name="size" id="formSize" value="">
+        
+        <div class="bottom-actions">
+          <div class="action-buttons">
+            <?php if (!$isAdmin): ?>
+              <?php if ($isLoggedIn): ?>
+                <button type="submit" class="btn-cart">🛒 Add to Cart</button>
+                <button type="button" class="btn-buy" onclick="window.location.href='buy-now.php?id=<?= $product_id; ?>'">Buy Now</button>
+              <?php else: ?>
+                <button type="button" class="btn-cart" onclick="showLoginModal()">🛒 Add to Cart</button>
+                <button type="button" class="btn-buy" onclick="showLoginModal()">Buy Now</button>
+              <?php endif; ?>
+            <?php endif; ?>
+          </div>
+
+          <div class="qty-heart-row">
+            <div class="qty-row">
+              <button type="button" class="qty-btn" id="qtyMinus">-</button>
+              <input type="number" name="qty" id="qtyField" value="1" min="1" class="qty-input">
+              <button type="button" class="qty-btn" id="qtyPlus">+</button>
+            </div>
+            
+            <?php if (!$isAdmin && $isLoggedIn): ?>
+              <button type="button" class="btn-wishlist" id="wishlistBtn" onclick="toggleWishlist(<?= $product_id; ?>)">♡</button>
+            <?php elseif (!$isAdmin): ?>
+              <button type="button" class="btn-wishlist" onclick="showLoginModal()">♡</button>
+            <?php endif; ?>
+          </div>
+        </div>
+
+        <div class="delivery-info">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.563l1.481 1.85a1.5 1.5 0 0 1 .329.938V10.5a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H5a2 2 0 1 1-3.998-.085A1.5 1.5 0 0 1 0 10.5v-7zm1.294 7.456A1.999 1.999 0 0 1 4.732 11h5.536a2.01 2.01 0 0 1 .732-.732V3.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .294.456zM12 10a2 2 0 0 1 1.732 1h.768a.5.5 0 0 0 .5-.5V8.35a.5.5 0 0 0-.11-.312l-1.48-1.85A.5.5 0 0 0 13.02 6H12v4zm-9 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm9 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+          </svg>
+          Delivery within 5 – 12 Business Days
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-left:6px; opacity:0.6; cursor:pointer;">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+            <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/>
+          </svg>
+        </div>
+      </form>
+
+    </div>
   </div>
 
-  <div class="small-12 medium-6 columns product-info">
-    <?php if ($isAdmin): ?>
-      <a href="edit-product.php?id=<?= $product_id; ?>" class="edit-pill">✏️ Edit</a>
-    <?php endif; ?>
-
-    <h2 style="margin-bottom:6px;"><?= e($product['product_name']); ?></h2>
-
-    <div class="meta">
-      <strong>Product Code:</strong> <?= e($product['product_code']); ?>
-      <?php if ($totalReviews > 0): ?>
-        <span class="badge">
-          <span class="stars">★</span> <?= e($avg) ?> (<?= (int)$totalReviews; ?>)
-        </span>
-      <?php endif; ?>
-    </div>
-
-    <p class="price" style="margin-top:8px;">Price: <?= e($currency) . number_format((float)$product['price'], 2); ?></p>
-    <p><strong>Available Units:</strong> <?= (int)$product['qty']; ?></p>
-
-    <p><strong>Description:</strong></p>
-    <p><?= nl2br(e($product['product_desc'])); ?></p>
-
-    <div class="actions-row">
-      <?php if (!$isAdmin): ?>
-        <?php if ($isLoggedIn): ?>
-          <a class="btn-wishlist" href="wishlist-toggle.php?id=<?= $product_id; ?>">❤ Wishlist</a>
-          <?php if ((int)$product['qty'] > 0): ?>
-            <a class="btn-cart" href="cart-add.php?id=<?= $product_id; ?>&qty=1">Add to Cart</a>
-          <?php else: ?>
-            <span style="color:#c00; font-weight:bold;">Out Of Stock!</span>
-          <?php endif; ?>
-        <?php else: ?>
-          <a class="btn-login" href="login.php">❤ Wishlist (Login)</a>
-          <a class="btn-login" href="login.php">Add to Cart (Login)</a>
-        <?php endif; ?>
-      <?php endif; ?>
-    </div>
-
-    <?php if (isset($_GET['msg'])): ?>
-      <p class="meta" style="margin-top:10px;">
-        <?php
-          $m = $_GET['msg'];
-          $messages = [
-            'review_added' => 'Your review has been posted. Thank you!',
-            'invalid_review' => 'Please provide a rating (1–5) and a comment.',
-            'question_added' => 'Your question has been posted.',
-            'invalid_question' => 'Please enter a question.',
-            'login_required' => 'Please log in to post.',
-          ];
-          echo e($messages[$m] ?? '');
-        ?>
-      </p>
-    <?php endif; ?>
-  </div>
-
-  <div class="container small-12 columns">
-    <!-- Tabs Header -->
+  <!-- Reviews & Q&A Section -->
+  <div class="reviews-section">
     <div class="tabs-header">
       <div class="tab-buttons">
         <button class="tab-button active" id="reviewsTabBtn">Reviews (<?= (int)$reviewsCount; ?>)</button>
         <button class="tab-button" id="qnaTabBtn">Q&amp;A (<?= (int)$questionsCount; ?>)</button>
       </div>
-      <button class="add-btn" id="openDialogBtn" <?= $isLoggedIn ? '' : 'disabled title="Login to post"' ?>>+ Add</button>
+      <button class="add-btn" id="openDialogBtn" <?= $isLoggedIn ? '' : 'onclick="showLoginModal(); return false;"' ?>>+ Add</button>
     </div>
 
-    <!-- Reviews Section -->
+    <!-- Reviews Tab -->
     <div class="tab-content" id="reviewsTab">
       <?php if (!$reviews): ?>
         <p>No reviews yet.</p>
@@ -362,7 +357,7 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
       <?php endif; ?>
     </div>
 
-    <!-- Q&A Section -->
+    <!-- Q&A Tab -->
     <div class="tab-content" id="qnaTab" style="display:none;">
       <?php if (!$questions): ?>
         <p>No questions yet.</p>
@@ -379,16 +374,14 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
   </div>
 </div>
 
-<!-- Dialog Box -->
-<!-- Dialog Box -->
+<!-- Review/Question Dialog -->
+<?php if ($isLoggedIn): ?>
 <div class="dialog-overlay" id="dialogOverlay">
   <div class="dialog-box">
-    <?php if ($isLoggedIn): ?>
     <form method="POST" id="dialogForm" autocomplete="off">
       <input type="hidden" name="csrf_token" value="<?= e(csrf_token()); ?>">
 
-      <!-- Review Form -->
-      <div id="reviewForm" style="display:<?= $currentTab === 'reviews' ? 'block' : 'none' ?>;">
+      <div id="reviewForm">
         <h3>Add Review</h3>
         <label>Rating:</label>
         <select name="rating" required>
@@ -402,8 +395,7 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
         <button type="submit" name="submit_review" class="add-btn">Submit</button>
       </div>
 
-      <!-- Question Form -->
-      <div id="questionForm" style="display:<?= $currentTab === 'qna' ? 'block' : 'none' ?>;">
+      <div id="questionForm" style="display:none;">
         <h3>Ask a Question</h3>
         <textarea name="question" rows="3" placeholder="Ask about this product..." required maxlength="1000"></textarea>
         <button type="submit" name="submit_question" class="add-btn">Post Question</button>
@@ -413,21 +405,665 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
         <button type="button" class="cancel-btn" id="closeDialogBtn">Cancel</button>
       </div>
     </form>
-    <?php else: ?>
-      <p>Please <a href="login.php">log in</a> to post a review or question.</p>
-      <div style="display:flex; gap:10px; justify-content:flex-end;">
-        <button type="button" class="cancel-btn" id="closeDialogBtn">Close</button>
-      </div>
-    <?php endif; ?>
   </div>
 </div>
+<?php endif; ?>
 
+<!-- Login/Register Sidebars -->
+<?php include 'includes/login-sidebar.php'; ?>
+<?php include 'includes/register-sidebar.php'; ?>
 
-<footer style="text-align:center; margin-top:20px;">
-  <p>&copy; <?= date("Y"); ?> Ceylon Fashion.lk. All Rights Reserved.</p>
-</footer>
+<?php include 'includes/footer.php'; ?>
+
+<style>
+  :root {
+    --primary: #4b0082;
+    --accent: #6f42c1;
+    --soft-bg: #fafbfd;
+    --muted: #6c757d;
+  }
+  
+  body { 
+    background: #fff; 
+    margin: 0; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #222; 
+  }
+  
+  .product-container { 
+    width: 100%;
+    margin: 0;
+    padding: 30px 40px;
+    box-sizing: border-box;
+  }
+
+  /* Top Layout: Left wider, Right narrower */
+  .product-top { 
+    display: flex; 
+    gap: 40px; 
+    width: 100%;
+  }
+
+  .left-col { 
+    flex: 0 0 62%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .right-col { 
+    flex: 0 0 35%;
+    padding: 10px 20px; 
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Image layout with thumbnails on right */
+  .image-layout {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+  }
+
+  .main-image { 
+    flex: 1;
+    height: 650px; 
+    border-radius: 12px; 
+    overflow: hidden; 
+    background: #fafafa; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    border: 1px solid #eee;
+  }
+  
+  .main-image img { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+  }
+
+  /* Thumbnails vertical on right side */
+  .thumbs-col { 
+    display: flex; 
+    flex-direction: column;
+    gap: 15px;
+    flex-shrink: 0;
+  }
+  
+  .thumb-item { 
+    width: 120px; 
+    height: 200px; 
+    border-radius: 8px; 
+    overflow: hidden; 
+    border: 2px solid #eee; 
+    cursor: pointer; 
+    background: #fafafa;
+    transition: all 0.2s;
+  }
+  
+  .thumb-item.active { 
+    border-color: var(--accent); 
+    box-shadow: 0 4px 12px rgba(111,66,193,0.3);
+  }
+  
+  .thumb-item:hover {
+    border-color: #bbb;
+  }
+  
+  .thumb-item img { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+  }
+  
+  .edit-pill { 
+    position: absolute; 
+    right: 20px; 
+    top: 10px; 
+    background: var(--primary); 
+    color: #fff; 
+    padding: 6px 12px; 
+    border-radius: 4px; 
+    font-size: 13px; 
+    text-decoration: none; 
+  }
+
+  .title { 
+    color: var(--primary); 
+    margin: 0 0 25px 0; 
+    font-size: 28px; 
+    font-weight: 700; 
+  }
+
+  .option-row { 
+    margin-bottom: 22px; 
+  }
+  
+  .opt-label { 
+    display: block; 
+    font-weight: 600; 
+    margin-bottom: 10px; 
+    color: #000; 
+    font-size: 14px; 
+  }
+
+  /* Fabric Buttons */
+  .fabric-list { 
+    display: flex; 
+    gap: 10px; 
+    flex-wrap: wrap; 
+  }
+  
+  .fabric-btn { 
+    background: #fff; 
+    border: 1px solid #ddd; 
+    padding: 10px 16px; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    font-weight: 600;
+    font-size: 13px;
+    color: #000;
+    transition: all 0.2s;
+  }
+  
+  .fabric-btn.selected { 
+    background: #f0e6ff; 
+    border-color: var(--accent); 
+    color: var(--accent);
+  }
+
+  /* Size Buttons */
+  .size-list { 
+    display: flex; 
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  
+  .size-btn { 
+    padding: 10px 18px; 
+    border: 1px solid #ddd; 
+    border-radius: 6px; 
+    background: #fff; 
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    color: #000;
+    transition: all 0.2s;
+  }
+  
+  .size-btn.selected { 
+    background: #fff7ed; 
+    border-color: #fb923c; 
+    color: #c2410c;
+  }
+  
+  .view-size-grid {
+    background: none;
+    border: none;
+    color: #000;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 0;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* Info Message */
+  .info-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #075985;
+    margin-bottom: 22px;
+  }
+
+  /* Bottom Actions */
+  .bottom-actions {
+    margin-top: auto;
+    padding-top: 20px;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .btn-cart {
+    flex: 1;
+    background: #7c3aed;
+    color: #fff;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+
+  .btn-cart:hover {
+    background: #6d28d9;
+  }
+
+  .btn-buy {
+    flex: 1;
+    background: #10b981;
+    color: #fff;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+  }
+
+  .btn-buy:hover {
+    background: #059669;
+  }
+
+  .qty-heart-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .qty-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .qty-btn {
+    background: #fff;
+    border: none;
+    border-right: 1px solid #ddd;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 15px;
+    color: #666;
+  }
+
+  .qty-btn:last-of-type {
+    border-right: none;
+    border-left: 1px solid #ddd;
+  }
+
+  .qty-input {
+    width: 55px;
+    padding: 10px;
+    border: none;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .btn-wishlist {
+    width: 46px;
+    height: 46px;
+    background: #fff;
+    border: 1px solid #ff4d6d;
+    border-radius: 6px;
+    color: #ff4d6d;
+    cursor: pointer;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .btn-wishlist:hover {
+    background: #fff1f2;
+  }
+
+  .btn-wishlist.active {
+    background: #ff4d6d;
+    color: #fff;
+  }
+
+  .delivery-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px;
+    background: #fefce8;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #854d0e;
+    margin-top: 12px;
+  }
+
+  /* Reviews Section */
+  .reviews-section {
+    margin-top: 40px;
+    background: #fff;
+    padding: 30px 40px;
+    border-top: 1px solid #eee;
+  }
+
+  .tabs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+  }
+
+  .tab-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .tab-button {
+    border: none;
+    background: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -12px;
+    transition: all 0.2s;
+  }
+
+  .tab-button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .add-btn {
+    background: #10b981;
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .tab-content {
+    padding: 10px 0;
+  }
+
+  .item {
+    padding: 15px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .item:last-child {
+    border-bottom: none;
+  }
+
+  .stars {
+    color: #fbbf24;
+    font-size: 16px;
+    margin: 5px 0;
+  }
+
+  .meta {
+    color: #999;
+    font-size: 13px;
+  }
+
+  .pager {
+    margin-top: 20px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .pager a {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #666;
+  }
+
+  .pager a.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  /* Dialog */
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+
+  .dialog-box {
+    width: 96%;
+    max-width: 500px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .dialog-box h3 {
+    margin: 0 0 16px 0;
+    color: var(--primary);
+  }
+
+  .dialog-box label {
+    display: block;
+    font-weight: 600;
+    margin: 12px 0 6px 0;
+    color: #000;
+  }
+
+  .dialog-box select,
+  .dialog-box textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: inherit;
+    resize: vertical;
+    color: #000;
+  }
+
+  .cancel-btn {
+    background: #e5e7eb;
+    color: #374151;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .product-container {
+      padding: 20px;
+    }
+    
+    .product-top {
+      gap: 30px;
+    }
+    
+    .left-col {
+      flex: 0 0 58%;
+    }
+
+    .right-col {
+      flex: 0 0 38%;
+    }
+  }
+
+  @media (max-width: 968px) {
+    .product-top {
+      flex-direction: column;
+    }
+
+    .left-col,
+    .right-col {
+      flex: unset;
+      width: 100%;
+    }
+
+    .main-image {
+      height: 550px;
+    }
+
+    .thumb-item {
+      width: 100px;
+      height: 170px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .product-container {
+      padding: 15px;
+    }
+
+    .image-layout {
+      flex-direction: column;
+    }
+
+    .thumbs-col {
+      flex-direction: row;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .thumb-item {
+      width: 90px;
+      height: 110px;
+    }
+
+    .action-buttons {
+      flex-direction: column;
+    }
+
+    .qty-heart-row {
+      justify-content: space-between;
+    }
+    
+    .main-image {
+      height: 400px;
+    }
+    
+    .reviews-section {
+      padding: 20px 15px;
+    }
+
+    .title {
+      font-size: 24px;
+    }
+  }
+</style>
 
 <script>
+  // Thumbnail click handler
+  const thumbItems = document.querySelectorAll('.thumb-item');
+  const mainImg = document.getElementById('mainProductImage');
+
+  thumbItems.forEach(t => {
+    t.addEventListener('click', function(){
+      const img = this.getAttribute('data-img');
+      if (img) mainImg.src = 'images/products/' + img;
+
+      document.querySelectorAll('.thumb-item').forEach(x => x.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Fabric selection
+  const fabricBtns = document.querySelectorAll('.fabric-btn');
+  const formFabricId = document.getElementById('formFabricId');
+
+  fabricBtns.forEach(b => {
+    b.addEventListener('click', function(){
+      fabricBtns.forEach(x => x.classList.remove('selected'));
+      this.classList.add('selected');
+      formFabricId.value = this.dataset.fabricId || '';
+    });
+  });
+
+  // Auto-select first fabric
+  if (fabricBtns.length > 0) {
+    fabricBtns[0].click();
+  }
+
+  // Size selection
+  const sizeBtns = document.querySelectorAll('.size-btn');
+  sizeBtns.forEach(s => s.addEventListener('click', function(){
+    sizeBtns.forEach(x => x.classList.remove('selected'));
+    this.classList.add('selected');
+    document.getElementById('formSize').value = this.dataset.size || '';
+  }));
+
+  // Quantity handlers
+  const qtyMinus = document.getElementById('qtyMinus');
+  const qtyPlus = document.getElementById('qtyPlus');
+  const qtyField = document.getElementById('qtyField');
+
+  if (qtyMinus) {
+    qtyMinus.addEventListener('click', () => {
+      const cur = Math.max(1, parseInt(qtyField.value || 1) - 1);
+      qtyField.value = cur;
+    });
+  }
+
+  if (qtyPlus) {
+    qtyPlus.addEventListener('click', () => {
+      const cur = Math.max(1, parseInt(qtyField.value || 1) + 1);
+      qtyField.value = cur;
+    });
+  }
+
+  // Form validation
+  function prepareCartForm(form) {
+    if (!form.fabric_id.value) {
+      alert('Please select a fabric type.');
+      return false;
+    }
+    if (!form.size.value) {
+      alert('Please select a size.');
+      return false;
+    }
+    if (!form.color.value) {
+      form.color.value = 'default';
+    }
+    if (parseInt(form.qty.value) < 1) form.qty.value = 1;
+    return true;
+  }
+
+  // Wishlist toggle
+  function toggleWishlist(productId) {
+    const btn = document.getElementById('wishlistBtn');
+    if (btn) {
+      btn.classList.toggle('active');
+      fetch('wishlist-toggle.php?id=' + productId)
+        .then(r => r.json())
+        .catch(() => {});
+    }
+  }
+
+  // Tabs
   const reviewsTabBtn = document.getElementById('reviewsTabBtn');
   const qnaTabBtn = document.getElementById('qnaTabBtn');
   const reviewsTab = document.getElementById('reviewsTab');
@@ -437,7 +1073,6 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
   const closeDialogBtn = document.getElementById('closeDialogBtn');
   const reviewForm = document.getElementById('reviewForm');
   const questionForm = document.getElementById('questionForm');
-
   let currentTab = 'reviews';
 
   function setTab(tab) {
@@ -455,12 +1090,12 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
     }
   }
 
-  reviewsTabBtn.onclick = () => setTab('reviews');
-  qnaTabBtn.onclick = () => setTab('qna');
+  if (reviewsTabBtn) reviewsTabBtn.onclick = () => setTab('reviews');
+  if (qnaTabBtn) qnaTabBtn.onclick = () => setTab('qna');
 
+  <?php if ($isLoggedIn): ?>
   if (openDialogBtn) {
     openDialogBtn.onclick = () => {
-      if (openDialogBtn.disabled) return;
       dialogOverlay.style.display = 'flex';
       if (currentTab === 'reviews') {
         reviewForm.style.display = 'block';
@@ -471,11 +1106,23 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
       }
     };
   }
-  if (closeDialogBtn) closeDialogBtn.onclick = () => dialogOverlay.style.display = 'none';
+  if (closeDialogBtn) {
+    closeDialogBtn.onclick = () => dialogOverlay.style.display = 'none';
+  }
+  <?php endif; ?>
+
+  // Login modal
+  function showLoginModal() {
+    try {
+      const loginSidebar = new bootstrap.Offcanvas(document.getElementById('loginSidebar'));
+      loginSidebar.show();
+    } catch (e) {
+      alert('Please login to continue.');
+    }
+  }
 </script>
-<script src="js/vendor/jquery.js"></script>
-<script src="js/foundation.min.js"></script>
-<script>$(document).foundation();</script>
+
+<?php include 'includes/scripts.php'; ?>
 
 </body>
 </html>

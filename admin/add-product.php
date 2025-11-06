@@ -39,25 +39,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $product_code = trim($_POST['product_code']);
   $product_name = trim($_POST['product_name']);
   $product_desc = trim($_POST['product_desc']);
-  $qty = (int)$_POST['qty'];
-  $price = (float)$_POST['price'];
-  $color = $_POST['color'];
   $category = $_POST['category'];
-  $img_name = '';
 
-  if (!empty($_FILES['product_img_name']['name'])) {
-    $target_dir = "../images/products/";
-    if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
-    $img_name = basename($_FILES['product_img_name']['name']);
-    $target_file = $target_dir . $img_name;
-    move_uploaded_file($_FILES['product_img_name']['tmp_name'], $target_file);
+  // Handle image uploads (4 images)
+  $image_fields = ['product_img1', 'product_img2', 'product_img3', 'product_img4'];
+  $uploaded_images = [];
+
+  $target_dir = "../images/products/";
+  if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+
+  foreach ($image_fields as $field) {
+    if (!empty($_FILES[$field]['name'])) {
+      $img_name = basename($_FILES[$field]['name']);
+      $target_file = $target_dir . $img_name;
+      if (move_uploaded_file($_FILES[$field]['tmp_name'], $target_file)) {
+        $uploaded_images[$field] = $img_name;
+      } else {
+        $uploaded_images[$field] = null;
+      }
+    } else {
+      $uploaded_images[$field] = null;
+    }
   }
 
   try {
-    $stmt = $pdo->prepare("INSERT INTO products (product_code, product_name, product_desc, product_img_name, qty, price, color, category)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    if ($stmt->execute([$product_code, $product_name, $product_desc, $img_name, $qty, $price, $color, $category])) {
-      $success = "✅ Product added successfully!";
+    // Insert product (with 4 images)
+    $stmt = $pdo->prepare("
+      INSERT INTO products (product_code, product_name, product_desc, product_img1, product_img2, product_img3, product_img4, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    if ($stmt->execute([
+      $product_code,
+      $product_name,
+      $product_desc,
+      $uploaded_images['product_img1'],
+      $uploaded_images['product_img2'],
+      $uploaded_images['product_img3'],
+      $uploaded_images['product_img4'],
+      $category
+    ])) {
+      $product_id = $pdo->lastInsertId();
+
+      // Insert fabric details
+      if (isset($_POST['fabric_type'])) {
+        foreach ($_POST['fabric_type'] as $i => $type) {
+          $fabric_qty = $_POST['fabric_qty'][$i] ?? 0;
+          $fabric_price = $_POST['fabric_price'][$i] ?? 0;
+
+          if (!empty($type)) {
+            $stmtFabric = $pdo->prepare("INSERT INTO product_fabrics (product_id, fabric_type, fabric_qty, fabric_price)
+                                         VALUES (?, ?, ?, ?)");
+            $stmtFabric->execute([$product_id, $type, $fabric_qty, $fabric_price]);
+          }
+        }
+      }
+
+      $success = "✅ Product added successfully with all images and fabric details!";
     } else {
       $error = "❌ Failed to add product.";
     }
@@ -81,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .sidebar a:hover { background: #495057; color: #fff; }
     .sidebar .active { background: #007bff; color: white; }
     .main-content { margin-left: 240px; padding: 40px; }
-    .form-container { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); max-width: 700px; margin: auto; }
+    .form-container { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }
+    .fabric-table input { width: 100%; }
   </style>
 </head>
 <body>
@@ -93,7 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <a href="products.php" class="active">📦 Products</a>
     <a href="orders.php">🧾 Orders</a>
     <a href="users.php">👥 Users</a>
-    <a href="settings.php">⚙️ Settings</a>
     <hr class="text-secondary">
     <a href="../logout.php" class="text-danger">🚪 Logout</a>
   </div>
@@ -128,51 +165,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <textarea name="product_desc" rows="4" class="form-control" required></textarea>
       </div>
 
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Quantity</label>
-          <input type="number" name="qty" min="1" class="form-control" required>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Price (Rs)</label>
-          <input type="number" name="price" step="0.01" min="0" class="form-control" required>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Category</label>
-          <select name="category" class="form-select" required>
-            <option value="" disabled selected>-- Select Category --</option>
-            <option value="used">Used</option>
-            <option value="bridalAttire">Bridal Attire</option>
-            <option value="bridemaidAttire">Bridesmaid Attire</option>
-            <option value="partyWear">Party Wear</option>
-          </select>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Color</label>
-          <select name="color" class="form-select" required>
-            <option value="" disabled selected>-- Select Color --</option>
-            <option value="Grey">Grey</option>
-            <option value="Green">Green</option>
-            <option value="Red">Red</option>
-            <option value="Orange">Orange</option>
-            <option value="Blue">Blue</option>
-            <option value="White">White</option>
-            <option value="Black">Black</option>
-            <option value="Pink">Pink</option>
-            <option value="Purple">Purple</option>
-            <option value="Brown">Brown</option>
-            <option value="Yellow">Yellow</option>
-          </select>
-        </div>
-      </div>
-
       <div class="mb-3">
-        <label class="form-label">Product Image</label>
-        <input type="file" name="product_img_name" class="form-control" accept="image/*" required>
+        <label class="form-label">Category</label>
+        <select name="category" class="form-select" required>
+          <option value="" disabled selected>-- Select Category --</option>
+          <option value="used">Used</option>
+          <option value="bridalAttire">Bridal Attire</option>
+          <option value="bridemaidAttire">Bridesmaid Attire</option>
+          <option value="partyWear">Party Wear</option>
+        </select>
+      </div>
+
+      <!-- 🌸 Four Product Images -->
+      <div class="mb-4">
+        <h5 class="fw-bold text-primary mb-3">Upload Product Images</h5>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Image 1</label>
+            <input type="file" name="product_img1" class="form-control" accept="image/*" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Image 2</label>
+            <input type="file" name="product_img2" class="form-control" accept="image/*">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Image 3</label>
+            <input type="file" name="product_img3" class="form-control" accept="image/*">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Image 4</label>
+            <input type="file" name="product_img4" class="form-control" accept="image/*">
+          </div>
+        </div>
+        <small class="text-muted">You can upload up to 4 images (Image 1 is required).</small>
+      </div>
+
+      <!-- 🌸 Fabric Type Section -->
+      <div class="mb-4">
+        <h5 class="fw-bold mb-3 text-primary">Fabric Types & Details</h5>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle fabric-table">
+            <thead class="table-light">
+              <tr class="text-center">
+                <th>Fabric Type</th>
+                <th>Available Quantity</th>
+                <th>Unit Price (Rs)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php
+              $fabrics = ["Silk", "Lace and Net", "Satin", "Georgette", "Velvet"];
+              foreach ($fabrics as $f): ?>
+                <tr>
+                  <td>
+                    <input type="hidden" name="fabric_type[]" value="<?= $f ?>">
+                    <span class="fw-semibold"><?= $f ?></span>
+                  </td>
+                  <td><input type="number" name="fabric_qty[]" min="0" class="form-control" placeholder="Qty"></td>
+                  <td><input type="number" name="fabric_price[]" step="0.01" min="0" class="form-control" placeholder="Price"></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div class="text-center">
