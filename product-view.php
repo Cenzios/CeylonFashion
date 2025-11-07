@@ -212,6 +212,7 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
 <body>
 
 <?php include 'includes/navbar.php'; ?>
+<script type="text/javascript" src="https://www.payhere.lk/lib/payhere.js"></script>
 
 <div class="product-container">
   <div class="product-top">
@@ -289,16 +290,16 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
         
         <div class="bottom-actions">
           <div class="action-buttons">
-            <?php if (!$isAdmin): ?>
-              <?php if ($isLoggedIn): ?>
-                <button type="submit" class="btn-cart">🛒 Add to Cart</button>
-                <button type="button" class="btn-buy" onclick="window.location.href='buy-now.php?id=<?= $product_id; ?>'">Buy Now</button>
-              <?php else: ?>
-                <button type="button" class="btn-cart" onclick="showLoginModal()">🛒 Add to Cart</button>
-                <button type="button" class="btn-buy" onclick="showLoginModal()">Buy Now</button>
-              <?php endif; ?>
-            <?php endif; ?>
-          </div>
+  <?php if (!$isAdmin): ?>
+    <?php if ($isLoggedIn): ?>
+      <button type="submit" class="btn-cart">🛒 Add to Cart</button>
+      <button type="button" class="btn-buy buy-now-btn" data-product-id="<?= $product_id; ?>" data-product-name="<?= htmlspecialchars($product['product_name']); ?>">Buy Now</button>
+    <?php else: ?>
+      <button type="button" class="btn-cart" onclick="showLoginModal()">🛒 Add to Cart</button>
+      <button type="button" class="buy-now-btn" onclick="showLoginModal()">Buy Now</button>
+    <?php endif; ?>
+  <?php endif; ?>
+</div>
 
           <div class="qty-heart-row">
             <div class="qty-row">
@@ -408,6 +409,136 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
   </div>
 </div>
 <?php endif; ?>
+
+<!-- Customer Details Modal -->
+<div class="modal fade" id="customerDetailsModal" tabindex="-1" aria-labelledby="customerDetailsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="customerDetailsLabel">Confirm Your Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> Please verify your delivery details before proceeding to payment.
+        </div>
+        
+        <form id="customerDetailsForm">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="customerName" class="form-label">Full Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="customerName" 
+                     value="<?= htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')); ?>" 
+                     required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="customerEmail" class="form-label">Email Address <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" id="customerEmail" 
+                     value="<?= htmlspecialchars($_SESSION['email'] ?? ''); ?>" 
+                     required>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="customerPhone" class="form-label">Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" class="form-control" id="customerPhone" 
+                     value="<?= htmlspecialchars($_SESSION['phone'] ?? ''); ?>" 
+                     pattern="[0-9]{10,15}" 
+                     placeholder="0771234567"
+                     required>
+              <small class="text-muted">10-15 digits only</small>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="customerCity" class="form-label">City <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="customerCity" 
+                     value="<?= htmlspecialchars($_SESSION['city'] ?? ''); ?>" 
+                     required>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="deliveryAddress" class="form-label">Delivery Address <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="deliveryAddress" rows="3" required><?= htmlspecialchars($_SESSION['address'] ?? ''); ?></textarea>
+            <small class="text-muted">Street address, house/apartment number</small>
+          </div>
+          
+          <div class="order-summary-box">
+            <h6>Order Summary</h6>
+            <div id="orderSummaryContent"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmOrderBtn" onclick="processPayment()">
+          <span id="confirmBtnText">Proceed to Payment</span>
+          <span id="confirmSpinner" class="spinner-border spinner-border-sm" style="display:none;" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .order-summary-box {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+  }
+  .order-summary-box h6 {
+    color: #430160;
+    margin-bottom: 10px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .summary-row:last-child {
+    border-bottom: none;
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #430160;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 2px solid #430160;
+  }
+</style>
+
+<script>
+// Update order summary when modal opens
+document.getElementById('customerDetailsModal').addEventListener('show.bs.modal', function() {
+    const orderDetails = window.currentOrderDetails;
+    if (orderDetails) {
+        const summaryHtml = `
+            <div class="summary-row">
+                <span>Product:</span>
+                <span>${orderDetails.productName}</span>
+            </div>
+            <div class="summary-row">
+                <span>Size:</span>
+                <span>${orderDetails.size}</span>
+            </div>
+            <div class="summary-row">
+                <span>Quantity:</span>
+                <span>${orderDetails.quantity}</span>
+            </div>
+            <div class="summary-row">
+                <span>Price per unit:</span>
+                <span>Rs. ${parseFloat(orderDetails.pricePerUnit).toFixed(2)}</span>
+            </div>
+            <div class="summary-row">
+                <span>Total Amount:</span>
+                <span>Rs. ${parseFloat(orderDetails.amount).toFixed(2)}</span>
+            </div>
+        `;
+        document.getElementById('orderSummaryContent').innerHTML = summaryHtml;
+    }
+});
+</script>
 
 <!-- Login/Register Sidebars -->
 <?php include 'includes/login-sidebar.php'; ?>
@@ -1120,6 +1251,214 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
       alert('Please login to continue.');
     }
   }
+</script>
+<script>
+// PayHere Event Handlers
+payhere.onCompleted = function(orderId) {
+    console.log("Payment completed. OrderID:" + orderId);
+    alert("Payment completed! Order ID: " + orderId);
+    window.location.href = "payment-success.php?order_id=" + orderId;
+};
+
+payhere.onDismissed = function() {
+    console.log("Payment dismissed");
+    alert("Payment was cancelled. Please try again.");
+};
+
+payhere.onError = function(error) {
+    console.log("Error:" + error);
+    alert("Payment error: " + error);
+};
+
+// Buy Now button handler
+document.addEventListener('DOMContentLoaded', function() {
+    const buyNowBtns = document.querySelectorAll('.buy-now-btn');
+    
+    buyNowBtns.forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            // Validate selections
+            const fabricId = document.getElementById('formFabricId').value;
+            const size = document.getElementById('formSize').value;
+            const qty = parseInt(document.getElementById('qtyField').value) || 1;
+            const productId = this.dataset.productId;
+            
+            if (!fabricId) {
+                alert('Please select a fabric type.');
+                return;
+            }
+            if (!size) {
+                alert('Please select a size.');
+                return;
+            }
+            
+            // Get price from selected fabric
+            const selectedFabric = document.querySelector('.fabric-btn.selected');
+            if (!selectedFabric) {
+                alert('Please select a fabric type.');
+                return;
+            }
+            
+            const pricePerUnit = parseFloat(selectedFabric.dataset.price) || 0;
+            const amount = (pricePerUnit * qty).toFixed(2);
+            
+            if (amount <= 0) {
+                alert('Invalid amount. Please check your selections.');
+                return;
+            }
+            
+            // Store order details in modal
+            window.currentOrderDetails = {
+                productId: productId,
+                fabricId: fabricId,
+                size: size,
+                quantity: qty,
+                amount: amount,
+                pricePerUnit: pricePerUnit,
+                productName: this.dataset.productName
+            };
+            
+            // Show customer details modal
+            showCustomerDetailsModal();
+        });
+    });
+});
+
+// Show customer details modal
+function showCustomerDetailsModal() {
+    const modal = new bootstrap.Modal(document.getElementById('customerDetailsModal'));
+    modal.show();
+}
+
+// Process payment after customer confirms details
+async function processPayment() {
+    const orderDetails = window.currentOrderDetails;
+    if (!orderDetails) {
+        alert('Order details not found');
+        return;
+    }
+    
+    // Get customer details from form
+    const customerName = document.getElementById('customerName').value.trim();
+    const customerEmail = document.getElementById('customerEmail').value.trim();
+    const customerPhone = document.getElementById('customerPhone').value.trim();
+    const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+    const customerCity = document.getElementById('customerCity').value.trim();
+    
+    // Validation
+    if (!customerName || !customerEmail || !customerPhone || !deliveryAddress || !customerCity) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+        alert('Please enter a valid email address');
+        return;
+    }
+    
+    if (!/^[0-9]{10,15}$/.test(customerPhone)) {
+        alert('Please enter a valid phone number (10-15 digits)');
+        return;
+    }
+    
+    // Show loading
+    const submitBtn = document.getElementById('confirmOrderBtn');
+    const btnText = document.getElementById('confirmBtnText');
+    const spinner = document.getElementById('confirmSpinner');
+    
+    submitBtn.disabled = true;
+    btnText.style.display = 'none';
+    spinner.style.display = 'inline-block';
+    
+    try {
+        // Generate unique order ID
+        const orderId = 'ORD-' + Date.now();
+        const currency = 'LKR';
+        
+        // Step 1: Create order in database with customer details
+        const orderResponse = await fetch('create-order.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                order_id: orderId,
+                product_id: orderDetails.productId,
+                fabric_id: orderDetails.fabricId,
+                size: orderDetails.size,
+                quantity: orderDetails.quantity,
+                customer_name: customerName,
+                customer_email: customerEmail,
+                customer_phone: customerPhone,
+                delivery_address: deliveryAddress,
+                city: customerCity
+            })
+        });
+        
+        const orderData = await orderResponse.json();
+        
+        if (!orderData.success) {
+            throw new Error(orderData.error || 'Failed to create order');
+        }
+        
+        // Step 2: Get payment hash
+        const hashResponse = await fetch('generate-hash.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                order_id: orderId,
+                amount: orderDetails.amount,
+                currency: currency
+            })
+        });
+        
+        if (!hashResponse.ok) {
+            throw new Error('Failed to generate payment hash');
+        }
+        
+        const hashData = await hashResponse.json();
+        
+        if (!hashData.success) {
+            throw new Error(hashData.error || 'Failed to generate payment hash');
+        }
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('customerDetailsModal')).hide();
+        
+        // Step 3: Start PayHere payment
+        const payment = {
+            sandbox: <?= PAYHERE_SANDBOX ? 'true' : 'false' ?>,
+            merchant_id: hashData.merchant_id,
+            return_url: "<?= PAYHERE_RETURN_URL ?>",
+            cancel_url: "<?= PAYHERE_CANCEL_URL ?>",
+            notify_url: "<?= PAYHERE_NOTIFY_URL ?>",
+            order_id: orderId,
+            items: orderDetails.productName,
+            amount: orderDetails.amount,
+            currency: currency,
+            hash: hashData.hash,
+            first_name: customerName.split(' ')[0],
+            last_name: customerName.split(' ').slice(1).join(' ') || 'User',
+            email: customerEmail,
+            phone: customerPhone,
+            address: deliveryAddress,
+            city: customerCity,
+            country: "Sri Lanka",
+            custom_1: orderDetails.fabricId,
+            custom_2: orderDetails.size
+        };
+        
+        console.log('Starting payment with:', payment);
+        payhere.startPayment(payment);
+        
+    } catch (error) {
+        console.error('Payment error:', error);
+        alert('Error initiating payment: ' + error.message);
+    } finally {
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+    }
+}
 </script>
 
 <?php include 'includes/scripts.php'; ?>

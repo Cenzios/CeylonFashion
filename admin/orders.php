@@ -10,24 +10,81 @@ if (!$isAdmin) {
     exit;
 }
 
-// ---- Fetch orders ----
-$sql = "SELECT id, product_code, product_name, price, units, total, date, email, status FROM orders ORDER BY id DESC";
-$result = $mysqli->query($sql);
-if ($result === false) {
-    die("DB error: " . $mysqli->error);
-}
-
 // Handle status update via POST (AJAX)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'], $_POST['status'])) {
     $orderId = (int)$_POST['order_id'];
-    $status = $mysqli->real_escape_string($_POST['status']);
-    $updateSql = "UPDATE orders SET status='$status' WHERE id=$orderId";
-    if ($mysqli->query($updateSql)) {
+    $status = $_POST['status'];
+    
+    // Validate status
+    $validStatuses = ['pending', 'paid', 'failed', 'cancelled'];
+    if (!in_array($status, $validStatuses)) {
+        echo "invalid_status";
+        exit;
+    }
+    
+    $stmt = $mysqli->prepare("UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->bind_param("si", $status, $orderId);
+    
+    if ($stmt->execute()) {
         echo "success";
     } else {
         echo "error";
     }
+    $stmt->close();
     exit;
+}
+
+// Handle delivery status update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'], $_POST['delivery_status'])) {
+    $orderId = (int)$_POST['order_id'];
+    $deliveryStatus = $_POST['delivery_status'];
+    
+    // Validate delivery status
+    $validDeliveryStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    if (!in_array($deliveryStatus, $validDeliveryStatuses)) {
+        echo "invalid_status";
+        exit;
+    }
+    
+    $stmt = $mysqli->prepare("UPDATE orders SET delivery_status = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->bind_param("si", $deliveryStatus, $orderId);
+    
+    if ($stmt->execute()) {
+        echo "success";
+    } else {
+        echo "error";
+    }
+    $stmt->close();
+    exit;
+}
+
+// ---- Fetch orders with pagination ----
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$perPage = 20;
+$offset = ($page - 1) * $perPage;
+
+// Get total count
+$countResult = $mysqli->query("SELECT COUNT(*) as total FROM orders");
+$totalOrders = $countResult->fetch_assoc()['total'];
+$totalPages = ceil($totalOrders / $perPage);
+
+// Fetch orders
+$sql = "SELECT 
+    id, order_id, username, product_name, fabric_type, size, quantity,
+    unit_price, total_amount, payment_status, payment_id, delivery_status,
+    customer_name, customer_email, customer_phone, delivery_address, city,
+    created_at, updated_at
+    FROM orders 
+    ORDER BY created_at DESC
+    LIMIT ? OFFSET ?";
+
+$stmt = $mysqli->prepare($sql);
+$stmt->bind_param("ii", $perPage, $offset);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result === false) {
+    die("DB error: " . $mysqli->error);
 }
 ?>
 <!doctype html>
@@ -41,13 +98,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'], $_POST['s
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
 <style>
-body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-.sidebar { width: 240px; position: fixed; left:0; top:0; bottom:0; background:#430160ff; color:#fff; padding-top:20px; }
-.sidebar a { display:block; padding:12px 18px; color:#cfd8dc; text-decoration:none; }
-.sidebar a.active { background:#007bff; color:#fff; }
-.main { margin-left:240px; padding:28px; min-height:100vh; }
-.table th, .table td { vertical-align: middle; }
-.status-select { width: 140px; }
+body { 
+    background:#f8f9fa; 
+    font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; 
+}
+.sidebar { 
+    width: 240px; 
+    position: fixed; 
+    left:0; 
+    top:0; 
+    bottom:0; 
+    background:#430160ff; 
+    color:#fff; 
+    padding-top:20px; 
+    overflow-y: auto;
+}
+.sidebar a { 
+    display:block; 
+    padding:12px 18px; 
+    color:#cfd8dc; 
+    text-decoration:none; 
+    transition: all 0.2s;
+}
+.sidebar a:hover {
+    background: rgba(255,255,255,0.1);
+}
+.sidebar a.active { 
+    background:#007bff; 
+    color:#fff; 
+}
+.main { 
+    margin-left:240px; 
+    padding:28px; 
+    min-height:100vh; 
+}
+.table th, .table td { 
+    vertical-align: middle; 
+    font-size: 14px;
+}
+.status-select { 
+    width: 130px; 
+    font-size: 13px;
+    padding: 4px 8px;
+}
+.badge {
+    font-size: 11px;
+    padding: 4px 8px;
+}
+.order-detail-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+}
+.filter-section {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.stats-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+.order-id-col {
+    font-family: monospace;
+    font-size: 12px;
+    color: #666;
+}
 </style>
 </head>
 <body>
@@ -63,61 +183,193 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
 </div>
 
 <main class="main">
-  <h3 class="mb-4">Manage Orders</h3>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">Manage Orders</h3>
+    <span class="badge bg-primary fs-6"><?php echo $totalOrders; ?> Total Orders</span>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row mb-4">
+    <?php
+    // Get statistics
+    $statsQuery = "SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) as paid,
+        SUM(CASE WHEN payment_status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN delivery_status = 'delivered' THEN 1 ELSE 0 END) as delivered,
+        SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_revenue
+        FROM orders";
+    $statsResult = $mysqli->query($statsQuery);
+    $stats = $statsResult->fetch_assoc();
+    ?>
+    <div class="col-md-3">
+      <div class="stats-card">
+        <h6 class="text-muted mb-2">Total Orders</h6>
+        <h3 class="mb-0"><?php echo (int)$stats['total']; ?></h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stats-card">
+        <h6 class="text-muted mb-2">Paid Orders</h6>
+        <h3 class="mb-0 text-success"><?php echo (int)$stats['paid']; ?></h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stats-card">
+        <h6 class="text-muted mb-2">Pending Orders</h6>
+        <h3 class="mb-0 text-warning"><?php echo (int)$stats['pending']; ?></h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stats-card">
+        <h6 class="text-muted mb-2">Total Revenue</h6>
+        <h3 class="mb-0 text-primary">Rs. <?php echo number_format((float)$stats['total_revenue'], 2); ?></h3>
+      </div>
+    </div>
+  </div>
 
   <?php if ($result->num_rows === 0): ?>
       <div class="alert alert-warning">No orders found.</div>
   <?php else: ?>
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle">
+    <div class="table-responsive bg-white rounded shadow-sm">
+      <table class="table table-hover align-middle mb-0">
         <thead class="table-dark">
           <tr>
-            <th>ID</th>
-            <th>Product Code</th>
-            <th>Product Name</th>
-            <th>Price</th>
-            <th>Units</th>
-            <th>Total</th>
+            <th>Order ID</th>
+            <th>Customer</th>
+            <th>Product</th>
+            <th>Details</th>
+            <th>Amount</th>
+            <th>Payment</th>
+            <th>Delivery</th>
             <th>Date</th>
-            <th>Email</th>
-            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <?php while($order = $result->fetch_assoc()): ?>
             <tr id="orderRow<?php echo (int)$order['id']; ?>">
-              <td><?php echo (int)$order['id']; ?></td>
-              <td><?php echo htmlentities($order['product_code']); ?></td>
-              <td><?php echo htmlentities($order['product_name']); ?></td>
-              <td>Rs. <?php echo number_format((float)$order['price'],2); ?></td>
-              <td><?php echo (int)$order['units']; ?></td>
-              <td>Rs. <?php echo number_format((float)$order['total'],2); ?></td>
-              <td><?php echo htmlentities($order['date']); ?></td>
-              <td><?php echo htmlentities($order['email']); ?></td>
+              <td class="order-id-col">
+                <strong><?php echo htmlspecialchars($order['order_id']); ?></strong>
+                <?php if ($order['payment_id']): ?>
+                <br><small class="text-muted">Pay: <?php echo htmlspecialchars($order['payment_id']); ?></small>
+                <?php endif; ?>
+              </td>
               <td>
-                <select class="form-select status-select" onchange="updateStatus(<?php echo (int)$order['id']; ?>, this)">
+                <strong><?php echo htmlspecialchars($order['customer_name']); ?></strong>
+                <br><small class="text-muted"><?php echo htmlspecialchars($order['username']); ?></small>
+                <br><small class="text-muted"><?php echo htmlspecialchars($order['customer_phone']); ?></small>
+              </td>
+              <td>
+                <strong><?php echo htmlspecialchars($order['product_name']); ?></strong>
+              </td>
+              <td>
+                <small>
+                  <strong>Fabric:</strong> <?php echo htmlspecialchars($order['fabric_type']); ?><br>
+                  <strong>Size:</strong> <?php echo htmlspecialchars($order['size']); ?><br>
+                  <strong>Qty:</strong> <?php echo (int)$order['quantity']; ?>
+                </small>
+              </td>
+              <td>
+                <strong>Rs. <?php echo number_format((float)$order['total_amount'], 2); ?></strong>
+                <br><small class="text-muted">@ Rs. <?php echo number_format((float)$order['unit_price'], 2); ?></small>
+              </td>
+              <td>
+                <select class="form-select form-select-sm status-select" 
+                        onchange="updatePaymentStatus(<?php echo (int)$order['id']; ?>, this)">
                   <?php
-                  $statuses = ['pending','dispatch','delivered','returned'];
-                  foreach($statuses as $s) {
-                      $selected = ($order['status'] === $s) ? 'selected' : '';
-                      echo "<option value='$s' $selected>$s</option>";
+                  $paymentStatuses = ['pending' => 'warning', 'paid' => 'success', 'failed' => 'danger', 'cancelled' => 'secondary'];
+                  foreach($paymentStatuses as $s => $color) {
+                      $selected = ($order['payment_status'] === $s) ? 'selected' : '';
+                      echo "<option value='$s' $selected>" . ucfirst($s) . "</option>";
                   }
                   ?>
                 </select>
               </td>
               <td>
-                <a href="#" class="btn btn-sm btn-danger" title="Delete" onclick="showDeleteModal('<?php echo (int)$order['id']; ?>'); return false;">
+                <select class="form-select form-select-sm status-select" 
+                        onchange="updateDeliveryStatus(<?php echo (int)$order['id']; ?>, this)">
+                  <?php
+                  $deliveryStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+                  foreach($deliveryStatuses as $s) {
+                      $selected = ($order['delivery_status'] === $s) ? 'selected' : '';
+                      echo "<option value='$s' $selected>" . ucfirst($s) . "</option>";
+                  }
+                  ?>
+                </select>
+              </td>
+              <td>
+                <small><?php echo date('Y-m-d', strtotime($order['created_at'])); ?></small>
+                <br><small class="text-muted"><?php echo date('H:i', strtotime($order['created_at'])); ?></small>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-info order-detail-btn" 
+                        onclick="showOrderDetails(<?php echo (int)$order['id']; ?>)" 
+                        title="View Details">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" 
+                        onclick="showDeleteModal(<?php echo (int)$order['id']; ?>)" 
+                        title="Delete">
                   <i class="bi bi-trash"></i>
-                </a>
+                </button>
               </td>
             </tr>
           <?php endwhile; ?>
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination -->
+    <?php if ($totalPages > 1): ?>
+    <nav class="mt-4">
+      <ul class="pagination justify-content-center">
+        <?php if ($page > 1): ?>
+        <li class="page-item">
+          <a class="page-link" href="?page=<?php echo $page - 1; ?>">Previous</a>
+        </li>
+        <?php endif; ?>
+        
+        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+          <?php if ($i == $page): ?>
+            <li class="page-item active"><span class="page-link"><?php echo $i; ?></span></li>
+          <?php else: ?>
+            <li class="page-item"><a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
+          <?php endif; ?>
+        <?php endfor; ?>
+        
+        <?php if ($page < $totalPages): ?>
+        <li class="page-item">
+          <a class="page-link" href="?page=<?php echo $page + 1; ?>">Next</a>
+        </li>
+        <?php endif; ?>
+      </ul>
+    </nav>
+    <?php endif; ?>
   <?php endif; ?>
 </main>
+
+<!-- Order Details Modal -->
+<div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-labelledby="orderDetailsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="orderDetailsLabel">Order Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="orderDetailsContent">
+        <div class="text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+</div>
+    </div>
+  </div>
+</div>
 
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
@@ -132,7 +384,7 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <a href="#" id="confirmDeleteBtn" class="btn btn-danger">Delete</a>
+        <button type="button" id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
       </div>
     </div>
   </div>
@@ -154,9 +406,11 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
     }
 });
 
-// Update status via AJAX
-function updateStatus(orderId, selectElement) {
+// Update payment status via AJAX
+function updatePaymentStatus(orderId, selectElement) {
     const status = selectElement.value;
+    const originalValue = selectElement.getAttribute('data-original') || selectElement.value;
+    
     fetch('orders.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -164,11 +418,128 @@ function updateStatus(orderId, selectElement) {
     })
     .then(resp => resp.text())
     .then(data => {
-        if(data !== 'success') {
-            alert('Failed to update status');
+        if(data === 'success') {
+            selectElement.setAttribute('data-original', status);
+            // Show success feedback
+            const row = document.getElementById('orderRow' + orderId);
+            row.style.backgroundColor = '#d4edda';
+            setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
+        } else {
+            alert('Failed to update payment status');
+            selectElement.value = originalValue;
         }
     })
-    .catch(err => alert('Error: ' + err));
+    .catch(err => {
+        alert('Error: ' + err);
+        selectElement.value = originalValue;
+    });
+}
+
+// Update delivery status via AJAX
+function updateDeliveryStatus(orderId, selectElement) {
+    const status = selectElement.value;
+    const originalValue = selectElement.getAttribute('data-original') || selectElement.value;
+    
+    fetch('orders.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'order_id=' + orderId + '&delivery_status=' + status
+    })
+    .then(resp => resp.text())
+    .then(data => {
+        if(data === 'success') {
+            selectElement.setAttribute('data-original', status);
+            // Show success feedback
+            const row = document.getElementById('orderRow' + orderId);
+            row.style.backgroundColor = '#d4edda';
+            setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
+        } else {
+            alert('Failed to update delivery status');
+            selectElement.value = originalValue;
+        }
+    })
+    .catch(err => {
+        alert('Error: ' + err);
+        selectElement.value = originalValue;
+    });
+}
+
+// Show order details in modal
+function showOrderDetails(orderId) {
+   window.currentOrderID = orderId;
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+    const content = document.getElementById('orderDetailsContent');
+    
+    // Show loading
+    content.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    modal.show();
+    
+    // Fetch order details
+    fetch('get-order-details.php?id=' + orderId)
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.success) {
+                const order = data.order;
+                content.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Order Information</h6>
+                            <table class="table table-sm">
+                                <tr><th>Order ID:</th><td>${order.order_id}</td></tr>
+                                <tr><th>Payment ID:</th><td>${order.payment_id || 'N/A'}</td></tr>
+                                <tr><th>Username:</th><td>${order.username}</td></tr>
+                                <tr><th>Date:</th><td>${order.created_at}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Customer Information</h6>
+                            <table class="table table-sm">
+                                <tr><th>Name:</th><td>${order.customer_name}</td></tr>
+                                <tr><th>Email:</th><td>${order.customer_email}</td></tr>
+                                <tr><th>Phone:</th><td>${order.customer_phone}</td></tr>
+                                <tr><th>City:</th><td>${order.city}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Product Details</h6>
+                            <table class="table table-sm">
+                                <tr><th>Product:</th><td>${order.product_name}</td></tr>
+                                <tr><th>Fabric:</th><td>${order.fabric_type}</td></tr>
+                                <tr><th>Size:</th><td>${order.size}</td></tr>
+                                <tr><th>Quantity:</th><td>${order.quantity}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Delivery Address</h6>
+                            <p>${order.delivery_address}<br>${order.city}</p>
+                            <h6 class="text-muted mt-3">Amount</h6>
+                            <p>
+                                Unit Price: Rs. ${parseFloat(order.unit_price).toFixed(2)}<br>
+                                <strong>Total: Rs. ${parseFloat(order.total_amount).toFixed(2)}</strong>
+                            </p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Status</h6>
+                            <p>
+                                Payment: <span class="badge bg-${order.payment_status === 'paid' ? 'success' : 'warning'}">${order.payment_status}</span><br>
+                                Delivery: <span class="badge bg-info">${order.delivery_status}</span>
+                            </p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = '<div class="alert alert-danger">Failed to load order details</div>';
+            }
+        })
+        .catch(err => {
+            content.innerHTML = '<div class="alert alert-danger">Error loading order details</div>';
+        });
 }
 </script>
 
