@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+
+  web:
+    build: .
+    container_name: ceylonfashion_web
+    ports:
+      - "6070:80"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    container_name: ceylonfashion_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ceylonfashion_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpass
+    ports:
+      - "3307:3306"
