@@ -1,6 +1,6 @@
 version: '3.8'
-services:
 
+services:
   web:
     build: .
     container_name: ceylonfashion_web
@@ -8,8 +8,14 @@ services:
       - "6070:80"
     volumes:
       - .:/var/www/html
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=userpass
+      - MYSQL_DATABASE=ceylonfashion_db
     depends_on:
       - db
+    restart: always
 
   db:
     image: mysql:5.7
@@ -22,3 +28,9 @@ services:
       MYSQL_PASSWORD: userpass
     ports:
       - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sahan.sql:/docker-entrypoint-initdb.d/sahan.sql  # auto-import your DB
+
+volumes:
+  db_data:
