@@ -3,15 +3,15 @@ version: '3.8'
 services:
   web:
     build: .
-    container_name: ceylonfashion_web
+    container_name: ceyfs-web
     ports:
       - "6070:80"
     volumes:
       - .:/var/www/html
     environment:
       - MYSQL_HOST=db
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=userpass
+      - MYSQL_USER=myuser
+      - MYSQL_PASSWORD=mypass
       - MYSQL_DATABASE=sahan
     depends_on:
       - db
@@ -19,13 +19,13 @@ services:
 
   db:
     image: mysql:5.7
-    container_name: ceylonfashion_db
+    container_name: ceyfs-db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: sahan
-      MYSQL_USER: user
-      MYSQL_PASSWORD: userpass
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypass
     ports:
       - "3307:3306"
     volumes:
