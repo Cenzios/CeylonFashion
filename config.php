@@ -1,10 +1,28 @@
 <?php
 $currency = 'Rs';
-$db_username = 'root';
-$db_password = '';
-$db_name = 'sahan';
-$db_host = 'localhost';
+
+// Docker environment variables with fallbacks
+$db_host = getenv('MYSQL_HOST') ?: 'db';  // Use 'db' service name in Docker
+$db_username = getenv('MYSQL_USER') ?: 'myuser';
+$db_password = getenv('MYSQL_PASSWORD') ?: 'mypass';
+$db_name = getenv('MYSQL_DATABASE') ?: 'sahan';
+
+// Connection with retry logic (for Docker startup delays)
+$retries = 5;
 $mysqli = new mysqli($db_host, $db_username, $db_password, $db_name);
+
+while ($mysqli->connect_errno && $retries--) {
+    if ($retries > 0) {
+        error_log("Database connection failed, retrying... ($retries attempts left)");
+        sleep(3);
+        $mysqli = new mysqli($db_host, $db_username, $db_password, $db_name);
+    } else {
+        die("Database connection failed after multiple attempts: " . $mysqli->connect_error);
+    }
+}
+
+// Set charset
+$mysqli->set_charset("utf8mb4");
 
 // PayHere Configuration
 define('PAYHERE_MERCHANT_ID', '1232735');
