@@ -12,7 +12,7 @@ services:
       - MYSQL_HOST=db
       - MYSQL_USER=user
       - MYSQL_PASSWORD=userpass
-      - MYSQL_DATABASE=ceylonfashion_db
+      - MYSQL_DATABASE=sahan
     depends_on:
       - db
     restart: always
@@ -23,7 +23,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: ceylonfashion_db
+      MYSQL_DATABASE: sahan
       MYSQL_USER: user
       MYSQL_PASSWORD: userpass
     ports:
