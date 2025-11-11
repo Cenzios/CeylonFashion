@@ -8,7 +8,7 @@ services:
       - "6070:80"
     environment:
       - MYSQL_HOST=db
-      - MYSQL_USER=root
+      - MYSQL_USER=myuser
       - MYSQL_PASSWORD=12345
       - MYSQL_DATABASE=sahan
     depends_on:
@@ -25,13 +25,13 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: 12345
       MYSQL_DATABASE: sahan
-      MYSQL_USER: root
+      MYSQL_USER: myuser
       MYSQL_PASSWORD: 12345
     volumes:
       - db_data:/var/lib/mysql
-      - ./sahan.sql:/docker-entrypoint-initdb.d/sahan.sql  # Import DB automatically
+      - ./sahan.sql:/docker-entrypoint-initdb.d/sahan.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p12345"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "myuser", "-p12345"]
       interval: 10s
       timeout: 5s
       retries: 5
