@@ -5,41 +5,40 @@ services:
     build: .
     container_name: ceyfs-web
     ports:
-      - "6070:80"
+      - "80:80"  # Expose HTTP
     volumes:
       - .:/var/www/html
     environment:
-      - MYSQL_HOST=db  # ✅ Must match service name below
-      - MYSQL_USER=myuser
-      - MYSQL_PASSWORD=mypass
+      - MYSQL_HOST=ceylon-fashion-db-zu6efo
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=12345
       - MYSQL_DATABASE=sahan
     depends_on:
       db:
-        condition: service_healthy  # ✅ Wait for DB health check
+        condition: service_healthy
     restart: always
     networks:
       - app-network
 
   db:
-    image: mysql:8.0  # ✅ Changed from 5.7 to 8.0
-    container_name: ceyfs-db
+    image: mysql:8.0
+    container_name: ceylon-fashion-db-zu6efo
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: sahan
-      MYSQL_USER: myuser
-      MYSQL_PASSWORD: mypass
+      MYSQL_ROOT_PASSWORD=12345
+      MYSQL_DATABASE=sahan
+      MYSQL_USER=root
+      MYSQL_PASSWORD=12345
     volumes:
       - db_data:/var/lib/mysql
-      - ./sahan.sql:/docker-entrypoint-initdb.d/sahan.sql
-    healthcheck:  # ✅ Added health check
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "myuser", "-pmypass"]
+      - ./sahan.sql:/docker-entrypoint-initdb.d/sahan.sql  # Auto-import SQL
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p12345"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - app-network
-    # ⚠️ Removed external port 3307 - not needed for internal connection
 
 volumes:
   db_data:
