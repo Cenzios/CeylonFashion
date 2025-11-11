@@ -5,11 +5,9 @@ services:
     build: .
     container_name: ceyfs-web
     ports:
-      - "80:80"  # Expose HTTP
-    volumes:
-      - .:/var/www/html
+      - "6070:80"
     environment:
-      - MYSQL_HOST=ceylon-fashion-db-zu6efo
+      - MYSQL_HOST=db
       - MYSQL_USER=root
       - MYSQL_PASSWORD=12345
       - MYSQL_DATABASE=sahan
@@ -22,16 +20,16 @@ services:
 
   db:
     image: mysql:8.0
-    container_name: ceylon-fashion-db-zu6efo
+    container_name: ceyfs-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD=12345
-      MYSQL_DATABASE=sahan
-      MYSQL_USER=root
-      MYSQL_PASSWORD=12345
+      MYSQL_ROOT_PASSWORD: 12345
+      MYSQL_DATABASE: sahan
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 12345
     volumes:
       - db_data:/var/lib/mysql
-      - ./sahan.sql:/docker-entrypoint-initdb.d/sahan.sql  # Auto-import SQL
+      - ./sahan.sql:/docker-entrypoint-initdb.d/sahan.sql  # Import DB automatically
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p12345"]
       interval: 10s
