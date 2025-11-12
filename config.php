@@ -1,33 +1,47 @@
 <?php
-// -----------------------------
-// 💾 Database Configuration
-// -----------------------------
-$currency = 'Rs';
-$db_username = 'root';
-$db_password = '12345';  // same password used in Dockploy database setup
-$db_name = 'sahan';             // same as Database Name in Dockploy
-$db_host = 'ceylon-fashion-db-zu6efo';                // service name defined in Dockploy (not localhost)
+// ======================================
+// 💾 DATABASE CONFIGURATION
+// ======================================
 
+// Get environment variables (works for both local + Docker)
+$db_host = getenv('MYSQL_HOST') ?: 'localhost';
+$db_username = getenv('MYSQL_USER') ?: 'root';
+$db_password = getenv('MYSQL_PASSWORD') ?: ''; // empty for XAMPP
+$db_name = getenv('MYSQL_DATABASE') ?: 'sahan';
+
+// Currency setting
+$currency = 'Rs';
+
+// Connect to MySQL
 $mysqli = new mysqli($db_host, $db_username, $db_password, $db_name);
 
+// Check connection
 if ($mysqli->connect_error) {
-    die("Connection failed: " . $mysqli->connect_error);
+    die("Database connection failed: " . $mysqli->connect_error);
 }
 
-// -----------------------------
-// 💳 PayHere Configuration
-// -----------------------------
+// ======================================
+// 💳 PAYHERE CONFIGURATION
+// ======================================
 define('PAYHERE_MERCHANT_ID', '1232735');
-
-// ⚠️ IMPORTANT: Replace this with the **actual merchant secret** from your PayHere dashboard
 define('PAYHERE_MERCHANT_SECRET', 'MTk1NTk5MzE5MzQwMjY0Mjg4NjgyNjUzNjMyNzM2MTMwNTc5OTIy');
-
-// 🧪 Use Sandbox Mode = true for testing | false for production
 define('PAYHERE_SANDBOX', true);
 
-// -----------------------------
-// 🌍 URLs (Update for your live domain)
-// -----------------------------
+// ======================================
+// 🌍 URL CONFIGURATION (Change for live)
+// ======================================
 define('PAYHERE_RETURN_URL', 'https://ceylonfashion.cenzios.com/payment-success.php');
 define('PAYHERE_CANCEL_URL', 'https://ceylonfashion.cenzios.com/payment-cancel.php');
-define('PAYHERE_NOTIFY_URL', 'https://ceylonfashion.cenzios.com/payment-notify.php'); 
+define('PAYHERE_NOTIFY_URL', 'https://ceylonfashion.cenzios.com/payment-notify.php');
+
+// ======================================
+// 🖼️ IMAGE PATH CONFIG
+// ======================================
+define('UPLOAD_PATH', __DIR__ . '/uploads/');  // physical folder
+define('UPLOAD_URL', '/uploads/');             // public URL
+
+// Ensure upload folder exists
+if (!file_exists(UPLOAD_PATH)) {
+    mkdir(UPLOAD_PATH, 0755, true);
+}
+?>
