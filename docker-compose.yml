@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    container_name: ceyfs-web
+    container_name: ceylon-fashion-db-zu6efo.1.twl3u6t7urwx6w693tn4vvsa0
     ports:
       - "6070:80"
     volumes:
