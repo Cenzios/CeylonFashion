@@ -178,6 +178,7 @@ body {
   <a href="products.php">📦 Products</a>
   <a href="orders.php" class="active">🧾 Orders</a>
   <a href="users.php">👥 Users</a>
+  <a href="reports.php">📊 Reports</a>
   <hr style="border-color: rgba(255,255,255,.06)">
   <a href="../logout.php" class="text-danger">🚪 Logout</a>
 </div>
@@ -353,9 +354,11 @@ body {
 <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-labelledby="orderDetailsLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="orderDetailsLabel">Order Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="orderDetailsLabel">
+          <i class="bi bi-receipt"></i> Order Details
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="orderDetailsContent">
         <div class="text-center">
@@ -365,8 +368,13 @@ body {
         </div>
       </div>
       <div class="modal-footer">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-</div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> Close
+        </button>
+        <button type="button" class="btn btn-danger" id="generatePdfBtn" onclick="generatePDF()">
+          <i class="bi bi-file-pdf"></i> Generate PDF
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -390,16 +398,203 @@ body {
   </div>
 </div>
 
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- All JavaScript in ONE script tag -->
+<script>
+// Global variables
+let currentOrderId = null;
+let deleteOrderId = null;
+
+// Show order details in modal
+function showOrderDetails(orderId) {
+    console.log('Opening order details for ID:', orderId); // Debug log
+    currentOrderId = orderId; // Store the current order ID
+    
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+    const content = document.getElementById('orderDetailsContent');
+    
+    // Show loading
+    content.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    modal.show();
+    
+    // Fetch order details
+    fetch('get-order-details.php?id=' + orderId)
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.success) {
+                const order = data.order;
+                content.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-info-circle"></i> Order Information
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tr>
+                                    <th width="40%">Order ID:</th>
+                                    <td><strong>${order.order_id}</strong></td>
+                                </tr>
+                                <tr>
+                                    <th>Payment ID:</th>
+                                    <td>${order.payment_id || 'N/A'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Username:</th>
+                                    <td>${order.username}</td>
+                                </tr>
+                                <tr>
+                                    <th>Date:</th>
+                                    <td>${order.created_at}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-person"></i> Customer Information
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tr>
+                                    <th width="40%">Name:</th>
+                                    <td>${order.customer_name}</td>
+                                </tr>
+                                <tr>
+                                    <th>Email:</th>
+                                    <td>${order.customer_email}</td>
+                                </tr>
+                                <tr>
+                                    <th>Phone:</th>
+                                    <td>${order.customer_phone}</td>
+                                </tr>
+                                <tr>
+                                    <th>City:</th>
+                                    <td>${order.city}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-box-seam"></i> Product Details
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tr>
+                                    <th width="40%">Product:</th>
+                                    <td><strong>${order.product_name}</strong></td>
+                                </tr>
+                                <tr>
+                                    <th>Fabric:</th>
+                                    <td>${order.fabric_type}</td>
+                                </tr>
+                                <tr>
+                                    <th>Size:</th>
+                                    <td>${order.size}</td>
+                                </tr>
+                                <tr>
+                                    <th>Quantity:</th>
+                                    <td>${order.quantity}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-geo-alt"></i> Delivery Address
+                            </h6>
+                            <div class="border rounded p-2 mb-3" style="background: #f8f9fa;">
+                                ${order.delivery_address}<br>
+                                ${order.city}
+                                ${order.postal_code ? '<br>Postal Code: ' + order.postal_code : ''}
+                            </div>
+                            <h6 class="text-muted mb-2">
+                                <i class="bi bi-currency-dollar"></i> Amount
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <tr>
+                                    <th width="50%">Unit Price:</th>
+                                    <td>Rs. ${parseFloat(order.unit_price).toFixed(2)}</td>
+                                </tr>
+                                <tr class="table-primary">
+                                    <th><strong>Total Amount:</strong></th>
+                                    <td><strong>Rs. ${parseFloat(order.total_amount).toFixed(2)}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-flag"></i> Status
+                            </h6>
+                            <p>
+                                <strong>Payment Status:</strong> 
+                                <span class="badge bg-${order.payment_status === 'paid' ? 'success' : order.payment_status === 'pending' ? 'warning' : order.payment_status === 'failed' ? 'danger' : 'secondary'} fs-6">
+                                    ${order.payment_status.toUpperCase()}
+                                </span>
+                                <br><br>
+                                <strong>Delivery Status:</strong> 
+                                <span class="badge bg-info fs-6">
+                                    ${order.delivery_status.toUpperCase()}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = '<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Failed to load order details</div>';
+            }
+        })
+        .catch(err => {
+            console.error('Error loading order details:', err);
+            content.innerHTML = '<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Error loading order details</div>';
+        });
+}
+
+// Generate PDF function
+function generatePDF() {
+    console.log('Generate PDF clicked. Current Order ID:', currentOrderId); // Debug log
+    
+    if (currentOrderId) {
+        // Open PDF in new tab/download
+        window.open('generate-order-pdf.php?id=' + currentOrderId, '_blank');
+    } else {
+        alert('No order selected. Please view an order first.');
+    }
+}
+</script>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete this order? This action cannot be undone.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // Delete modal
-let deleteOrderId = null;
 function showDeleteModal(orderId) {
     deleteOrderId = orderId;
     var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
     deleteModal.show();
 }
 
+// Confirm delete
 document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
     if(deleteOrderId) {
         window.location.href = 'delete-order.php?id=' + deleteOrderId;
@@ -422,14 +617,17 @@ function updatePaymentStatus(orderId, selectElement) {
             selectElement.setAttribute('data-original', status);
             // Show success feedback
             const row = document.getElementById('orderRow' + orderId);
-            row.style.backgroundColor = '#d4edda';
-            setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
+            if(row) {
+                row.style.backgroundColor = '#d4edda';
+                setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
+            }
         } else {
             alert('Failed to update payment status');
             selectElement.value = originalValue;
         }
     })
     .catch(err => {
+        console.error('Error:', err);
         alert('Error: ' + err);
         selectElement.value = originalValue;
     });
@@ -451,14 +649,17 @@ function updateDeliveryStatus(orderId, selectElement) {
             selectElement.setAttribute('data-original', status);
             // Show success feedback
             const row = document.getElementById('orderRow' + orderId);
-            row.style.backgroundColor = '#d4edda';
-            setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
+            if(row) {
+                row.style.backgroundColor = '#d4edda';
+                setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
+            }
         } else {
             alert('Failed to update delivery status');
             selectElement.value = originalValue;
         }
     })
     .catch(err => {
+        console.error('Error:', err);
         alert('Error: ' + err);
         selectElement.value = originalValue;
     });
