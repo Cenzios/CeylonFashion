@@ -45,6 +45,7 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
   <a href="products.php">📦 Products</a>
   <a href="orders.php">🧾 Orders</a>
   <a href="users.php" class="active">👥 Users</a>
+  <a href="reports.php">📊 Reports</a>
   <hr style="border-color: rgba(255,255,255,.06)">
   <a href="../logout.php" class="text-danger">🚪 Logout</a>
 </div>
