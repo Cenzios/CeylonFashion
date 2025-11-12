@@ -11,7 +11,8 @@ if (!$isAdmin) {
 }
 
 // ---- Fetch products with fabric details ----
-$sql = "SELECT p.id, p.product_name, p.product_code, p.product_desc, p.product_img_name
+$sql = "SELECT p.id, p.product_name, p.product_code, p.product_desc, 
+        p.product_img1, p.product_img2, p.product_img3, p.product_img4, p.category
         FROM products p
         ORDER BY p.id DESC";
 $result = $mysqli->query($sql);
@@ -49,6 +50,7 @@ $fallback = '../assets/no-image.png';
     .fabric-box table { width:100%; font-size:0.85rem; margin:0; }
     .fabric-box th, .fabric-box td { padding:4px 6px; }
     .fabric-box th { color:#555; }
+    .image-count-badge { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; }
   </style>
 </head>
 <body>
@@ -90,11 +92,23 @@ $fallback = '../assets/no-image.png';
             $pname = htmlentities($p['product_name'], ENT_QUOTES, 'UTF-8');
             $pcode = htmlentities($p['product_code'], ENT_QUOTES, 'UTF-8');
             $pdesc = htmlentities($p['product_desc'], ENT_QUOTES, 'UTF-8');
-            $pimg  = htmlentities($p['product_img_name'], ENT_QUOTES, 'UTF-8');
-            $imgPath = '../images/products/' . $pimg;
-            if (empty($pimg) || !file_exists($imgPath)) {
-              $imgPath = $fallback;
+            $category = htmlentities($p['category'] ?? '', ENT_QUOTES, 'UTF-8');
+            
+            // Get all product images
+            $images = [];
+            for ($i = 1; $i <= 4; $i++) {
+              $imgField = 'product_img' . $i;
+              if (!empty($p[$imgField])) {
+                $imgPath = '../images/products/' . htmlentities($p[$imgField], ENT_QUOTES, 'UTF-8');
+                if (file_exists($imgPath)) {
+                  $images[] = $imgPath;
+                }
+              }
             }
+            
+            // Use first available image or fallback
+            $displayImg = !empty($images) ? $images[0] : $fallback;
+            $imageCount = count($images);
 
             // fetch fabric details for this product
             $fabricSql = "SELECT fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = $pid";
@@ -108,10 +122,22 @@ $fallback = '../assets/no-image.png';
           ?>
           <div class="col">
             <div class="card h-100 shadow-sm">
-              <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" class="card-img-top">
+              <div style="position: relative;">
+                <img src="<?php echo $displayImg; ?>" alt="<?php echo $pname; ?>" class="card-img-top">
+                <?php if ($imageCount > 0): ?>
+                  <span class="image-count-badge">
+                    <i class="bi bi-images"></i> <?php echo $imageCount; ?>
+                  </span>
+                <?php endif; ?>
+              </div>
               <div class="card-body d-flex flex-column">
                 <h5 class="card-title mb-1"><?php echo $pname; ?></h5>
                 <p class="text-muted small mb-1">Code: <?php echo $pcode; ?></p>
+                <?php if (!empty($category)): ?>
+                  <p class="text-muted small mb-1">
+                    <span class="badge bg-secondary"><?php echo ucfirst($category); ?></span>
+                  </p>
+                <?php endif; ?>
                 <p class="text-muted small mb-2"><?php echo (strlen($pdesc) > 100) ? substr($pdesc,0,100).'...' : $pdesc; ?></p>
 
                 <?php if (!empty($fabrics)): ?>
