@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy ALL project files to web root
+# Copy project files
 COPY . /var/www/html
 
 # Set permissions

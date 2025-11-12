@@ -3,24 +3,16 @@
 // 💾 Database Configuration
 // -----------------------------
 $currency = 'Rs';
+$db_username = 'root';
+$db_password = '12345';  // same password used in Dockploy database setup
+$db_name = 'sahan';             // same as Database Name in Dockploy
+$db_host = 'ceylon-fashion-db-zu6efo';                // service name defined in Dockploy (not localhost)
 
-// Get database credentials from environment variables (Docker)
-// Falls back to local values if not set
-$db_host = getenv('MYSQL_HOST') ?: 'localhost';
-$db_username = getenv('MYSQL_USER') ?: 'root';
-$db_password = getenv('MYSQL_PASSWORD') ?: '';
-$db_name = getenv('MYSQL_DATABASE') ?: 'sahan';
-
-// Create database connection
 $mysqli = new mysqli($db_host, $db_username, $db_password, $db_name);
 
-// Check connection
 if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }
-
-// Set charset to UTF-8 (recommended)
-$mysqli->set_charset("utf8mb4");
 
 // -----------------------------
 // 💳 PayHere Configuration
@@ -38,5 +30,4 @@ define('PAYHERE_SANDBOX', true);
 // -----------------------------
 define('PAYHERE_RETURN_URL', 'https://ceylonfashion.cenzios.com/payment-success.php');
 define('PAYHERE_CANCEL_URL', 'https://ceylonfashion.cenzios.com/payment-cancel.php');
-define('PAYHERE_NOTIFY_URL', 'https://ceylonfashion.cenzios.com/payment-notify.php');
-?>
+define('PAYHERE_NOTIFY_URL', 'https://ceylonfashion.cenzios.com/payment-notify.php'); 
