@@ -11,10 +11,7 @@ RUN docker-php-ext-install mysqli pdo pdo_mysql
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
-    curl \
-    && docker-php-ext-install zip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install zip
 
 # Set working directory
 WORKDIR /var/www/html
@@ -30,5 +27,5 @@ RUN chown -R www-data:www-data /var/www/html \
 EXPOSE 80
 
 # Health check for the web container
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
+HEALTHCHECK --interval=30s --timeout=3s \
   CMD curl -f http://localhost/ || exit 1

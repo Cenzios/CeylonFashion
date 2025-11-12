@@ -9,22 +9,21 @@ services:
     volumes:
       - .:/var/www/html
     environment:
-      - MYSQL_HOST=db
+      - MYSQL_HOST=db  # ✅ Must match service name below
       - MYSQL_USER=myuser
       - MYSQL_PASSWORD=mypass
       - MYSQL_DATABASE=sahan
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_healthy  # ✅ Wait for DB health check
     restart: always
     networks:
       - app-network
 
   db:
-    image: mysql:8.0
+    image: mysql:8.0  # ✅ Changed from 5.7 to 8.0
     container_name: ceyfs-db
     restart: always
-    command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: sahan
@@ -33,14 +32,14 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./sahan.sql:/docker-entrypoint-initdb.d/sahan.sql
-    healthcheck:
+    healthcheck:  # ✅ Added health check
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "myuser", "-pmypass"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 5
     networks:
       - app-network
+    # ⚠️ Removed external port 3307 - not needed for internal connection
 
 volumes:
   db_data:

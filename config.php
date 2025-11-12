@@ -1,38 +1,33 @@
 <?php
+// -----------------------------
+// 💾 Database Configuration
+// -----------------------------
 $currency = 'Rs';
+$db_username = 'root';
+$db_password = '';  // same password used in Dockploy database setup
+$db_name = 'sahan';             // same as Database Name in Dockploy
+$db_host = 'localhost';                // service name defined in Dockploy (not localhost)
 
-// Docker environment variables with fallbacks
-$db_host = getenv('MYSQL_HOST') ?: 'db';  // Use 'db' service name in Docker
-$db_username = getenv('MYSQL_USER') ?: 'myuser';
-$db_password = getenv('MYSQL_PASSWORD') ?: 'mypass';
-$db_name = getenv('MYSQL_DATABASE') ?: 'sahan';
-
-// Connection with retry logic (for Docker startup delays)
-$retries = 5;
 $mysqli = new mysqli($db_host, $db_username, $db_password, $db_name);
 
-while ($mysqli->connect_errno && $retries--) {
-    if ($retries > 0) {
-        error_log("Database connection failed, retrying... ($retries attempts left)");
-        sleep(3);
-        $mysqli = new mysqli($db_host, $db_username, $db_password, $db_name);
-    } else {
-        die("Database connection failed after multiple attempts: " . $mysqli->connect_error);
-    }
+if ($mysqli->connect_error) {
+    die("Connection failed: " . $mysqli->connect_error);
 }
 
-// Set charset
-$mysqli->set_charset("utf8mb4");
-
-// PayHere Configuration
+// -----------------------------
+// 💳 PayHere Configuration
+// -----------------------------
 define('PAYHERE_MERCHANT_ID', '1232735');
-// ⚠️ IMPORTANT: Get the actual merchant secret from PayHere dashboard (not base64)
-// Go to: Side Menu > Integrations > Your approved domain > Copy the secret shown
-define('PAYHERE_MERCHANT_SECRET', 'MTk1NTk5MzE5MzQwMjY0Mjg4NjgyNjUzNjMyNzM2MTMwNTc5OTIy'); // Replace with plain secret from dashboard
+
+// ⚠️ IMPORTANT: Replace this with the **actual merchant secret** from your PayHere dashboard
+define('PAYHERE_MERCHANT_SECRET', 'MTk1NTk5MzE5MzQwMjY0Mjg4NjgyNjUzNjMyNzM2MTMwNTc5OTIy');
+
+// 🧪 Use Sandbox Mode = true for testing | false for production
 define('PAYHERE_SANDBOX', true);
-define('PAYHERE_RETURN_URL', 'http://localhost/CeylonFashion/payment-success.php');
-define('PAYHERE_CANCEL_URL', 'http://localhost/CeylonFashion/payment-cancel.php');
-// ⚠️ For testing, use ngrok or similar to expose localhost
-// For production, use your actual domain
-define('PAYHERE_NOTIFY_URL', 'https://your-domain.com/payment-notify.php'); 
-?>
+
+// -----------------------------
+// 🌍 URLs (Update for your live domain)
+// -----------------------------
+define('PAYHERE_RETURN_URL', 'https://ceylonfashion.cenzios.com/payment-success.php');
+define('PAYHERE_CANCEL_URL', 'https://ceylonfashion.cenzios.com/payment-cancel.php');
+define('PAYHERE_NOTIFY_URL', 'https://ceylonfashion.cenzios.com/payment-notify.php');
