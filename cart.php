@@ -31,7 +31,10 @@ $sql = "
         c.price,
         p.product_name,
         p.product_code,
-        p.product_img_name,
+        p.product_img1,
+        p.product_img2,
+        p.product_img3,
+        p.product_img4,
         p.category
     FROM cart c
     JOIN products p ON c.product_id = p.id
@@ -61,6 +64,16 @@ foreach ($items as &$item) {
     $fabricStmt->close();
     
     $item['available_qty'] = $fabricData ? (int)$fabricData['total_qty'] : 0;
+    
+    // Get first available image
+    $item['display_image'] = '';
+    for ($i = 1; $i <= 4; $i++) {
+        $imgField = 'product_img' . $i;
+        if (!empty($item[$imgField])) {
+            $item['display_image'] = $item[$imgField];
+            break;
+        }
+    }
 }
 unset($item);
 ?>
@@ -94,7 +107,9 @@ unset($item);
         <?php
           $subtotal = $row['price'] * $row['quantity'];
           $grand += $subtotal;
-          $imgPath = 'images/products/' . ($row['product_img_name'] ?: 'no-image.png');
+          
+          // Use first available image or fallback
+          $imgPath = !empty($row['display_image']) ? 'images/products/' . $row['display_image'] : 'assets/no-image.png';
           if (!file_exists($imgPath)) {
               $imgPath = 'assets/no-image.png';
           }
