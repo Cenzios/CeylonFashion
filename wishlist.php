@@ -33,7 +33,10 @@ $query = "
         p.product_name,
         p.product_code,
         p.product_desc,
-        p.product_img_name,
+        p.product_img1,
+        p.product_img2,
+        p.product_img3,
+        p.product_img4,
         p.category
     FROM wishlist w
     JOIN products p ON w.product_id = p.id
@@ -49,9 +52,27 @@ $result = $stmt->get_result();
 $wishlist_items = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// For each wishlist item, fetch fabric details
+// For each wishlist item, fetch fabric details and get first image
 foreach ($wishlist_items as &$item) {
     $product_id = (int)$item['product_id'];
+    
+    // Get first available image
+    $item['display_image'] = '';
+    for ($i = 1; $i <= 4; $i++) {
+        $imgField = 'product_img' . $i;
+        if (!empty($item[$imgField])) {
+            $item['display_image'] = $item[$imgField];
+            break;
+        }
+    }
+    
+    // Count total images
+    $item['image_count'] = 0;
+    for ($i = 1; $i <= 4; $i++) {
+        if (!empty($item['product_img' . $i])) {
+            $item['image_count']++;
+        }
+    }
     
     // Fetch fabric details
     $fabricStmt = $mysqli->prepare("SELECT fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
@@ -96,14 +117,21 @@ unset($item);
     <?php if (!empty($wishlist_items)): ?>
       <?php foreach ($wishlist_items as $item): ?>
         <?php
-          $imgPath = 'images/products/' . ($item['product_img_name'] ?: 'no-image.png');
+          $imgPath = !empty($item['display_image']) ? 'images/products/' . $item['display_image'] : 'assets/no-image.png';
           if (!file_exists($imgPath)) {
               $imgPath = 'assets/no-image.png';
           }
         ?>
         <div class="wishlist-item">
           <div class="d-flex align-items-center flex-grow-1">
-            <img src="<?php echo htmlspecialchars($imgPath); ?>" alt="<?php echo htmlspecialchars($item['product_name']); ?>">
+            <div class="image-wrapper">
+              <img src="<?php echo htmlspecialchars($imgPath); ?>" alt="<?php echo htmlspecialchars($item['product_name']); ?>">
+              <?php if ($item['image_count'] > 1): ?>
+                <span class="image-count-badge">
+                  <i class="bi bi-images"></i> <?php echo $item['image_count']; ?>
+                </span>
+              <?php endif; ?>
+            </div>
             <div class="meta">
               <h5 class="mb-1">
                 <a href="product-view.php?id=<?php echo (int)$item['product_id']; ?>" class="text-decoration-none text-dark">
@@ -214,12 +242,36 @@ unset($item);
   .wishlist-item:last-child {
     border-bottom: none;
   }
+  .image-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+  }
   .wishlist-item img {
-    width:120px;
-    height:120px;
-    object-fit:cover;
-    border-radius:10px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .image-count-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    backdrop-filter: blur(4px);
+  }
+  .image-count-badge i {
+    font-size: 11px;
   }
   .wishlist-item .meta {
     flex:1;
@@ -248,10 +300,11 @@ unset($item);
       flex-direction: column;
       align-items: flex-start;
     }
-    .wishlist-item img {
+    .image-wrapper {
       width: 100%;
       max-width: 200px;
       height: auto;
+      aspect-ratio: 1;
     }
     .wishlist-item .meta {
       margin-left: 0;
@@ -271,4 +324,4 @@ unset($item);
 <?php include 'includes/scripts.php'; ?>
 
 </body>
-</html
+</html>
