@@ -100,6 +100,7 @@ body {
   <a href="products.php">📦 Products</a>
   <a href="orders.php">🧾 Orders</a>
   <a href="users.php">👥 Users</a>
+  <a href="reports.php">📊 Reports</a>
   <hr style="border-color: rgba(255,255,255,.06)">
   <a href="../logout.php" class="text-danger">🚪 Logout</a>
 </div>
