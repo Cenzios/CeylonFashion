@@ -42,7 +42,7 @@ $product_id = (int)$_GET['id'];
 // ------------------------------
 // Fetch Product
 // ------------------------------
-$stmt = $mysqli->prepare("SELECT id, product_name, product_code, product_img_name, product_desc, category FROM products WHERE id = ?");
+$stmt = $mysqli->prepare("SELECT id, product_name, product_code, product_img1, product_img2, product_img3, product_img4, product_desc, category FROM products WHERE id = ?");
 $stmt->bind_param("i", $product_id);
 $stmt->execute();
 $product = $stmt->get_result()->fetch_assoc();
@@ -54,18 +54,21 @@ if (!$product) {
 }
 
 // Parse images
-$img_field = trim((string)$product['product_img_name']);
 $images = [];
-if ($img_field !== '') {
-  $parts = array_filter(array_map('trim', explode(',', $img_field)));
-  foreach ($parts as $p) {
-    if ($p !== '') $images[] = $p;
+for ($i = 1; $i <= 4; $i++) {
+  $imgField = 'product_img' . $i;
+  if (!empty($product[$imgField])) {
+    $images[] = $product[$imgField];
   }
 }
+// If no images, use placeholder
 if (empty($images)) {
   $images[] = 'placeholder.png';
 }
-while (count($images) < 4) $images[] = $images[count($images)-1];
+// Ensure we have at least 3 images for thumbnails (duplicate if needed)
+while (count($images) < 3) {
+  $images[] = $images[0];
+}
 
 // ------------------------------
 // Fetch Fabrics
