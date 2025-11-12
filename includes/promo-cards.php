@@ -4,7 +4,7 @@
   <div style="flex: 1; overflow: hidden; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
     <div style="height: 100%; width: 100%;">
       <img
-        src="Images/Banner image -01.png"
+        src="images/Banner_image01.png"
         alt="Resell Outfit"
         style="width: 100%; height: 300px; object-fit: cover;"
       />
@@ -34,7 +34,7 @@
   <div style="flex: 1; overflow: hidden; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
     <div style="height: 100%; width: 100%;">
       <img
-        src="Images/Banner image -2.png"
+        src="images/Banner_image02.png"
         alt="Design Outfit"
         style="width: 100%; height: 300px; object-fit: cover;"
       />
