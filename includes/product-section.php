@@ -5,7 +5,8 @@ function renderProductSection($options) {
   $sectionId = $options['id'] ?? 'productSection';
   $title = $options['title'] ?? 'Products';
   $sql = $options['sql'] ?? "
-    SELECT p.id, p.product_code, p.product_name, p.product_desc, p.product_img_name, p.category
+    SELECT p.id, p.product_code, p.product_name, p.product_desc, 
+           p.product_img1, p.product_img2, p.product_img3, p.product_img4, p.category
     FROM products p
     ORDER BY p.id DESC
     LIMIT 6
@@ -29,15 +30,28 @@ function renderProductSection($options) {
         $productId = (int)$product['id'];
         $pname = htmlentities($product['product_name'], ENT_QUOTES, 'UTF-8');
         $pcode = htmlentities($product['product_code'], ENT_QUOTES, 'UTF-8');
-        $pimg  = htmlentities($product['product_img_name'], ENT_QUOTES, 'UTF-8');
 
-        // Get first image from comma-separated list
-        $images = array_filter(array_map('trim', explode(',', $pimg)));
-        $firstImage = !empty($images) ? $images[0] : '';
+        // Get first available image from the 4 image fields
+        $firstImage = '';
+        for ($i = 1; $i <= 4; $i++) {
+          $imgField = 'product_img' . $i;
+          if (!empty($product[$imgField])) {
+            $firstImage = $product[$imgField];
+            break;
+          }
+        }
         
-        $imgPath = 'images/products/' . $firstImage;
+        $imgPath = 'images/products/' . htmlentities($firstImage, ENT_QUOTES, 'UTF-8');
         if (empty($firstImage) || !file_exists($imgPath)) {
           $imgPath = $fallback;
+        }
+
+        // Count total images for badge
+        $imageCount = 0;
+        for ($i = 1; $i <= 4; $i++) {
+          if (!empty($product['product_img' . $i])) {
+            $imageCount++;
+          }
         }
 
         // Fetch lowest fabric price for this product
@@ -55,6 +69,15 @@ function renderProductSection($options) {
           <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
             <div class="product-image">
               <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
+              <?php if ($imageCount > 1): ?>
+                <span class="image-badge">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4.502 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+                    <path d="M14.002 13a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2V5A2 2 0 0 1 2 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-1.998 2zM14 2H4a1 1 0 0 0-1 1h9.002a2 2 0 0 1 2 2v7A1 1 0 0 0 15 11V3a1 1 0 0 0-1-1zM2.002 4a1 1 0 0 0-1 1v8l2.646-2.354a.5.5 0 0 1 .63-.062l2.66 1.773 3.71-3.71a.5.5 0 0 1 .577-.094l1.777 1.947V5a1 1 0 0 0-1-1h-10z"/>
+                  </svg>
+                  <?php echo $imageCount; ?>
+                </span>
+              <?php endif; ?>
             </div>
             
             <div class="product-info">
@@ -131,6 +154,7 @@ function renderProductSection($options) {
     height: 400px;
     overflow: hidden;
     background: #f5f5f5;
+    position: relative;
   }
 
   .product-image img {
@@ -142,6 +166,29 @@ function renderProductSection($options) {
 
   .product-card:hover .product-image img {
     transform: scale(1.05);
+  }
+
+  /* Image count badge */
+  .image-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    backdrop-filter: blur(4px);
+    z-index: 10;
+  }
+
+  .image-badge svg {
+    width: 14px;
+    height: 14px;
   }
 
   .product-info {
@@ -237,6 +284,11 @@ function renderProductSection($options) {
     .btn-view-all {
       padding: 12px 30px;
       font-size: 14px;
+    }
+
+    .image-badge {
+      font-size: 12px;
+      padding: 5px 10px;
     }
   }
 </style>
