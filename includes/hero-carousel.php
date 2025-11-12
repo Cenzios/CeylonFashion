@@ -10,6 +10,7 @@
       <div class="carousel-item">
         <img src="Images/slider image-3.jpg" class="d-block w-100 banner-img" alt="...">
       </div>
+      <div></div>
     </div>
   </div>
 </div>
