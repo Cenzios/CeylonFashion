@@ -11,7 +11,7 @@ if (!$isAdmin) {
 }
 
 // ---- Fetch products with fabric details ----
-$sql = "SELECT p.id, p.product_name, p.product_code, p.product_desc, p.product_img_name
+$sql = "SELECT p.id, p.product_name, p.product_code, p.product_desc, p.product_img1
         FROM products p
         ORDER BY p.id DESC";
 $result = $mysqli->query($sql);
@@ -90,7 +90,7 @@ $fallback = '../assets/no-image.png';
             $pname = htmlentities($p['product_name'], ENT_QUOTES, 'UTF-8');
             $pcode = htmlentities($p['product_code'], ENT_QUOTES, 'UTF-8');
             $pdesc = htmlentities($p['product_desc'], ENT_QUOTES, 'UTF-8');
-            $pimg  = htmlentities($p['product_img_name'], ENT_QUOTES, 'UTF-8');
+            $pimg  = htmlentities($p['product_img1'], ENT_QUOTES, 'UTF-8');
             $imgPath = '../images/products/' . $pimg;
             if (empty($pimg) || !file_exists($imgPath)) {
               $imgPath = $fallback;
