@@ -5,7 +5,7 @@ function renderProductSection($options) {
   $sectionId = $options['id'] ?? 'productSection';
   $title = $options['title'] ?? 'Products';
   $sql = $options['sql'] ?? "
-    SELECT p.id, p.product_code, p.product_name, p.product_desc, p.product_img_name, p.category
+    SELECT p.id, p.product_code, p.product_name, p.product_desc, p.product_img1, p.product_img2, p.product_img3, p.product_img4, p.category
     FROM products p
     ORDER BY p.id DESC
     LIMIT 6
@@ -29,11 +29,16 @@ function renderProductSection($options) {
         $productId = (int)$product['id'];
         $pname = htmlentities($product['product_name'], ENT_QUOTES, 'UTF-8');
         $pcode = htmlentities($product['product_code'], ENT_QUOTES, 'UTF-8');
-        $pimg  = htmlentities($product['product_img_name'], ENT_QUOTES, 'UTF-8');
-
-        // Get first image from comma-separated list
-        $images = array_filter(array_map('trim', explode(',', $pimg)));
-        $firstImage = !empty($images) ? $images[0] : '';
+        
+        // Get first available image from product_img1, product_img2, product_img3, product_img4
+        $firstImage = '';
+        for ($i = 1; $i <= 4; $i++) {
+          $imgField = 'product_img' . $i;
+          if (!empty($product[$imgField])) {
+            $firstImage = $product[$imgField];
+            break;
+          }
+        }
         
         $imgPath = 'images/products/' . $firstImage;
         if (empty($firstImage) || !file_exists($imgPath)) {
