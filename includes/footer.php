@@ -44,10 +44,10 @@
       <div class="footer-column">
         <h5 class="footer-heading">PRODUCTS</h5>
         <ul class="footer-links">
-          <li><a href="#">Bridal Attire</a></li>
-          <li><a href="#">Bridemaid's Attire</a></li>
-          <li><a href="#">Party Wear</a></li>
-          <li><a href="#">Used Collection</a></li>
+          <li><a href="index.php#bridalAttireSection">Bridal Attire</a></li>
+          <li><a href="index.php#brideMaidsSection">Bridemaid's Attire</a></li>
+          <li><a href="index.php#partyWearSection">Party Wear</a></li>
+          <li><a href="index.php#usedCollectionSection">Used Collection</a></li>
         </ul>
       </div>
 
