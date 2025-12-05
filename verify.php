@@ -84,15 +84,27 @@ if (strpos($user['password'], '$2y$') === 0) {
 }
 
 if ($passwordMatch) {
-  // ---- SUCCESS: Login user ----
+  // ---- CHECK IF USER IS ADMIN ----
+  // Admins should not be able to login through the main page login form
+  if (isset($user['type']) && $user['type'] === 'admin') {
+    $msg = 'Admins must login through the admin login page. Please use the admin panel login.';
+    if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+      json_response(false, $msg);
+    }
+    $_SESSION['login_error'] = $msg;
+    header('Location: index.php');
+    exit;
+  }
+
+  // ---- SUCCESS: Login user (regular users only) ----
   session_regenerate_id(true);
   $_SESSION['user_id']  = (int)$user['id'];
   $_SESSION['username'] = $user['email'];
   $_SESSION['name']     = trim(($user['fname'] ?? '') . ' ' . ($user['lname'] ?? ''));
   $_SESSION['type']     = $user['type'] ?? 'user';
 
-  // Choose redirect target based on user type
-  $redirectUrl = ($_SESSION['type'] === 'admin') ? 'admin/dashboard.php' : 'index.php';
+  // Regular users are redirected to index page
+  $redirectUrl = 'index.php';
 
   if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
     json_response(true, 'Login successful', $redirectUrl);

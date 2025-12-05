@@ -283,13 +283,22 @@ document.addEventListener('DOMContentLoaded', function() {
       btnText.style.display = 'none';
       spinner.style.display = 'inline-block';
       
+      // Get CSRF token
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      
       // Send login request
-      fetch('login-process.php', {
+      const body = new URLSearchParams();
+      body.set('username', email);
+      body.set('pwd', password);
+      body.set('csrf_token', csrfToken);
+      
+      fetch('verify.php', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+        body: body.toString()
       })
       .then(response => response.json())
       .then(data => {
@@ -298,7 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btnText.style.display = 'inline';
         spinner.style.display = 'none';
         
-        if (data.success) {
+        if (data.ok) {
           messageDiv.className = 'login-message-success';
           messageDiv.textContent = 'Login successful! Redirecting...';
           messageDiv.style.display = 'block';
