@@ -19,7 +19,7 @@ include_once 'config.php';
   
   <?php include 'includes/promo-cards.php'; ?>
   
-  <?php include 'includes/color-buttons.php'; ?>
+  <!-- <?php include 'includes/color-buttons.php'; ?> -->
   
   <?php 
   // New Arrivals Section
