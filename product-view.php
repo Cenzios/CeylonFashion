@@ -290,11 +290,10 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
         <div class="bottom-actions">
           <div class="action-buttons">
   <?php if (!$isAdmin): ?>
+    <button type="submit" class="btn-cart">🛒 Add to Cart</button>
     <?php if ($isLoggedIn): ?>
-      <button type="submit" class="btn-cart">🛒 Add to Cart</button>
       <button type="button" class="btn-buy buy-now-btn" data-product-id="<?= $product_id; ?>" data-product-name="<?= htmlspecialchars($product['product_name']); ?>">Buy Now</button>
     <?php else: ?>
-      <button type="button" class="btn-cart" onclick="showLoginModal()">🛒 Add to Cart</button>
       <button type="button" class="buy-now-btn" onclick="showLoginModal()">Buy Now</button>
     <?php endif; ?>
   <?php endif; ?>
@@ -307,10 +306,8 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
               <button type="button" class="qty-btn" id="qtyPlus">+</button>
             </div>
             
-            <?php if (!$isAdmin && $isLoggedIn): ?>
+            <?php if (!$isAdmin): ?>
               <button type="button" class="btn-wishlist" id="wishlistBtn" onclick="toggleWishlist(<?= $product_id; ?>)">♡</button>
-            <?php elseif (!$isAdmin): ?>
-              <button type="button" class="btn-wishlist" onclick="showLoginModal()">♡</button>
             <?php endif; ?>
           </div>
         </div>
@@ -1186,9 +1183,29 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
   function toggleWishlist(productId) {
     const btn = document.getElementById('wishlistBtn');
     if (btn) {
-      btn.classList.toggle('active');
       fetch('wishlist-toggle.php?id=' + productId)
         .then(r => r.json())
+        .then(data => {
+          if (data.status === 'ok') {
+            btn.classList.toggle('active');
+            // Update badge count if exists
+            const wishlistBadge = document.querySelector('#wishlistIcon + .badge');
+            if (wishlistBadge) {
+              const currentCount = parseInt(wishlistBadge.textContent) || 0;
+              if (data.action === 'added') {
+                wishlistBadge.textContent = currentCount + 1;
+                wishlistBadge.style.display = 'inline-block';
+              } else {
+                const newCount = Math.max(0, currentCount - 1);
+                if (newCount > 0) {
+                  wishlistBadge.textContent = newCount;
+                } else {
+                  wishlistBadge.style.display = 'none';
+                }
+              }
+            }
+          }
+        })
         .catch(() => {});
     }
   }

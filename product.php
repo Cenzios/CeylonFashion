@@ -244,21 +244,13 @@ $currency = $currency ?? '$'; // fallback if not set in config.php
           </div>
 
           <div style="margin-top:14px; display:flex; gap:8px; flex-wrap:wrap;">
-            <?php if ($isLoggedIn && !$isAdmin): ?>
-              <a class="button small" href="wishlist-toggle.php?id=<?=$productId?>">❤ Wishlist</a>
+            <?php if (!$isAdmin): ?>
+              <a class="button small" href="javascript:void(0);" onclick="toggleWishlist(<?=$productId?>)">❤ Wishlist</a>
               <?php if ((int)$product['qty'] > 0): ?>
                 <a class="button small success" href="cart-add.php?id=<?=$productId?>&qty=1">Add to Cart</a>
               <?php endif; ?>
             <?php else: ?>
-              <?php if (!$isLoggedIn): ?>
-                <a class="button small" href="login.php">❤ Wishlist (login)</a>
-                <?php if ((int)$product['qty'] > 0): ?>
-                  <a class="button small success" href="login.php">Add to Cart (login)</a>
-                <?php endif; ?>
-              <?php endif; ?>
-              <?php if ($isAdmin): ?>
-                <a class="button small" href="edit-product.php?id=<?=$productId?>">✏️ Edit Product</a>
-              <?php endif; ?>
+              <a class="button small" href="edit-product.php?id=<?=$productId?>">✏️ Edit Product</a>
             <?php endif; ?>
           </div>
         </div>
