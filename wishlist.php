@@ -6,48 +6,119 @@
 
 session_start();
 require_once 'config.php'; // must define $mysqli
+require_once 'lib/guest-cart.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
-}
+$isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+$wishlist_items = [];
 
-$user_id = (int) $_SESSION['user_id'];
+if ($isLoggedIn) {
+    // Logged in user - fetch from database
+    $user_id = (int) $_SESSION['user_id'];
 
-// Handle optional remove by GET (fallback)
-if (isset($_GET['remove']) && ctype_digit($_GET['remove'])) {
-    $remove_id = (int) $_GET['remove'];
-    $stmt = $mysqli->prepare("DELETE FROM wishlist WHERE id = ? AND user_id = ?");
-    $stmt->bind_param("ii", $remove_id, $user_id);
+    // Handle optional remove by GET (fallback)
+    if (isset($_GET['remove']) && ctype_digit($_GET['remove'])) {
+        $remove_id = (int) $_GET['remove'];
+        $stmt = $mysqli->prepare("DELETE FROM wishlist WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $remove_id, $user_id);
+        $stmt->execute();
+        $stmt->close();
+        header('Location: wishlist.php');
+        exit;
+    }
+
+    // Fetch wishlist items with product details
+    $query = "
+        SELECT 
+            w.id AS wishlist_id,
+            w.product_id,
+            p.product_name,
+            p.product_code,
+            p.product_desc,
+            p.product_img1,
+            p.product_img2,
+            p.product_img3,
+            p.product_img4,
+            p.category
+        FROM wishlist w
+        JOIN products p ON w.product_id = p.id
+        WHERE w.user_id = ?
+    ";
+    $stmt = $mysqli->prepare($query);
+    if (!$stmt) {
+        die("SQL Error: " . $mysqli->error);
+    }
+    $stmt->bind_param("i", $user_id);
     $stmt->execute();
+    $result = $stmt->get_result();
+    $wishlist_items = $result->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
-    header('Location: wishlist.php');
-    exit;
+    
+    // Get first available image for each item
+    foreach ($wishlist_items as &$item) {
+        $firstImage = '';
+        for ($i = 1; $i <= 4; $i++) {
+            $imgField = 'product_img' . $i;
+            if (!empty($item[$imgField])) {
+                $firstImage = $item[$imgField];
+                break;
+            }
+        }
+        $item['product_img_name'] = $firstImage;
+    }
+    unset($item);
+} else {
+    // Guest user - fetch from session
+    $guestWishlist = getGuestWishlist();
+    
+    if (!empty($guestWishlist)) {
+        $productIds = array_keys($guestWishlist);
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        
+        $query = "
+            SELECT 
+                id AS product_id,
+                product_name,
+                product_code,
+                product_desc,
+                product_img1,
+                product_img2,
+                product_img3,
+                product_img4,
+                category
+            FROM products
+            WHERE id IN ($placeholders)
+        ";
+        $stmt = $mysqli->prepare($query);
+        if ($stmt) {
+            $stmt->bind_param(str_repeat('i', count($productIds)), ...$productIds);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            while ($product = $result->fetch_assoc()) {
+                // Get first available image from product_img1-4
+                $firstImage = '';
+                for ($i = 1; $i <= 4; $i++) {
+                    $imgField = 'product_img' . $i;
+                    if (!empty($product[$imgField])) {
+                        $firstImage = $product[$imgField];
+                        break;
+                    }
+                }
+                
+                $wishlist_items[] = [
+                    'wishlist_id' => 'guest_' . $product['product_id'], // Unique identifier for guest items
+                    'product_id' => (int)$product['product_id'],
+                    'product_name' => $product['product_name'],
+                    'product_code' => $product['product_code'],
+                    'product_desc' => $product['product_desc'],
+                    'product_img_name' => $firstImage,
+                    'category' => $product['category']
+                ];
+            }
+            $stmt->close();
+        }
+    }
 }
-
-// Fetch wishlist items with product details
-$query = "
-    SELECT 
-        w.id AS wishlist_id,
-        w.product_id,
-        p.product_name,
-        p.product_code,
-        p.product_desc,
-        p.product_img_name,
-        p.category
-    FROM wishlist w
-    JOIN products p ON w.product_id = p.id
-    WHERE w.user_id = ?
-";
-$stmt = $mysqli->prepare($query);
-if (!$stmt) {
-    die("SQL Error: " . $mysqli->error);
-}
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$wishlist_items = $result->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
 
 // For each wishlist item, fetch fabric details
 foreach ($wishlist_items as &$item) {
@@ -169,12 +240,21 @@ unset($item);
             <?php endif; ?>
 
             <!-- Remove form -->
-            <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0">
-              <input type="hidden" name="wishlist_id" value="<?php echo (int)$item['wishlist_id']; ?>">
-              <button type="submit" class="btn-remove" title="Remove">
-                <i class="bi bi-trash"></i> Remove
-              </button>
-            </form>
+            <?php if ($isLoggedIn): ?>
+              <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0">
+                <input type="hidden" name="wishlist_id" value="<?php echo (int)$item['wishlist_id']; ?>">
+                <button type="submit" class="btn-remove" title="Remove">
+                  <i class="bi bi-trash"></i> Remove
+                </button>
+              </form>
+            <?php else: ?>
+              <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0">
+                <input type="hidden" name="product_id" value="<?php echo (int)$item['product_id']; ?>">
+                <button type="submit" class="btn-remove" title="Remove">
+                  <i class="bi bi-trash"></i> Remove
+                </button>
+              </form>
+            <?php endif; ?>
           </div>
         </div>
       <?php endforeach; ?>
