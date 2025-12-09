@@ -2,67 +2,146 @@
 // cart.php - show user's cart
 session_start();
 require_once 'config.php'; // must define $mysqli (mysqli object)
+require_once 'lib/guest-cart.php';
 
-// Redirect to login if needed
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
-}
+$isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+$items = [];
 
-$user_id = (int) $_SESSION['user_id'];
+if ($isLoggedIn) {
+    // Logged in user - fetch from database
+    $user_id = (int) $_SESSION['user_id'];
 
-// Handle optional 'remove' via GET for quick testing
-if (isset($_GET['remove']) && ctype_digit($_GET['remove'])) {
-    $remove_id = (int) $_GET['remove'];
-    $del = $mysqli->prepare("DELETE FROM cart WHERE id = ? AND user_id = ?");
-    $del->bind_param("ii", $remove_id, $user_id);
-    $del->execute();
-    $del->close();
-    header('Location: cart.php');
-    exit;
-}
+    // Handle optional 'remove' via GET for quick testing
+    if (isset($_GET['remove']) && ctype_digit($_GET['remove'])) {
+        $remove_id = (int) $_GET['remove'];
+        $del = $mysqli->prepare("DELETE FROM cart WHERE id = ? AND user_id = ?");
+        $del->bind_param("ii", $remove_id, $user_id);
+        $del->execute();
+        $del->close();
+        header('Location: cart.php');
+        exit;
+    }
 
-// Fetch cart items for the user with price from cart table
-$sql = "
-    SELECT 
-        c.id AS cart_id,
-        c.product_id,
-        c.quantity,
-        c.price,
-        p.product_name,
-        p.product_code,
-        p.product_img_name,
-        p.category
-    FROM cart c
-    JOIN products p ON c.product_id = p.id
-    WHERE c.user_id = ?
-";
-$stmt = $mysqli->prepare($sql);
-if ($stmt === false) {
-    die("DB prepare error: " . $mysqli->error);
-}
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
+    // Fetch cart items for the user with price from cart table
+    $sql = "
+        SELECT 
+            c.id AS cart_id,
+            c.product_id,
+            c.quantity,
+            c.price,
+            p.product_name,
+            p.product_code,
+            p.product_img1,
+            p.product_img2,
+            p.product_img3,
+            p.product_img4,
+            p.category
+        FROM cart c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.user_id = ?
+    ";
+    $stmt = $mysqli->prepare($sql);
+    if ($stmt === false) {
+        die("DB prepare error: " . $mysqli->error);
+    }
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-$items = $result->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+    $items = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
 
-// For each cart item, fetch current fabric availability
-foreach ($items as &$item) {
-    $product_id = (int)$item['product_id'];
+    // For each cart item, fetch current fabric availability and get first image
+    foreach ($items as &$item) {
+        $product_id = (int)$item['product_id'];
+        
+        // Get first available image from product_img1-4
+        $firstImage = '';
+        for ($i = 1; $i <= 4; $i++) {
+            $imgField = 'product_img' . $i;
+            if (!empty($item[$imgField])) {
+                $firstImage = $item[$imgField];
+                break;
+            }
+        }
+        $item['product_img_name'] = $firstImage;
+        
+        // Get total available quantity from fabrics
+        $fabricStmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total_qty FROM product_fabrics WHERE product_id = ?");
+        $fabricStmt->bind_param("i", $product_id);
+        $fabricStmt->execute();
+        $fabricResult = $fabricStmt->get_result();
+        $fabricData = $fabricResult->fetch_assoc();
+        $fabricStmt->close();
+        
+        $item['available_qty'] = $fabricData ? (int)$fabricData['total_qty'] : 0;
+    }
+    unset($item);
+} else {
+    // Guest user - fetch from session
+    $guestCart = getGuestCart();
     
-    // Get total available quantity from fabrics
-    $fabricStmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total_qty FROM product_fabrics WHERE product_id = ?");
-    $fabricStmt->bind_param("i", $product_id);
-    $fabricStmt->execute();
-    $fabricResult = $fabricStmt->get_result();
-    $fabricData = $fabricResult->fetch_assoc();
-    $fabricStmt->close();
-    
-    $item['available_qty'] = $fabricData ? (int)$fabricData['total_qty'] : 0;
+    if (!empty($guestCart)) {
+        $productIds = array_keys($guestCart);
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        
+        $sql = "
+            SELECT 
+                id AS product_id,
+                product_name,
+                product_code,
+                product_img1,
+                product_img2,
+                product_img3,
+                product_img4,
+                category
+            FROM products
+            WHERE id IN ($placeholders)
+        ";
+        $stmt = $mysqli->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param(str_repeat('i', count($productIds)), ...$productIds);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            while ($product = $result->fetch_assoc()) {
+                $product_id = (int)$product['product_id'];
+                $cartItem = $guestCart[$product_id];
+                
+                // Get first available image from product_img1-4
+                $firstImage = '';
+                for ($i = 1; $i <= 4; $i++) {
+                    $imgField = 'product_img' . $i;
+                    if (!empty($product[$imgField])) {
+                        $firstImage = $product[$imgField];
+                        break;
+                    }
+                }
+                
+                // Get total available quantity from fabrics
+                $fabricStmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total_qty FROM product_fabrics WHERE product_id = ?");
+                $fabricStmt->bind_param("i", $product_id);
+                $fabricStmt->execute();
+                $fabricResult = $fabricStmt->get_result();
+                $fabricData = $fabricResult->fetch_assoc();
+                $fabricStmt->close();
+                
+                $items[] = [
+                    'cart_id' => 'guest_' . $product_id, // Unique identifier for guest items
+                    'product_id' => $product_id,
+                    'quantity' => $cartItem['quantity'],
+                    'price' => $cartItem['price'],
+                    'product_name' => $product['product_name'],
+                    'product_code' => $product['product_code'],
+                    'product_img_name' => $firstImage,
+                    'category' => $product['category'],
+                    'available_qty' => $fabricData ? (int)$fabricData['total_qty'] : 0
+                ];
+            }
+            $stmt->close();
+        }
+    }
 }
-unset($item);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -139,22 +218,41 @@ unset($item);
 
             <!-- Quantity Update -->
             <div class="qty-controls d-flex align-items-center gap-2">
-              <a href="cart-update.php?id=<?php echo $row['cart_id']; ?>&action=decrease" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-dash"></i>
-              </a>
-              <span class="qty-display"><?php echo (int)$row['quantity']; ?></span>
-              <a href="cart-update.php?id=<?php echo $row['cart_id']; ?>&action=increase" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-plus"></i>
-              </a>
+              <?php if ($isLoggedIn): ?>
+                <a href="cart-update.php?id=<?php echo $row['cart_id']; ?>&action=decrease" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-dash"></i>
+                </a>
+                <span class="qty-display"><?php echo (int)$row['quantity']; ?></span>
+                <a href="cart-update.php?id=<?php echo $row['cart_id']; ?>&action=increase" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-plus"></i>
+                </a>
+              <?php else: ?>
+                <a href="cart-set-qty.php?product_id=<?php echo $row['product_id']; ?>&qty=<?php echo max(1, (int)$row['quantity'] - 1); ?>" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-dash"></i>
+                </a>
+                <span class="qty-display"><?php echo (int)$row['quantity']; ?></span>
+                <a href="cart-set-qty.php?product_id=<?php echo $row['product_id']; ?>&qty=<?php echo (int)$row['quantity'] + 1; ?>" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-plus"></i>
+                </a>
+              <?php endif; ?>
             </div>
 
             <!-- Remove form (POST) -->
-            <form action="cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');" class="mb-0">
-              <input type="hidden" name="cart_id" value="<?php echo (int)$row['cart_id']; ?>">
-              <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
-                <i class="bi bi-trash"></i> Remove
-              </button>
-            </form>
+            <?php if ($isLoggedIn): ?>
+              <form action="cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');" class="mb-0">
+                <input type="hidden" name="cart_id" value="<?php echo (int)$row['cart_id']; ?>">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
+                  <i class="bi bi-trash"></i> Remove
+                </button>
+              </form>
+            <?php else: ?>
+              <form action="cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');" class="mb-0">
+                <input type="hidden" name="product_id" value="<?php echo (int)$row['product_id']; ?>">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
+                  <i class="bi bi-trash"></i> Remove
+                </button>
+              </form>
+            <?php endif; ?>
           </div>
         </div>
       <?php endforeach; ?>
@@ -167,7 +265,11 @@ unset($item);
         <div class="text-muted small mb-3">Shipping and taxes calculated at checkout</div>
         <div class="d-flex gap-2">
           <a href="index.php" class="btn btn-outline-secondary">Continue Shopping</a>
-          <a href="checkout.php" class="btn btn-success flex-grow-1">Proceed to Checkout</a>
+          <?php if ($isLoggedIn): ?>
+            <a href="checkout.php" class="btn btn-success flex-grow-1">Proceed to Checkout</a>
+          <?php else: ?>
+            <button type="button" class="btn btn-success flex-grow-1" onclick="showLoginModal()">Login to Checkout</button>
+          <?php endif; ?>
         </div>
       </div>
     <?php else: ?>

@@ -1,30 +1,30 @@
 <?php
-if (session_id() == '' || !isset($_SESSION)) { session_start(); }
-include 'config.php';
-include 'lib/user.php';
-
-if (!isset($_SESSION['username']) || (isset($_SESSION['type']) && $_SESSION['type'] === 'admin')) {
-  header("Location: login.php"); exit();
+// cart-set-qty.php - Set quantity for guest cart items
+if (session_id() == '' || !isset($_SESSION)) {
+    session_start();
 }
 
-$userId = current_user_id($mysqli);
-if ($userId <= 0) { header("Location: login.php"); exit(); }
+require_once 'lib/guest-cart.php';
 
-$productId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-$qty       = isset($_POST['qty']) ? (int)$_POST['qty'] : 0;
+// Only allow guest users (logged in users use cart-update.php)
+if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
+    header('Location: cart.php');
+    exit;
+}
 
-if ($productId <= 0) { header("Location: cart.php"); exit(); }
+$product_id = isset($_GET['product_id']) && ctype_digit($_GET['product_id']) ? (int)$_GET['product_id'] : 0;
+$qty = isset($_GET['qty']) && ctype_digit($_GET['qty']) ? (int)$_GET['qty'] : 1;
+
+if ($product_id <= 0) {
+    header('Location: cart.php');
+    exit;
+}
 
 if ($qty <= 0) {
-  $stmt = $mysqli->prepare("DELETE FROM cart_items WHERE user_id = ? AND product_id = ?");
-  $stmt->bind_param("ii", $userId, $productId);
-  $stmt->execute();
-  $stmt->close();
+    removeFromGuestCart($product_id);
 } else {
-  $stmt = $mysqli->prepare("UPDATE cart_items SET qty = ? WHERE user_id = ? AND product_id = ?");
-  $stmt->bind_param("iii", $qty, $userId, $productId);
-  $stmt->execute();
-  $stmt->close();
+    updateGuestCartQty($product_id, $qty);
 }
 
-header("Location: cart.php");
+header('Location: cart.php');
+exit;
