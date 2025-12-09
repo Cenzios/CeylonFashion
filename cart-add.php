@@ -3,13 +3,10 @@ if (session_id() == '' || !isset($_SESSION)) {
     session_start();
 }
 
-if (!isset($_SESSION['user_id'])) {
-    $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
-    header('Location: login.php?return=' . urlencode($_SERVER['HTTP_REFERER'] ?? 'index.php'));
-    exit;
-}
-
 require_once 'config.php';
+require_once 'lib/guest-cart.php';
+
+$isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
 
 $product_id = isset($_GET['id']) && ctype_digit($_GET['id']) ? (int)$_GET['id'] : 0;
 $quantity = isset($_GET['qty']) && ctype_digit($_GET['qty']) ? (int)$_GET['qty'] : 1;
@@ -19,7 +16,9 @@ if ($product_id <= 0) {
     exit;
 }
 
-$user_id = (int)$_SESSION['user_id'];
+if ($isLoggedIn) {
+    $user_id = (int)$_SESSION['user_id'];
+}
 
 // Fetch product details
 $stmt = $mysqli->prepare("SELECT product_name, product_code FROM products WHERE id = ?");
@@ -59,35 +58,58 @@ if ($total_available < $quantity) {
     exit;
 }
 
-// Check if item already in cart
-$stmt = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
-$stmt->bind_param("ii", $user_id, $product_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$existing = $result->fetch_assoc();
-$stmt->close();
+if ($isLoggedIn) {
+    // Logged in user - use database
+    // Check if item already in cart
+    $stmt = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
+    $stmt->bind_param("ii", $user_id, $product_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existing = $result->fetch_assoc();
+    $stmt->close();
 
-if ($existing) {
-    // Update existing cart item
-    $new_qty = $existing['quantity'] + $quantity;
-    
-    // Check if new quantity exceeds stock
-    if ($new_qty > $total_available) {
-        $_SESSION['cart_error'] = 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).';
-        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
-        exit;
+    if ($existing) {
+        // Update existing cart item
+        $new_qty = $existing['quantity'] + $quantity;
+        
+        // Check if new quantity exceeds stock
+        if ($new_qty > $total_available) {
+            $_SESSION['cart_error'] = 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).';
+            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
+            exit;
+        }
+        
+        $stmt = $mysqli->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("ii", $new_qty, $existing['id']);
+        $stmt->execute();
+        $stmt->close();
+    } else {
+        // Insert new cart item
+        $stmt = $mysqli->prepare("INSERT INTO cart (user_id, product_id, quantity, price, created_at) VALUES (?, ?, ?, ?, NOW())");
+        $stmt->bind_param("iiid", $user_id, $product_id, $quantity, $price);
+        $stmt->execute();
+        $stmt->close();
     }
-    
-    $stmt = $mysqli->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->bind_param("ii", $new_qty, $existing['id']);
-    $stmt->execute();
-    $stmt->close();
 } else {
-    // Insert new cart item
-    $stmt = $mysqli->prepare("INSERT INTO cart (user_id, product_id, quantity, price, created_at) VALUES (?, ?, ?, ?, NOW())");
-    $stmt->bind_param("iiid", $user_id, $product_id, $quantity, $price);
-    $stmt->execute();
-    $stmt->close();
+    // Guest user - use session
+    $guestCart = getGuestCart();
+    
+    if (isset($guestCart[$product_id])) {
+        // Update existing cart item
+        $new_qty = $guestCart[$product_id]['quantity'] + $quantity;
+        
+        // Check if new quantity exceeds stock
+        if ($new_qty > $total_available) {
+            $_SESSION['cart_error'] = 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).';
+            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
+            exit;
+        }
+        
+        updateGuestCartQty($product_id, $new_qty);
+    } else {
+        // Add new cart item
+        addToGuestCart($product_id, $quantity, $price);
+    }
 }
 
 $_SESSION['cart_success'] = 'Item added to cart successfully!';
