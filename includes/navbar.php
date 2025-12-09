@@ -36,11 +36,26 @@
           </div>
           
           <!-- Wishlist and Cart links (logged in users) -->
-          <a href="wishlist.php" style="text-decoration: none; color: white;">
+          <?php
+          require_once __DIR__ . '/../lib/guest-cart.php';
+          if (!isset($mysqli)) {
+              require_once __DIR__ . '/../config.php';
+          }
+          $user_id = (int)$_SESSION['user_id'];
+          $wishlistCount = getUserWishlistCount($mysqli, $user_id);
+          $cartCount = getUserCartCount($mysqli, $user_id);
+          ?>
+          <a href="wishlist.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-heart" id="wishlistIcon" style="cursor: pointer;"></i>
+            <?php if ($wishlistCount > 0): ?>
+              <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $wishlistCount; ?></span>
+            <?php endif; ?>
           </a>
-          <a href="cart.php" style="text-decoration: none; color: white;">
+          <a href="cart.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-cart2" id="cartIcon" style="cursor: pointer;"></i>
+            <?php if ($cartCount > 0): ?>
+              <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $cartCount; ?></span>
+            <?php endif; ?>
           </a>
           
         <?php else: ?>
@@ -55,12 +70,23 @@
             Login
           </button>
           
-          <!-- Wishlist and Cart icons (not logged in - trigger login) -->
-          <a href="#" onclick="requireLogin(event, 'wishlist.php')" style="text-decoration: none; color: white;">
+          <!-- Wishlist and Cart icons (guest users can access) -->
+          <a href="wishlist.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-heart" id="wishlistIcon" style="cursor: pointer;"></i>
+            <?php 
+            require_once __DIR__ . '/../lib/guest-cart.php';
+            $wishlistCount = getGuestWishlistCount();
+            if ($wishlistCount > 0): ?>
+              <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $wishlistCount; ?></span>
+            <?php endif; ?>
           </a>
-          <a href="#" onclick="requireLogin(event, 'cart.php')" style="text-decoration: none; color: white;">
+          <a href="cart.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-cart2" id="cartIcon" style="cursor: pointer;"></i>
+            <?php 
+            $cartCount = getGuestCartCount();
+            if ($cartCount > 0): ?>
+              <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $cartCount; ?></span>
+            <?php endif; ?>
           </a>
         <?php endif; ?>
       </div>
