@@ -32,11 +32,11 @@
       <div class="footer-column">
         <h5 class="footer-heading">INFORMATION</h5>
         <ul class="footer-links">
-          <li><a href="#">Shipping Policy</a></li>
-          <li><a href="#">Returns & Exchanges</a></li>
-          <li><a href="#">Terms & Conditions</a></li>
-          <li><a href="#">Privacy Policy</a></li>
-          <li><a href="#">FAQ</a></li>
+          <li><a href="shipping-policy.php" target="_blank">Shipping Policy</a></li>
+          <li><a href="returns-exchanges.php" target="_blank">Returns & Exchanges</a></li>
+          <li><a href="terms-conditions.php" target="_blank">Terms & Conditions</a></li>
+          <li><a href="privacy-policy.php" target="_blank">Privacy Policy</a></li>
+          <li><a href="faq.php" target="_blank">FAQ</a></li>
         </ul>
       </div>
 
