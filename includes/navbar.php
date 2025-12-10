@@ -48,13 +48,13 @@
           <a href="wishlist.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-heart" id="wishlistIcon" style="cursor: pointer;"></i>
             <?php if ($wishlistCount > 0): ?>
-              <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $wishlistCount; ?></span>
+              <span id="wishlistBadge" class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $wishlistCount; ?></span>
             <?php endif; ?>
           </a>
           <a href="cart.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-cart2" id="cartIcon" style="cursor: pointer;"></i>
             <?php if ($cartCount > 0): ?>
-              <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $cartCount; ?></span>
+              <span id="cartBadge" class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $cartCount; ?></span>
             <?php endif; ?>
           </a>
           
@@ -77,7 +77,7 @@
             require_once __DIR__ . '/../lib/guest-cart.php';
             $wishlistCount = getGuestWishlistCount();
             if ($wishlistCount > 0): ?>
-              <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $wishlistCount; ?></span>
+              <span id="wishlistBadge" class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $wishlistCount; ?></span>
             <?php endif; ?>
           </a>
           <a href="cart.php" style="text-decoration: none; color: white; position: relative;">
@@ -85,7 +85,7 @@
             <?php 
             $cartCount = getGuestCartCount();
             if ($cartCount > 0): ?>
-              <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $cartCount; ?></span>
+              <span id="cartBadge" class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $cartCount; ?></span>
             <?php endif; ?>
           </a>
         <?php endif; ?>

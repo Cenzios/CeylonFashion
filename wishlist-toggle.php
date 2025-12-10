@@ -59,8 +59,10 @@ if ($isLoggedIn) {
         $success = $stmt->execute();
         $stmt->close();
         
+        $count = getUserWishlistCount($mysqli, $user_id);
+        
         if ($success) {
-            echo json_encode(['status' => 'ok', 'action' => 'removed', 'message' => 'Removed from wishlist']);
+            echo json_encode(['status' => 'ok', 'action' => 'removed', 'message' => 'Removed from wishlist', 'wishlistCount' => $count]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to remove from wishlist']);
         }
@@ -71,29 +73,23 @@ if ($isLoggedIn) {
         $success = $stmt->execute();
         $stmt->close();
         
+        $count = getUserWishlistCount($mysqli, $user_id);
+        
         if ($success) {
-            echo json_encode(['status' => 'ok', 'action' => 'added', 'message' => 'Added to wishlist!']);
+            echo json_encode(['status' => 'ok', 'action' => 'added', 'message' => 'Added to wishlist!', 'wishlistCount' => $count]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Failed to add to wishlist']);
         }
     }
 } else {
-    // Guest user - use session
-    if (!isset($_SESSION['guest_wishlist'])) {
-        $_SESSION['guest_wishlist'] = [];
-    }
+    // Guest user - use library function
+    $action = toggleGuestWishlist($product_id);
+    $count = getGuestWishlistCount();
     
-    $key = array_search($product_id, $_SESSION['guest_wishlist']);
-    
-    if ($key !== false) {
-        // Remove from wishlist
-        unset($_SESSION['guest_wishlist'][$key]);
-        $_SESSION['guest_wishlist'] = array_values($_SESSION['guest_wishlist']); // Reindex array
-        echo json_encode(['status' => 'ok', 'action' => 'removed', 'message' => 'Removed from wishlist']);
+    if ($action === 'removed') {
+        echo json_encode(['status' => 'ok', 'action' => 'removed', 'message' => 'Removed from wishlist', 'wishlistCount' => $count]);
     } else {
-        // Add to wishlist
-        $_SESSION['guest_wishlist'][] = $product_id;
-        echo json_encode(['status' => 'ok', 'action' => 'added', 'message' => 'Added to wishlist!']);
+        echo json_encode(['status' => 'ok', 'action' => 'added', 'message' => 'Added to wishlist!', 'wishlistCount' => $count]);
     }
 }
 

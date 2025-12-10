@@ -6,14 +6,42 @@ if (session_id() == '' || !isset($_SESSION)) {
 require_once 'config.php';
 require_once 'lib/guest-cart.php';
 
-$isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+function respond($success, $message) {
+    global $mysqli;
+    
+    if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
+        header('Content-Type: application/json');
+        
+        // Calculate new cart count
+        $cartCount = 0;
+        if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
+            $cartCount = getUserCartCount($mysqli, (int)$_SESSION['user_id']);
+        } else {
+            $cartCount = getGuestCartCount();
+        }
+        
+        echo json_encode([
+            'status' => $success ? 'ok' : 'error', 
+            'message' => $message,
+            'cartCount' => $cartCount
+        ]);
+        exit;
+    }
+    if ($success) {
+        $_SESSION['cart_success'] = $message;
+    } else {
+        $_SESSION['cart_error'] = $message;
+    }
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
+    exit;
+}
 
+$isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
 $product_id = isset($_GET['id']) && ctype_digit($_GET['id']) ? (int)$_GET['id'] : 0;
 $quantity = isset($_GET['qty']) && ctype_digit($_GET['qty']) ? (int)$_GET['qty'] : 1;
 
 if ($product_id <= 0) {
-    header('Location: index.php');
-    exit;
+    respond(false, 'Invalid product.');
 }
 
 if ($isLoggedIn) {
@@ -29,9 +57,7 @@ $product = $result->fetch_assoc();
 $stmt->close();
 
 if (!$product) {
-    $_SESSION['cart_error'] = 'Product not found.';
-    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
-    exit;
+    respond(false, 'Product not found.');
 }
 
 // Get total available quantity and lowest price from all fabrics
@@ -43,24 +69,18 @@ $fabricData = $result->fetch_assoc();
 $stmt->close();
 
 if (!$fabricData || $fabricData['total_qty'] <= 0) {
-    $_SESSION['cart_error'] = 'Product is out of stock.';
-    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
-    exit;
+    respond(false, 'Product is out of stock.');
 }
 
 $total_available = (int)$fabricData['total_qty'];
 $price = (float)$fabricData['min_price'];
 
-// Check if total quantity requested is available
 if ($total_available < $quantity) {
-    $_SESSION['cart_error'] = 'Insufficient stock. Available: ' . $total_available . ' units.';
-    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
-    exit;
+    respond(false, 'Insufficient stock. Available: ' . $total_available . ' units.');
 }
 
 if ($isLoggedIn) {
     // Logged in user - use database
-    // Check if item already in cart
     $stmt = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
     $stmt->bind_param("ii", $user_id, $product_id);
     $stmt->execute();
@@ -69,14 +89,9 @@ if ($isLoggedIn) {
     $stmt->close();
 
     if ($existing) {
-        // Update existing cart item
         $new_qty = $existing['quantity'] + $quantity;
-        
-        // Check if new quantity exceeds stock
         if ($new_qty > $total_available) {
-            $_SESSION['cart_error'] = 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).';
-            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
-            exit;
+            respond(false, 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).');
         }
         
         $stmt = $mysqli->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?");
@@ -84,7 +99,6 @@ if ($isLoggedIn) {
         $stmt->execute();
         $stmt->close();
     } else {
-        // Insert new cart item
         $stmt = $mysqli->prepare("INSERT INTO cart (user_id, product_id, quantity, price, created_at) VALUES (?, ?, ?, ?, NOW())");
         $stmt->bind_param("iiid", $user_id, $product_id, $quantity, $price);
         $stmt->execute();
@@ -95,24 +109,15 @@ if ($isLoggedIn) {
     $guestCart = getGuestCart();
     
     if (isset($guestCart[$product_id])) {
-        // Update existing cart item
         $new_qty = $guestCart[$product_id]['quantity'] + $quantity;
-        
-        // Check if new quantity exceeds stock
         if ($new_qty > $total_available) {
-            $_SESSION['cart_error'] = 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).';
-            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
-            exit;
+            respond(false, 'Cannot add more. Total would exceed available stock (' . $total_available . ' units).');
         }
-        
         updateGuestCartQty($product_id, $new_qty);
     } else {
-        // Add new cart item
         addToGuestCart($product_id, $quantity, $price);
     }
 }
 
-$_SESSION['cart_success'] = 'Item added to cart successfully!';
-header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'cart.php'));
-exit;
+respond(true, 'Item added to cart successfully!');
 ?>

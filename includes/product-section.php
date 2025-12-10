@@ -126,7 +126,7 @@ function renderProductSection($options) {
   </div>
 
   <div class="view-all-container">
-    <a href="<?php echo htmlspecialchars($viewAllLink); ?>" class="btn-view-all">View All</a>
+    <a href="<?php echo htmlspecialchars($viewAllLink); ?>" class="btn-view-all" target="_blank">View All</a>
   </div>
 </div>
 
