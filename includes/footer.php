@@ -22,7 +22,7 @@
             +94 77 123 4567
           </p>
           <p class="contact-item">
-            <i class="bi bi-envelope-fill"></i>
+            <i class = "bi bi-envelope-fill"></i>
             support@ceylonfashion.lk
           </p>
         </div>
@@ -54,10 +54,11 @@
       <!-- Newsletter Section -->
       <div class="footer-column newsletter-column">
         <h5 class="footer-heading">SUBSCRIBE TO NEWSLETTER</h5>
-        <form class="newsletter-form">
-          <input type="email" class="newsletter-input" placeholder="Enter your email" required>
+        <form class="newsletter-form" id="newsletterForm" novalidate>
+          <input type="text" class="newsletter-input" id="newsletterInput" placeholder="Enter your email" required>
           <button type="submit" class="newsletter-btn">Subscribe</button>
         </form>
+        <div id="newsletterMessage" style="margin-top: 10px; font-size: 14px; font-weight: 600; min-height: 20px;"></div>
       </div>
 
     </div>
@@ -163,7 +164,7 @@
   .newsletter-form {
     display: flex;
     gap: 10px;
-    margin-top: 15px;
+    align-items: stretch; /* FIX: ensures same height */
   }
 
   .newsletter-input {
@@ -186,7 +187,8 @@
   }
 
   .newsletter-btn {
-    padding: 14px 30px;
+    height: 100%; /* FIX: match height */
+    padding: 8px 20px; /* FIX: remove vertical padding */
     background: #7c3aed;
     color: #fff;
     border: none;
@@ -251,6 +253,8 @@
 
     .newsletter-btn {
       width: 100%;
+      height: auto;
+      padding: 14px 20px;
     }
 
     .contact-item {
@@ -264,5 +268,53 @@
   }
 </style>
 
-<!-- Bootstrap Icons (if not already included) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('newsletterForm');
+    const input = document.getElementById('newsletterInput');
+    const messageDiv = document.getElementById('newsletterMessage');
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = input.value;
+            messageDiv.textContent = '';
+            messageDiv.style.color = 'inherit';
+
+            // 1. No Leading/Trailing Whitespace
+            // The requirement says "The entire string should not have spaces at the beginning or end."
+            if (email.startsWith(' ') || email.endsWith(' ')) {
+                messageDiv.textContent = 'Email should not have spaces at the beginning or end.';
+                messageDiv.style.color = '#dc3545'; // Red
+                return;
+            }
+
+            // 2. Presence of @ Symbol (Exactly one)
+            const atMatch = email.match(/@/g);
+            if (!atMatch || atMatch.length !== 1) {
+                messageDiv.textContent = 'Email must contain exactly one @ symbol.';
+                messageDiv.style.color = '#dc3545';
+                return;
+            }
+
+            // 3. Presence of Dot (.) in the domain part
+            const parts = email.split('@');
+            const domain = parts[1];
+            // Check if domain exists and has a dot
+            if (!domain || domain.indexOf('.') === -1) {
+                messageDiv.textContent = 'Email domain must contain at least one dot (.).';
+                messageDiv.style.color = '#dc3545';
+                return;
+            }
+
+            // If we get here, it's valid according to the specific rules
+            messageDiv.textContent = 'Thanks for subscribing Ceylon Fashion Newsletter';
+            messageDiv.style.color = '#198754'; // Green
+            input.value = '';
+        });
+    }
+});
+</script>
