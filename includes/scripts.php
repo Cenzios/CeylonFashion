@@ -267,5 +267,38 @@
         <?php endif; ?>
       });
     });
+    // ============================================
+    // URL PARAMETER HANDLING (Registration Status)
+    // ============================================
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (urlParams.has('register_error')) {
+      const error = urlParams.get('register_error');
+      const registerSidebarEl = document.getElementById('registerSidebar');
+      if (registerSidebarEl) {
+        const registerSidebar = new bootstrap.Offcanvas(registerSidebarEl);
+        registerSidebar.show();
+        
+        if (error === 'email_exists') {
+          showMessage('registerMessage', 'Email already registered! Please login or use another email.', 'error');
+        } else {
+          showMessage('registerMessage', 'Registration failed. Please try again.', 'error');
+        }
+      }
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    if (urlParams.has('register_success')) {
+      const loginSidebarEl = document.getElementById('loginSidebar');
+      if (loginSidebarEl) {
+        const loginSidebar = new bootstrap.Offcanvas(loginSidebarEl);
+        loginSidebar.show();
+        showMessage('loginMessage', 'Registration successful! Please login.', 'success');
+      }
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
   });
 </script>
