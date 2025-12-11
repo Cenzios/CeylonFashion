@@ -1,4 +1,5 @@
 <?php
+session_name('ADMIN_SESSION');
 session_start();
 // Include config from parent directory
 require_once '../config.php';

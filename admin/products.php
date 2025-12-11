@@ -1,6 +1,6 @@
 <?php
 // admin/products.php
-if (session_id() == '' || !isset($_SESSION)) { session_start(); }
+if (session_id() == '' || !isset($_SESSION)) { session_name('ADMIN_SESSION'); session_start(); }
 include_once '../config.php'; // ensure this defines $mysqli
 
 // ---- Auth / admin check ----
@@ -62,7 +62,7 @@ $fallback = '../assets/no-image.png';
     <a href="users.php">👥 Users</a>
     <a href="reports.php">📊 Reports</a>
     <hr style="border-color: rgba(255,255,255,.06)">
-    <a href="../logout.php" class="text-danger">🚪 Logout</a>
+    <a href="logout.php" class="text-danger">🚪 Logout</a>
   </div>
 
   <!-- Main Section -->

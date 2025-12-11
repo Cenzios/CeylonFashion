@@ -1,6 +1,6 @@
 <?php
 // admin/download-all-reports-pdf.php
-if (session_id() == '' || !isset($_SESSION)) { session_start(); }
+if (session_id() == '' || !isset($_SESSION)) { session_name('ADMIN_SESSION'); session_start(); }
 include_once '../config.php'; // adjust path if necessary
 
 // Access control: only admin

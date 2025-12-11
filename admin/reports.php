@@ -1,6 +1,6 @@
 <?php
 // admin/download-all-reports.php
-if (session_id() == '' || !isset($_SESSION)) { session_start(); }
+if (session_id() == '' || !isset($_SESSION)) { session_name('ADMIN_SESSION'); session_start(); }
 include_once '../config.php';
 
 $isAdmin = isset($_SESSION['type']) && $_SESSION['type'] === 'admin';
@@ -270,7 +270,7 @@ tr:nth-child(even) {
   <a href="users.php">👥 Users</a>
   <a href="reports.php" class="active">📊 Reports</a>
   <hr style="border-color: rgba(255,255,255,.06)">
-  <a href="../logout.php" class="text-danger">🚪 Logout</a>
+  <a href="logout.php" class="text-danger">🚪 Logout</a>
 </div>
 
 <!-- Main Content -->

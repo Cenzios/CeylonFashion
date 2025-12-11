@@ -1,4 +1,5 @@
 <?php
+session_name('ADMIN_SESSION');
 session_start();
 
 // ---- Redirect if not logged in or not admin ----
@@ -102,7 +103,7 @@ body {
   <a href="users.php">👥 Users</a>
   <a href="reports.php">📊 Reports</a>
   <hr style="border-color: rgba(255,255,255,.06)">
-  <a href="../logout.php" class="text-danger">🚪 Logout</a>
+  <a href="logout.php" class="text-danger">🚪 Logout</a>
 </div>
 
 <main class="main">

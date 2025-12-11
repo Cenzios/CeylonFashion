@@ -1,4 +1,5 @@
 <?php
+session_name('ADMIN_SESSION');
 session_start();
 
 // ---- Redirect if not logged in or not admin ----
@@ -132,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <a href="orders.php">🧾 Orders</a>
     <a href="users.php">👥 Users</a>
     <hr class="text-secondary">
-    <a href="../logout.php" class="text-danger">🚪 Logout</a>
+    <a href="logout.php" class="text-danger">🚪 Logout</a>
   </div>
 
 <!-- Main Content -->
