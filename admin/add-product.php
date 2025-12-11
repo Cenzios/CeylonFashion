@@ -40,7 +40,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $product_code = trim($_POST['product_code']);
   $product_name = trim($_POST['product_name']);
   $product_desc = trim($_POST['product_desc']);
-  $category = $_POST['category'];
+  $category = $_POST['category'] ?? '';
+
+  // Validation
+  if (empty($product_code) || empty($product_name) || empty($product_desc) || empty($category)) {
+      $error = "❌ All fields (Code, Name, Description, Category) are required.";
+  } else {
+      // Check for duplicate product code
+      $stmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE product_code = ?");
+      $stmt->execute([$product_code]);
+      if ($stmt->fetchColumn() > 0) {
+          $error = "❌ Product Code '$product_code' already exists. Please use a unique code.";
+      }
+  }
+
+  if (!$error) {
 
   // Handle image uploads (4 images)
   $image_fields = ['product_img1', 'product_img2', 'product_img3', 'product_img4'];
@@ -101,7 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
   } catch (Throwable $e) {
     $error = "❌ Database error: " . $e->getMessage();
-  }
+    }
+}
 }
 ?>
 
