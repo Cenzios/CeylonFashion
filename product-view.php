@@ -1477,6 +1477,9 @@ async function processPayment() {
 }
 </script>
 
+<?php include 'includes/login-sidebar.php'; ?>
+<?php include 'includes/register-sidebar.php'; ?>
+
 <?php include 'includes/scripts.php'; ?>
 
 </body>
