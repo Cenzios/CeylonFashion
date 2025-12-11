@@ -135,11 +135,11 @@ $stmt->close();
                     <?php echo ucfirst($user['type']); ?>
                 </span>
             </div>
-            <div class="profile-actions">
+            <!-- <div class="profile-actions">
                 <a href="logout.php" class="btn btn-outline-danger">
                     <i class="bi bi-box-arrow-right"></i> Logout
                 </a>
-            </div>
+            </div> -->
         </div>
 
         <!-- Navigation Tabs -->
@@ -293,7 +293,7 @@ $stmt->close();
                             <div>
                                 <h6 class="mb-1">Account Details</h6>
                                 <p class="mb-0 text-muted">
-                                    Member since: <strong><?php echo date('F j, Y', strtotime($user['created'])); ?></strong>
+                                    Registered date: <strong><?php echo date('F j, Y', strtotime($user['created'])); ?></strong>
                                 </p>
                                 <p class="mb-0 text-muted">
                                     Account Type: <strong><?php echo ucfirst($user['type']); ?></strong>
