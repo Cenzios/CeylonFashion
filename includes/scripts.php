@@ -118,6 +118,11 @@
         body.set('username', email);
         body.set('pwd', pwd);
         body.set('csrf_token', getCsrf());
+        
+        const redirectInput = document.getElementById('loginRedirectUrl');
+        if (redirectInput && redirectInput.value) {
+          body.set('redirect_url', redirectInput.value);
+        }
 
         try {
           const res = await fetch('verify.php', {
@@ -193,11 +198,15 @@
     const startResellingBtn = document.getElementById('startResellingBtn');
     if (startResellingBtn) {
       startResellingBtn.addEventListener('click', function(e) {
-        e.preventDefault();
         <?php if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])): ?>
+          e.preventDefault();
+          const redirectInput = document.getElementById('loginRedirectUrl');
+          if (redirectInput) {
+            redirectInput.value = 'start-reselling.php';
+          }
           if (loginOffcanvas) loginOffcanvas.show();
         <?php else: ?>
-          window.location.href = 'start-reselling.php';
+          // Allow default navigation
         <?php endif; ?>
       });
     }
