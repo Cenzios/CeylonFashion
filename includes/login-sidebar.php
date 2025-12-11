@@ -8,6 +8,7 @@
     <div id="loginMessage" style="display:none; padding:10px; border-radius:6px; margin-bottom:15px;"></div>
 
     <form id="offcanvasLoginForm">
+      <input type="hidden" name="redirect_url" id="loginRedirectUrl" value="">
       <div class="mb-3">
         <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
         <input 
