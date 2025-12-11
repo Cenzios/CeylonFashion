@@ -103,8 +103,11 @@ if ($passwordMatch) {
   $_SESSION['name']     = trim(($user['fname'] ?? '') . ' ' . ($user['lname'] ?? ''));
   $_SESSION['type']     = $user['type'] ?? 'user';
 
-  // Regular users are redirected to index page
-  $redirectUrl = 'index.php';
+  // Regular users are redirected to index page or the requested redirect URL
+  $redirectUrl = $_POST['redirect_url'] ?? 'index.php';
+  if (empty($redirectUrl)) {
+    $redirectUrl = 'index.php';
+  }
 
   if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
     json_response(true, 'Login successful', $redirectUrl);
