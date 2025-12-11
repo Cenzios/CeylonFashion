@@ -318,3 +318,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<?php include 'login-sidebar.php'; ?>
