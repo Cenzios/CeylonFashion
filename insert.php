@@ -11,10 +11,9 @@ $email = $_POST["email"];
 $pwd = $_POST["pwd"];
 
 if($mysqli->query("INSERT INTO users (fname, lname, address, city, pin, email, password) VALUES('$fname', '$lname', '$address', '$city', $pin, '$email', '$pwd')")){
-	echo 'Data inserted';
-	echo '<br/>';
+	// Success
 }
 
-header ("location:login.php");
+header ("location:index.php");
 
 ?>
