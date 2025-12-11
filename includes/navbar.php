@@ -14,12 +14,10 @@
         <a class="nav-link" href="index.php#partyWearSection">Party Wear</a>
         <a class="nav-link" href="index.php#usedCollectionSection">Used Collection</a>
         
-        <!-- Start Reselling Button - Show only when logged in -->
-        <?php if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])): ?>
-          <div class="text-center">
-            <a href="start-reselling.php" class="btn btn-primary">Start Reselling</a>
-          </div>
-        <?php endif; ?>
+        <!-- Start Reselling Button - Visible to all -->
+        <div class="text-center">
+          <a href="start-reselling.php" class="btn btn-primary" id="startResellingBtn">Start Reselling</a>
+        </div>
       </div>
       <div class="icons" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; gap: 15px; align-items: center; font-size: 32px; color: white; z-index: 1040;">
         
