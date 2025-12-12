@@ -28,6 +28,9 @@ $stmt->close();
 
 <div class="container my-5">
     <h2>My Orders</h2>
+    <div class="alert alert-info">
+      Logged in as: <strong><?= htmlspecialchars($username); ?></strong>
+    </div>
     
     <?php if (empty($orders)): ?>
         <p>No orders yet.</p>
