@@ -29,7 +29,7 @@
               <li><a class="dropdown-item" href="account.php"><i class="bi bi-person"></i> Profile</a></li>
               <li><a class="dropdown-item" href="orders.php"><i class="bi bi-box-seam"></i> My Orders</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+              <li><a class="dropdown-item" href="logout.php" onclick="return confirm('Are you sure you want to logout?');"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
             </ul>
           </div>
           

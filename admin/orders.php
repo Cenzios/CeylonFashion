@@ -180,7 +180,7 @@ body {
   <a href="users.php">👥 Users</a>
   <a href="reports.php">📊 Reports</a>
   <hr style="border-color: rgba(255,255,255,.06)">
-  <a href="logout.php" class="text-danger">🚪 Logout</a>
+  <a href="logout.php" class="text-danger" onclick="return confirm('Are you sure you want to logout?');">🚪 Logout</a>
 </div>
 
 <main class="main">

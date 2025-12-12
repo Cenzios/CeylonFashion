@@ -148,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <a href="orders.php">🧾 Orders</a>
     <a href="users.php">👥 Users</a>
     <hr class="text-secondary">
-    <a href="logout.php" class="text-danger">🚪 Logout</a>
+    <a href="logout.php" class="text-danger" onclick="return confirm('Are you sure you want to logout?');">🚪 Logout</a>
   </div>
 
 <!-- Main Content -->
