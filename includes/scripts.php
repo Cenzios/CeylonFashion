@@ -48,6 +48,109 @@
   }
 
   // ============================================
+  // GLOBAL SHOPPING FUNCTIONS
+  // ============================================
+
+  function updateBadge(id, count) {
+    let badge = document.getElementById(id);
+    if (!badge) {
+      // Create badge if it doesn't exist
+      const icon = id === 'cartBadge' ? document.getElementById('cartIcon') : document.getElementById('wishlistIcon');
+      if (icon && icon.parentElement) {
+        badge = document.createElement('span');
+        badge.id = id;
+        badge.className = 'badge bg-danger';
+        badge.style.position = 'absolute';
+        badge.style.top = '-8px';
+        badge.style.right = '-8px';
+        badge.style.fontSize = '10px';
+        badge.style.padding = '2px 5px';
+        icon.parentElement.appendChild(badge);
+      }
+    }
+    if (badge) {
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+
+  function toggleWishlist(productId) {
+    const btn = event.currentTarget || document.getElementById('wishlistBtn');
+    if (!btn) return;
+    
+    fetch('wishlist-toggle.php?id=' + productId)
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          btn.classList.toggle('active');
+          // For product cards
+          if (btn.classList.contains('wishlist-btn')) {
+             if (btn.classList.contains('active')) {
+               btn.setAttribute('title', 'Remove from Wishlist');
+             } else {
+               btn.setAttribute('title', 'Add to Wishlist');
+             }
+          } 
+          // For single product page button (if it uses a different class or ID)
+          // The CSS/Icon toggle logic might differ slightly, but the backend is the same.
+          
+          if (data.wishlistCount !== undefined) {
+             updateBadge('wishlistBadge', data.wishlistCount);
+          }
+        } else {
+          // If product not found or error
+          console.error(data.message); 
+        }
+      })
+      .catch(err => console.error(err));
+  }
+
+  function quickView(productId) {
+    $('#quickViewModal').foundation('reveal', 'open');
+    $('#quickViewContent').html('<div class="text-center" style="padding:50px;">Loading...</div>');
+    
+    $.get('product-quick-view.php?id=' + productId)
+      .done(function(data) {
+        if (!data || data.trim() === '') {
+           $('#quickViewContent').html('<div class="alert-box alert">Error: Empty response from server. Please check logs.</div>');
+        } else {
+           $('#quickViewContent').html(data);
+        }
+      })
+      .fail(function(jqXHR, textStatus, errorThrown) {
+        console.error('Quick View Error:', textStatus, errorThrown);
+        $('#quickViewContent').html('<div class="alert-box alert">Error loading quick view: ' + textStatus + '</div>');
+      });
+  }
+
+  function quickAddToCart(productId) {
+    fetch('cart-add.php?id=' + productId + '&qty=1&ajax=1')
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          // Optional: Show a toast or small alert
+          // alert(data.message); 
+           // Or use showMessage if available in this scope
+           if (typeof showMessage === 'function') {
+               // We need a container for generic messages or reuse loginMessage
+               // showMessage('loginMessage', data.message, 'success');
+           }
+          
+          if (data.cartCount !== undefined) {
+            updateBadge('cartBadge', data.cartCount);
+          }
+        } else {
+          alert(data.message || 'Failed to add to cart.');
+        }
+      })
+      .catch(err => console.error(err));
+  }
+
+  // ============================================
   // GLOBAL LOGIN REQUIREMENT FUNCTION
   // ============================================
   function requireLogin(event, action) {

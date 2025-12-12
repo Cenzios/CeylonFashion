@@ -212,6 +212,7 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
 
 <?php include 'includes/navbar.php'; ?>
 <script type="text/javascript" src="https://www.payhere.lk/lib/payhere.js"></script>
+<?php include 'includes/scripts.php'; ?>
 
 <div class="product-container">
   <div class="product-top">
