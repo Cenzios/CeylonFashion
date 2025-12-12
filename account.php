@@ -131,9 +131,9 @@ $stmt->close();
             <div class="profile-info">
                 <h2><?php echo htmlspecialchars($user['fname'] . ' ' . $user['lname']); ?></h2>
                 <p class="text-muted"><?php echo htmlspecialchars($user['email']); ?></p>
-                <span class="badge bg-primary">
+                <!-- <span class="badge bg-primary">
                     <?php echo ucfirst($user['type']); ?>
-                </span>
+                </span> -->
             </div>
             <!-- <div class="profile-actions">
                 <a href="logout.php" class="btn btn-outline-danger">
