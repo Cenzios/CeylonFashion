@@ -103,22 +103,26 @@ $result = $stmt->get_result();
 
                             $minPriceDisplay = $product['min_price'] ?? null;
                         ?>
-                            <!-- Product Card -->
                             <div class="product-card">
                                 <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
                                     <div class="product-image">
                                         <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
                                     </div>
-                                    
-                                    <div class="product-info">
-                                        <h3 class="product-name"><?php echo $pname; ?></h3>
-                                        <?php if ($minPriceDisplay !== null): ?>
-                                            <p class="product-price">Rs : <?php echo number_format($minPriceDisplay, 2); ?></p>
-                                        <?php else: ?>
-                                            <p class="product-price">Price unavailable</p>
-                                        <?php endif; ?>
-                                    </div>
                                 </a>
+                                    
+                                <div class="product-info">
+                                    <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
+                                        <h3 class="product-name"><?php echo $pname; ?></h3>
+                                    </a>
+                                    <?php if ($minPriceDisplay !== null): ?>
+                                        <p class="product-price">Rs : <?php echo number_format($minPriceDisplay, 2); ?></p>
+                                    <?php else: ?>
+                                        <p class="product-price">Price unavailable</p>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="card-footer" style="padding: 0 20px 20px 20px;">
+                                    <button class="btn-quick-add" onclick="quickView(<?php echo $productId; ?>)">QUICK ADD</button>
+                                </div>
                             </div>
                         <?php endwhile; ?>
                     </div>
@@ -186,6 +190,30 @@ $result = $stmt->get_result();
     }
     @media (max-width: 640px) {
         .products-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+        .products-grid { grid-template-columns: 1fr; }
+    }
+
+    .btn-quick-add {
+        width: 100%;
+        padding: 12px 20px;
+        background: #fff;
+        color: #1a1a5e;
+        border: 2px solid #1a1a5e;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        margin-top: 10px;
+    }
+
+    .btn-quick-add:hover {
+        background: #1a1a5e;
+        color: #fff;
     }
 </style>
 
