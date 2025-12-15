@@ -109,7 +109,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       }
 
-      $success = "✅ Product added successfully with all images and fabric details!";
+      // Insert product colors
+      if (isset($_POST['product_colors'])) {
+          $stmtColor = $pdo->prepare("INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?, ?, ?)");
+          foreach ($_POST['product_colors'] as $colorData) {
+              list($cName, $cCode) = explode('|', $colorData);
+              $stmtColor->execute([$product_id, $cName, $cCode]);
+          }
+      }
+
+      $success = "✅ Product added successfully with all details!";
     } else {
       $error = "❌ Failed to add product.";
     }
@@ -128,31 +137,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Add Product - Admin Panel</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background-color: #f5f6fa; font-family: 'Poppins', sans-serif; }
-    .sidebar { width: 240px; height: 100vh; position: fixed; top: 0; left: 0; background: #343a40; color: white; padding-top: 20px; }
-    .sidebar a { display: block; padding: 12px 20px; color: #ccc; text-decoration: none; transition: 0.3s; }
-    .sidebar a:hover { background: #495057; color: #fff; }
-    .sidebar .active { background: #007bff; color: white; }
-    .main-content { margin-left: 240px; padding: 40px; }
+    body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+    .sidebar { width: 240px; position: fixed; left:0; top:0; bottom:0; background:#430160ff; color:#fff; padding-top:20px; }
+    .sidebar a { display:block; padding:12px 18px; color:#cfd8dc; text-decoration:none; }
+    .sidebar a.active { background:#007bff; color:#fff; }
+    .sidebar a:hover { background: #5a1b88; color: #fff; }
+    .main { margin-left:240px; padding:28px; min-height:100vh; }
     .form-container { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }
     .fabric-table input { width: 100%; }
+    
+    /* Color Select Styles */
+    .color-option {
+      display: inline-block;
+      margin-right: 15px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      position: relative;
+    }
+    .color-option input {
+      display: none;
+    }
+    .color-circle {
+      display: inline-block;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      border: 2px solid #ddd;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .color-option input:checked + .color-circle {
+      transform: scale(1.1);
+      border: 3px solid #000;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+    .color-label {
+      display: block;
+      text-align: center;
+      font-size: 12px;
+      margin-top: 5px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
 
   <!-- Sidebar -->
   <div class="sidebar">
-    <h4 class="text-center text-light mb-4">Admin Panel</h4>
+    <h4 class="text-center mb-3">Ceylon Fashion</h4>
     <a href="dashboard.php">🏠 Dashboard</a>
     <a href="products.php" class="active">📦 Products</a>
     <a href="orders.php">🧾 Orders</a>
     <a href="users.php">👥 Users</a>
-    <hr class="text-secondary">
+    <a href="reports.php">📊 Reports</a>
+    <hr style="border-color: rgba(255,255,255,.06)">
     <a href="logout.php" class="text-danger" onclick="return confirm('Are you sure you want to logout?');">🚪 Logout</a>
   </div>
 
 <!-- Main Content -->
-<div class="main-content">
+<main class="main">
   <div class="container-fluid">
 
     <h2 class="fw-bold mb-3">Add New Product</h2>
@@ -246,13 +289,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       </div>
 
+      <!-- 🎨 Product Colors Section -->
+      <div class="mb-4">
+        <h5 class="fw-bold mb-3 text-primary">Available Colors</h5>
+        <p class="text-muted small">Select the colors available for this product.</p>
+        <div class="d-flex flex-wrap">
+          <?php
+          $colors = [
+            ['name' => 'Red', 'code' => '#ff0000'],
+            ['name' => 'Blue', 'code' => '#0000ff'],
+            ['name' => 'Green', 'code' => '#008000'],
+            ['name' => 'Yellow', 'code' => '#ffff00'],
+            ['name' => 'Black', 'code' => '#000000'],
+            ['name' => 'White', 'code' => '#ffffff'],
+            ['name' => 'Purple', 'code' => '#800080'],
+            ['name' => 'Pink', 'code' => '#ffc0cb'],
+            ['name' => 'Orange', 'code' => '#ffa500'],
+            ['name' => 'Grey', 'code' => '#808080'],
+          ];
+          foreach ($colors as $color): 
+          ?>
+            <label class="color-option">
+              <input type="checkbox" name="product_colors[]" value="<?= $color['name'] . '|' . $color['code'] ?>">
+              <span class="color-circle" style="background-color: <?= $color['code'] ?>;"></span>
+              <span class="color-label"><?= $color['name'] ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
       <div class="text-center">
         <button type="submit" class="btn btn-primary px-4">Add Product</button>
         <a href="products.php" class="btn btn-outline-secondary ms-2">Cancel</a>
       </div>
     </form>
   </div>
-</div>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
