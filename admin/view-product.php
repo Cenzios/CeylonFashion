@@ -41,6 +41,17 @@ while ($f = $fabricResult->fetch_assoc()) {
 }
 $fabricStmt->close();
 
+// ---- Fetch colors for this product ----
+$colorStmt = $mysqli->prepare("SELECT color_name, color_code FROM product_colors WHERE product_id = ?");
+$colorStmt->bind_param("i", $pid);
+$colorStmt->execute();
+$colorResult = $colorStmt->get_result();
+$colors = [];
+while ($c = $colorResult->fetch_assoc()) {
+    $colors[] = $c;
+}
+$colorStmt->close();
+
 // Prepare images
 $fallback = '../assets/no-image.png';
 $images = [];
@@ -71,9 +82,42 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
 .sidebar { width: 240px; position: fixed; left:0; top:0; bottom:0; background:#430160ff; color:#fff; padding-top:20px; }
 .sidebar a { display:block; padding:12px 18px; color:#cfd8dc; text-decoration:none; }
 .sidebar a.active { background:#007bff; color:#fff; }
+.sidebar a:hover { background: #5a1b88; color: #fff; }
 .main { margin-left:240px; padding:28px; min-height:100vh; }
 .product-img { width: 100%; height: 250px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; }
 .label { font-weight: 600; color: #555; }
+
+/* Color Display Styles */
+.color-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+.color-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #f8f9fa;
+    border-radius: 20px;
+    border: 1px solid #dee2e6;
+}
+.color-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #dee2e6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.color-dot.white {
+    border-color: #adb5bd;
+}
+.color-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #495057;
+}
 </style>
 </head>
 <body>
@@ -116,6 +160,25 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
                             ?>
                         </div>
                     </div>
+
+                    <!-- Available Colors -->
+                    <?php if (!empty($colors)): ?>
+                    <div class="row mb-3">
+                        <div class="col-md-3 label">Available Colors:</div>
+                        <div class="col-md-9">
+                            <div class="color-display">
+                                <?php foreach ($colors as $color): ?>
+                                    <div class="color-item">
+                                        <div class="color-dot <?php echo strtolower($color['color_name']) === 'white' ? 'white' : ''; ?>" 
+                                             style="background-color: <?php echo htmlspecialchars($color['color_code']); ?>;">
+                                        </div>
+                                        <span class="color-name"><?php echo htmlspecialchars($color['color_name']); ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="row mb-4">
                         <div class="col-md-3 label">Description:</div>
