@@ -70,6 +70,12 @@
   </div>
 </footer>
 
+<!-- Quick View Modal Container (Foundation Reveal) -->
+<div id="quickViewModal" class="reveal-modal" data-reveal aria-labelledby="modalTitle" aria-hidden="true" role="dialog">
+  <div id="quickViewContent"></div>
+</div>
+
+
 <style>
   .custom-footer {
     background-color: #e8e8e8;
