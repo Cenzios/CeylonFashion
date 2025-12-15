@@ -72,12 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Add User - Admin Panel</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background-color: #f5f6fa; font-family: 'Poppins', sans-serif; }
-    .sidebar { width: 240px; height: 100vh; position: fixed; top: 0; left: 0; background: #343a40; color: white; padding-top: 20px; }
-    .sidebar a { display: block; padding: 12px 20px; color: #ccc; text-decoration: none; transition: 0.3s; }
-    .sidebar a:hover { background: #495057; color: #fff; }
-    .sidebar .active { background: #007bff; color: white; }
-    .main-content { margin-left: 240px; padding: 40px; }
+    body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+    .sidebar { width: 240px; position: fixed; left:0; top:0; bottom:0; background:#430160ff; color:#fff; padding-top:20px; }
+    .sidebar a { display:block; padding:12px 18px; color:#cfd8dc; text-decoration:none; }
+    .sidebar a.active { background:#007bff; color:#fff; }
+    .sidebar a:hover { background: #5a1b88; color: #fff; }
+    .main { margin-left:240px; padding:28px; min-height:100vh; }
     .form-container { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); max-width: 700px; margin: auto; }
   </style>
 </head>
@@ -85,17 +85,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <!-- Sidebar -->
   <div class="sidebar">
-    <h4 class="text-center text-light mb-4">Admin Panel</h4>
+    <h4 class="text-center mb-3">Ceylon Fashion</h4>
     <a href="dashboard.php">🏠 Dashboard</a>
     <a href="products.php">📦 Products</a>
     <a href="orders.php">🧾 Orders</a>
     <a href="users.php" class="active">👥 Users</a>
-    <hr class="text-secondary">
+    <a href="reports.php">📊 Reports</a>
+    <hr style="border-color: rgba(255,255,255,.06)">
     <a href="logout.php" class="text-danger" onclick="return confirm('Are you sure you want to logout?');">🚪 Logout</a>
   </div>
 
   <!-- Main Content -->
-  <div class="main-content">
+  <main class="main">
     <div class="container-fluid">
       <h2 class="fw-bold mb-3">Add New User</h2>
       <p class="text-muted mb-4">Fill out the form below to add a new user to your system.</p>
@@ -152,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       </form>
     </div>
-  </div>
+  </main>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
