@@ -112,7 +112,7 @@ function renderProductSection($options) {
 
           <!-- Quick Add Button -->
           <div class="card-footer">
-            <button class="btn-quick-add" onclick="quickAddToCart(<?php echo $productId; ?>)">QUICK ADD</button>
+            <button class="btn-quick-add" onclick="quickView(<?php echo $productId; ?>)">QUICK ADD</button>
           </div>
         </div>
       <?php endwhile; ?>
@@ -121,9 +121,7 @@ function renderProductSection($options) {
     <?php endif; ?>
   </div>
 
-  <div id="quickViewModal" class="reveal-modal" data-reveal aria-labelledby="modalTitle" aria-hidden="true" role="dialog">
-    <div id="quickViewContent"></div>
-  </div>
+
 
   <div class="view-all-container">
     <a href="<?php echo htmlspecialchars($viewAllLink); ?>" class="btn-view-all" target="_blank">View All</a>
