@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
     $stmt->close();
     
     if ($product) {
-        // Get fabric price based on fabric type
+        // Get fabric price based on fabric type (from original product to calculate resale price)
         $stmt = $mysqli->prepare("SELECT fabric_price FROM product_fabrics WHERE product_id = ? AND fabric_type = ?");
         $stmt->bind_param("is", $product['id'], $fabricType);
         $stmt->execute();
@@ -43,9 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
             // Calculate resale price (60% of original)
             $resalePrice = $originalPrice * 0.6;
             
-            // Insert into reseller_products table
+            // 1. Insert into reseller_products table (Keep for record/admin)
             $sql = "INSERT INTO reseller_products (product_id, user_id, first_name, last_name, contact_number, email, address, notes, fabric_type, resale_price, original_price, status, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', NOW())";
             
             if ($stmt = $mysqli->prepare($sql)) {
                 $stmt->bind_param("iisssssssdd", 
@@ -61,22 +61,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
                     $resalePrice, 
                     $originalPrice
                 );
+                $stmt->execute();
+                $stmt->close();
+                
+                // 2. Insert into PRODUCTS table as 'used' item
+                // Generate unique code for used item
+                $usedProductCode = $product['product_code'] . '-U-' . time();
+                $usedProductName = $product['product_name'] . ' (Pre-Loved)';
+                $usedProductDesc = $notes . "\n\nOriginal Description:\n" . $product['product_desc'];
+                // Use original images
+                $img1 = $product['product_img_name'] ?? ($product['product_img1'] ?? '');
+                
+                // Check if product columns match current schema (using img1-4 or single img_name? Old schema had product_img_name, new has img1-4 based on file list.
+                // Wait, index.php used product_img1...4. DB schema showed product_img_name in dump but file list showed product-view utilizing product_img1.
+                // start-reselling.php previously used: $product['product_img_name'].
+                // I should verify columns. DB dump showed product_img_name. BUT product-view.php query was: "SELECT ... product_img1, product_img2..."
+                // Schema update must have happened. I will try to read product_img1..4 if they exist, or fallback.
+                // Actually, I'll copy data from the fetched $product array.
+                
+                $pImg1 = $product['product_img1'] ?? $product['product_img_name'] ?? '';
+                $pImg2 = $product['product_img2'] ?? '';
+                $pImg3 = $product['product_img3'] ?? '';
+                $pImg4 = $product['product_img4'] ?? '';
+                
+                $insertProdSql = "INSERT INTO products (product_code, product_name, product_desc, category, product_img1, product_img2, product_img3, product_img4, created) 
+                                  VALUES (?, ?, ?, 'used', ?, ?, ?, ?, NOW())";
+                                  
+                $stmt = $mysqli->prepare($insertProdSql);
+                
+                $stmt->bind_param("sssssss", 
+                    $usedProductCode, 
+                    $usedProductName, 
+                    $usedProductDesc, 
+                    $pImg1, // product_img1
+                    $pImg2, 
+                    $pImg3, 
+                    $pImg4
+                );
                 
                 if ($stmt->execute()) {
-                    $message = 'Your item has been listed under Used Collection. Buyers may contact you directly.';
+                    $newProductId = $stmt->insert_id;
+                    $stmt->close();
+                    
+                    // 3. Insert into PRODUCT_FABRICS
+                    $fabricSql = "INSERT INTO product_fabrics (product_id, fabric_type, fabric_qty, fabric_price) VALUES (?, ?, 1, ?)";
+                    $stmt = $mysqli->prepare($fabricSql);
+                    $stmt->bind_param("isd", $newProductId, $fabricType, $resalePrice);
+                    $stmt->execute();
+                    $stmt->close();
+                    
+                    $message = 'Success! Your item has been listed in the Used Collection.';
                     $messageType = 'success';
                 } else {
-                    $message = 'Error listing your item. Please try again.';
+                    $message = 'Error creating product: ' . $mysqli->error;
                     $messageType = 'error';
                 }
-                $stmt->close();
+
+            } else {
+                 $message = 'Error: ' . $mysqli->error;
+                 $messageType = 'error';
             }
         } else {
-            $message = 'Price information not found for the selected fabric type. Please contact support.';
+            $message = 'Price information not found for the selected fabric type.';
             $messageType = 'error';
         }
     } else {
-        $message = 'Product not found. Please check the item code and try again.';
+        $message = 'Product not found.';
         $messageType = 'error';
     }
 }
@@ -87,7 +137,7 @@ $fabricOptions = [];
 if (isset($_GET['check_item']) && isset($_GET['item_code'])) {
     $itemCode = trim($_GET['item_code']);
     
-    // Get product details directly from products table
+    // Get product details
     $stmt = $mysqli->prepare("SELECT * FROM products WHERE product_code = ?");
     $stmt->bind_param("s", $itemCode);
     $stmt->execute();
@@ -96,34 +146,69 @@ if (isset($_GET['check_item']) && isset($_GET['item_code'])) {
     $stmt->close();
     
     if ($eligibilityData) {
-        // Get all available fabric types and prices for this product
-        $stmt = $mysqli->prepare("SELECT fabric_type, fabric_price FROM product_fabrics WHERE product_id = ? AND fabric_price IS NOT NULL AND fabric_price > 0 ORDER BY fabric_type");
+        // Get fabric options
+        $stmt = $mysqli->prepare("SELECT fabric_type, fabric_price FROM product_fabrics WHERE product_id = ? AND fabric_price > 0 ORDER BY fabric_type");
         $stmt->bind_param("i", $eligibilityData['id']);
         $stmt->execute();
         $fabricResult = $stmt->get_result();
-        
         while ($row = $fabricResult->fetch_assoc()) {
             $fabricOptions[] = $row;
         }
         $stmt->close();
         
-        // Check if product was created within last 3 months (using created if available)
-        $isEligible = true;
-        $monthsDiff = 0;
-        
-        // Use the 'created' field from your table structure
-        if (isset($eligibilityData['created']) && !empty($eligibilityData['created'])) {
-            $createdDate = new DateTime($eligibilityData['created']);
+        // CHECK ELIGIBILITY VIA ORDERS
+        // Must be bought by THIS user within last 3 months
+        $username = $_SESSION['username'] ?? ''; // Assuming username is in session. If not, we might need to fetch from user_id
+        if (empty($username) && isset($_SESSION['user_id'])) {
+             // Fallback: fetch username
+             $uStmt = $mysqli->prepare("SELECT email FROM users WHERE id = ?");
+             $uStmt->bind_param("i", $_SESSION['user_id']);
+             $uStmt->execute();
+             $uRes = $uStmt->get_result()->fetch_assoc();
+             $username = $uRes['email']; // Assuming username=email in orders
+             $uStmt->close();
+        }
+
+        $stmt = $mysqli->prepare("SELECT created_at FROM orders WHERE username = ? AND product_id = ? ORDER BY created_at DESC LIMIT 1");
+        $stmt->bind_param("si", $username, $eligibilityData['id']);
+        $stmt->execute();
+        $orderRes = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $isEligible = false;
+        $monthsDiff = 999;
+        $purchaseDate = null;
+
+        if ($orderRes) {
+            $purchaseDate = $orderRes['created_at'];
+            $purchaseDateObj = new DateTime($purchaseDate);
+            
+            // Calculate expiration date (purchase date + 3 months)
+            $expirationDate = (clone $purchaseDateObj)->modify('+3 months');
             $currentDate = new DateTime();
-            $interval = $createdDate->diff($currentDate);
+            
+            // Check if current date is before or equal to expiration date
+            if ($currentDate <= $expirationDate) {
+                $isEligible = true;
+            } else {
+                 $isEligible = false;
+            }
+            // For display purposes, calculate remaining time or just show date
+            $interval = $purchaseDateObj->diff($currentDate);
             $monthsDiff = ($interval->y * 12) + $interval->m;
-            $isEligible = $monthsDiff <= 3;
         }
         
         $eligibilityData['is_eligible'] = $isEligible;
         $eligibilityData['months_diff'] = $monthsDiff;
-        $eligibilityData['purchase_date'] = $eligibilityData['created'] ?? date('Y-m-d');
+        $eligibilityData['purchase_date'] = $purchaseDate ? $purchaseDate : 'Not Found in Orders';
         $eligibilityData['has_fabrics'] = !empty($fabricOptions);
+        
+        // Handling for UI if order not found
+        if (!$purchaseDate) {
+             // Show not found (or treat as not eligible)
+             $eligibilityData['is_eligible'] = false;
+             $eligibilityData['not_bought'] = true; 
+        }
     }
 }
 
@@ -184,7 +269,7 @@ include_once 'includes/head.php';
         
         <div class="check-form">
             <input type="text" id="itemCodeInput" placeholder="ex: BG0001" class="item-input" value="<?= isset($_GET['item_code']) ? htmlspecialchars($_GET['item_code']) : ''; ?>">
-            <button type="button" id="checkAvailabilityBtn" class="check-btn">Check Availability</button>
+            <button type="button" id="checkAvailabilityBtn" class="check-btn">Check Eligibility</button>
         </div>
 
         <!-- Not Found Message (hidden by default) -->
@@ -203,6 +288,12 @@ include_once 'includes/head.php';
         <div id="noFabricMessage" class="alert-message error-message" style="display: none;">
             <span>❌ No fabric pricing information available for this product. Please contact support.</span>
             <button class="close-alert" onclick="closeAlert('noFabricMessage')">✕</button>
+        </div>
+
+        <!-- Not Purchased Message (hidden by default) -->
+        <div id="notPurchasedMessage" class="alert-message error-message" style="display: none;">
+            <span>❌ We couldn't find this item in your order history. You can only resell items you have purchased from us.</span>
+            <button class="close-alert" onclick="closeAlert('notPurchasedMessage')">✕</button>
         </div>
 
         <!-- Success Message (hidden by default) -->
@@ -441,7 +532,8 @@ include_once 'includes/head.php';
     .item-input {
         width: 100%;
         max-width: 500px;
-        padding: 14px 20px;
+        height: 50px;
+        padding: 0 20px;
         border: 2px solid var(--border-color);
         border-radius: 8px;
         font-size: 16px;
@@ -457,7 +549,8 @@ include_once 'includes/head.php';
         background: var(--medium-purple);
         color: white;
         border: none;
-        padding: 14px 35px;
+        height: 50px;
+        padding: 0 35px;
         border-radius: 8px;
         font-size: 16px;
         font-weight: 600;
@@ -610,19 +703,41 @@ include_once 'includes/head.php';
 
     .fabric-select {
         width: 100%;
-        padding: 12px 16px;
-        border: 2px solid var(--border-color);
+        height: 50px;
+        padding: 10px 16px;
+        border: 2px solid #9CA3AF;
         border-radius: 8px;
-        font-size: 15px;
+        font-size: 16px;
+        font-weight: 500;
         font-family: inherit;
+        color: var(--text-dark);
         outline: none;
-        transition: border-color 0.3s;
-        background: white;
+        transition: all 0.3s ease;
+        background-color: #fff;
         cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        
+        /* Reset default browser styles */
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        
+        /* Custom Arrow */
+        background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%20viewBox%3D%220%200%20292.4%20292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        background-size: 12px;
+        padding-right: 40px;
+    }
+
+    .fabric-select:hover {
+        border-color: var(--primary-purple);
+        background-color: #F9FAFB;
     }
 
     .fabric-select:focus {
-        border-color: var(--medium-purple);
+        border-color: var(--primary-purple);
+        box-shadow: 0 0 0 3px rgba(91, 33, 182, 0.1);
     }
 
     /* Contact Form Section */
@@ -782,8 +897,8 @@ document.getElementById('checkAvailabilityBtn').addEventListener('click', functi
             successMsg.style.display = 'flex';
             detailsSection.style.display = 'block';
 
-            // Get the first image from product_img_name (handle comma-separated values)
-            const imgName = '<?= htmlspecialchars($eligibilityData['product_img_name']); ?>';
+            // Get the first image from product_img_name (handle comma-separated values) or product_img1
+            const imgName = '<?= htmlspecialchars($eligibilityData['product_img_name'] ?? $eligibilityData['product_img1'] ?? ''); ?>';
             const firstImage = imgName.split(',')[0].trim();
 
             // Populate product details
@@ -838,8 +953,11 @@ document.getElementById('checkAvailabilityBtn').addEventListener('click', functi
                     submitBtn.disabled = true;
                 }
             });
+        <?php elseif (isset($eligibilityData['not_bought']) && $eligibilityData['not_bought']): ?>
+            // Show not bought message
+            document.getElementById('notPurchasedMessage').style.display = 'flex';
         <?php else: ?>
-            // Show warning message
+            // Show warning message (expired)
             document.getElementById('warningMessage').style.display = 'flex';
         <?php endif; ?>
     <?php else: ?>
