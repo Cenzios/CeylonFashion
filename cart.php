@@ -266,7 +266,7 @@ if ($isLoggedIn) {
         <div class="d-flex gap-2">
           <a href="index.php" class="btn btn-outline-secondary">Continue Shopping</a>
           <?php if ($isLoggedIn): ?>
-            <a href="checkout.php" class="btn btn-success flex-grow-1">Proceed to Checkout</a>
+            <button type="button" class="btn btn-success flex-grow-1" onclick="showCustomerDetailsModal()">Proceed to Checkout</button>
           <?php else: ?>
             <button type="button" class="btn btn-success flex-grow-1" onclick="showLoginModal()">Login to Checkout</button>
           <?php endif; ?>
@@ -280,6 +280,255 @@ if ($isLoggedIn) {
       </div>
     <?php endif; ?>
 </div>
+
+<!-- Customer Details Modal -->
+<div class="modal fade" id="customerDetailsModal" tabindex="-1" aria-labelledby="customerDetailsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="customerDetailsLabel">Confirm Your Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> Please verify your delivery details before proceeding to payment.
+        </div>
+        
+        <form id="customerDetailsForm">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="customerName" class="form-label">Full Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="customerName" 
+                     value="<?= htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')); ?>" 
+                     required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="customerEmail" class="form-label">Email Address <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" id="customerEmail" 
+                     value="<?= htmlspecialchars($_SESSION['email'] ?? ''); ?>" 
+                     required>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="customerPhone" class="form-label">Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" class="form-control" id="customerPhone" 
+                     value="<?= htmlspecialchars($_SESSION['phone'] ?? ''); ?>" 
+                     pattern="[0-9]{10,15}" 
+                     placeholder="0771234567"
+                     required>
+              <small class="text-muted">10-15 digits only</small>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="customerCity" class="form-label">City <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="customerCity" 
+                     value="<?= htmlspecialchars($_SESSION['city'] ?? ''); ?>" 
+                     required>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="deliveryAddress" class="form-label">Delivery Address <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="deliveryAddress" rows="3" required><?= htmlspecialchars($_SESSION['address'] ?? ''); ?></textarea>
+            <small class="text-muted">Street address, house/apartment number</small>
+          </div>
+          
+          <div class="order-summary-box">
+            <h6>Cart Summary</h6>
+            <div class="summary-row">
+                <span>Total Items:</span>
+                <span><?php echo count($items); ?></span>
+            </div>
+            <div class="summary-row">
+                <span>Total Amount:</span>
+                <span>Rs. <?php echo isset($grand) ? number_format($grand, 2) : '0.00'; ?></span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmOrderBtn" onclick="processCartPayment()">
+          <span id="confirmBtnText">Proceed to Payment</span>
+          <span id="confirmSpinner" class="spinner-border spinner-border-sm" style="display:none;" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .order-summary-box {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+  }
+  .order-summary-box h6 {
+    color: #430160;
+    margin-bottom: 10px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .summary-row:last-child {
+    border-bottom: none;
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #430160;
+  }
+</style>
+
+<script type="text/javascript" src="https://www.payhere.lk/lib/payhere.js"></script>
+<script>
+// PayHere Event Handlers
+payhere.onCompleted = function(orderId) {
+    console.log("Payment completed. OrderID:" + orderId);
+    alert("Payment completed! Order ID: " + orderId);
+    window.location.href = "payment-success.php?order_id=" + orderId;
+};
+
+payhere.onDismissed = function() {
+    console.log("Payment dismissed");
+    alert("Payment was cancelled. You can retry from your cart.");
+};
+
+payhere.onError = function(error) {
+    console.log("Error:" + error);
+    alert("Payment error: " + error);
+};
+
+function showCustomerDetailsModal() {
+    const modal = new bootstrap.Modal(document.getElementById('customerDetailsModal'));
+    modal.show();
+}
+
+async function processCartPayment() {
+    // Get customer details from form
+    const customerName = document.getElementById('customerName').value.trim();
+    const customerEmail = document.getElementById('customerEmail').value.trim();
+    const customerPhone = document.getElementById('customerPhone').value.trim();
+    const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+    const customerCity = document.getElementById('customerCity').value.trim();
+    
+    // Validation
+    if (!customerName || !customerEmail || !customerPhone || !deliveryAddress || !customerCity) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+        alert('Please enter a valid email address');
+        return;
+    }
+    
+    if (!/^[0-9]{10,15}$/.test(customerPhone)) {
+        alert('Please enter a valid phone number (10-15 digits)');
+        return;
+    }
+    
+    // Show loading
+    const submitBtn = document.getElementById('confirmOrderBtn');
+    const btnText = document.getElementById('confirmBtnText');
+    const spinner = document.getElementById('confirmSpinner');
+    
+    submitBtn.disabled = true;
+    btnText.style.display = 'none';
+    spinner.style.display = 'inline-block';
+    
+    try {
+        // Generate unique order ID
+        const orderId = 'ORD-CART-' + Date.now();
+        const currency = 'LKR';
+        
+        // Step 1: Create order in database (Source: Cart)
+        const body = new URLSearchParams();
+        body.append('source', 'cart');
+        body.append('order_id', orderId);
+        body.append('customer_name', customerName);
+        body.append('customer_email', customerEmail);
+        body.append('customer_phone', customerPhone);
+        body.append('delivery_address', deliveryAddress);
+        body.append('city', customerCity);
+
+        const orderResponse = await fetch('create-order.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        });
+        
+        const orderData = await orderResponse.json();
+        
+        if (!orderData.success) {
+            throw new Error(orderData.error || 'Failed to create order');
+        }
+
+        // Step 2: Get payment hash
+        const hashResponse = await fetch('generate-hash.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                order_id: orderId,
+                amount: orderData.amount,
+                currency: currency
+            })
+        });
+        
+        if (!hashResponse.ok) {
+            throw new Error('Failed to generate payment hash');
+        }
+        
+        const hashData = await hashResponse.json();
+        
+        if (!hashData.success) {
+            throw new Error(hashData.error || 'Failed to generate payment hash');
+        }
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('customerDetailsModal')).hide();
+        
+        // Step 3: Start PayHere Payment
+        const payment = {
+            "sandbox": <?= PAYHERE_SANDBOX ? 'true' : 'false' ?>,
+            "merchant_id": hashData.merchant_id,
+            "return_url": "<?= PAYHERE_RETURN_URL ?>",
+            "cancel_url": "<?= PAYHERE_CANCEL_URL ?>",
+            "notify_url": "<?= PAYHERE_NOTIFY_URL ?>",
+            "order_id": orderId,
+            "items": "Cart Checkout",
+            "amount": orderData.amount,
+            "currency": currency,
+            "hash": hashData.hash,
+            "first_name": customerName.split(' ')[0],
+            "last_name": customerName.split(' ').slice(1).join(' ') || 'User',
+            "email": customerEmail,
+            "phone": customerPhone,
+            "address": deliveryAddress,
+            "city": customerCity,
+            "country": "Sri Lanka"
+        };
+        
+        payhere.startPayment(payment);
+        
+        // Reset button state
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+        
+    } catch (error) {
+        console.error('Payment processing error:', error);
+        alert('Error: ' + error.message);
+        
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+    }
+}
+</script>
 
 <?php include 'includes/footer.php'; ?>
 
