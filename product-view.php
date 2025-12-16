@@ -1163,7 +1163,7 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
     });
   }
 
-  // Form validation
+  // Form validation & AJAX Add to Cart
   function prepareCartForm(form) {
     if (!form.fabric_id.value) {
       alert('Please select a fabric type.');
@@ -1176,8 +1176,32 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
     if (!form.color.value) {
       form.color.value = 'default';
     }
-    if (parseInt(form.qty.value) < 1) form.qty.value = 1;
-    return true;
+    const qtyInput = form.qty;
+    if (parseInt(qtyInput.value) < 1) qtyInput.value = 1;
+
+    // AJAX Submission
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData).toString();
+
+    fetch('cart-add.php?' + params + '&ajax=1')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          // Update cart badge if function exists
+          if (typeof updateBadge === 'function' && data.cartCount !== undefined) {
+             updateBadge('cartBadge', data.cartCount);
+          }
+          alert(data.message || 'Product added to cart successfully!');
+        } else {
+          alert(data.message || 'Failed to add to cart.');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('Network error. Please try again.');
+      });
+
+    return false; // Prevent default form submission
   }
 
   // Wishlist toggle
