@@ -234,9 +234,9 @@ unset($item);
 
             <?php if ($item['total_qty'] > 0): ?>
               <!-- Add to Cart button -->
-              <a href="cart-add.php?id=<?php echo (int)$item['product_id']; ?>&qty=1" class="btn btn-success btn-sm">
+              <button type="button" class="btn btn-success btn-sm" onclick="quickAddToCart(<?php echo (int)$item['product_id']; ?>)">
                 <i class="bi bi-cart-plus"></i> Add to Cart
-              </a>
+              </button>
             <?php endif; ?>
 
             <!-- Remove form -->

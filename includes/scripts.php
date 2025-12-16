@@ -132,13 +132,8 @@
       .then(response => response.json())
       .then(data => {
         if (data.status === 'ok') {
-          // Optional: Show a toast or small alert
-          // alert(data.message); 
-           // Or use showMessage if available in this scope
-           if (typeof showMessage === 'function') {
-               // We need a container for generic messages or reuse loginMessage
-               // showMessage('loginMessage', data.message, 'success');
-           }
+          // Show success alert
+          alert(data.message || 'Item added successfully to cart');
           
           if (data.cartCount !== undefined) {
             updateBadge('cartBadge', data.cartCount);
