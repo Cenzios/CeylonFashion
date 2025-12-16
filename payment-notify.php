@@ -55,6 +55,42 @@ if ($local_md5sig === $md5sig) {
     
     if ($stmt->execute()) {
         file_put_contents($log_file, "Order updated successfully\n", FILE_APPEND);
+        
+        // --- Clear Cart Logic ---
+        // 1. Get username from order
+        $uStmt = $mysqli->prepare("SELECT username FROM orders WHERE order_id = ? LIMIT 1");
+        $uStmt->bind_param("s", $order_id);
+        $uStmt->execute();
+        $uRes = $uStmt->get_result();
+        
+        if ($uRow = $uRes->fetch_assoc()) {
+            $username = $uRow['username'];
+            
+            // 2. Get user_id from username
+            $idStmt = $mysqli->prepare("SELECT id FROM users WHERE username = ?");
+            $idStmt->bind_param("s", $username);
+            $idStmt->execute();
+            $idRes = $idStmt->get_result();
+            
+            if ($userRow = $idRes->fetch_assoc()) {
+                $user_id = $userRow['id'];
+                
+                // 3. Clear cart for this user
+                // Only if payment was successful (status_code == 2)
+                if ($status_code == 2) {
+                    $delStmt = $mysqli->prepare("DELETE FROM cart WHERE user_id = ?");
+                    $delStmt->bind_param("i", $user_id);
+                    if ($delStmt->execute()) {
+                         file_put_contents($log_file, "Cart cleared for user $user_id\n", FILE_APPEND);
+                    }
+                    $delStmt->close();
+                }
+            }
+            $idStmt->close();
+        }
+        $uStmt->close();
+        // ------------------------
+
     } else {
         file_put_contents($log_file, "Order update error: " . $stmt->error . "\n", FILE_APPEND);
     }
