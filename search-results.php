@@ -24,20 +24,7 @@ $fallback = 'assets/no-image.png';
         <div class="search-header">
             <h2 class="search-title">Search Results for "<?= htmlspecialchars($searchTerm); ?>"</h2>
             
-            <!-- Search Again Form -->
-            <form class="search-form" role="search" method="GET" action="search-results.php">
-                <input 
-                    class="search-input" 
-                    type="search" 
-                    name="search"
-                    value="<?= htmlspecialchars($searchTerm); ?>"
-                    placeholder="Search by Name or Category" 
-                    required
-                />
-                <button class="search-btn" type="submit">
-                    Search
-                </button>
-            </form>
+
         </div>
 
         <?php
@@ -65,7 +52,7 @@ $fallback = 'assets/no-image.png';
                         $productId = (int)$product['id'];
                         $pname = htmlentities($product['product_name'], ENT_QUOTES, 'UTF-8');
                         $pcode = htmlentities($product['product_code'], ENT_QUOTES, 'UTF-8');
-                        $pimg  = htmlentities($product['product_img_name'], ENT_QUOTES, 'UTF-8');
+                        $pimg  = htmlentities($product['product_img1'] ?? '', ENT_QUOTES, 'UTF-8');
 
                         // Get first image from comma-separated list
                         $images = array_filter(array_map('trim', explode(',', $pimg)));
