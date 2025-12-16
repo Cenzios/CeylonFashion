@@ -108,7 +108,7 @@ $payzyInstallment = $minPrice / 4;
                 <div class="mp-option-row">
                     <label>Size: <span id="mpSelectedSizeLabel"></span></label>
                     <div class="mp-size-list">
-                        <?php $sizes = ['M','L','XL','XXL','3XL']; // Adjusted to match image ?>
+                        <?php $sizes = ['XS','S','M','L','XL']; // Adjusted to match product-view.php ?>
                         <?php foreach($sizes as $s): ?>
                             <button type="button" class="mp-size-btn" onclick="mpSelectSize('<?php echo $s; ?>', this)"><?php echo $s; ?></button>
                         <?php endforeach; ?>
