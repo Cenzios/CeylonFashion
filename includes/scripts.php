@@ -297,10 +297,10 @@
     // ICON CLICK HANDLERS
     // ============================================
 
-    // Start Reselling button
-    const startResellingBtn = document.getElementById('startResellingBtn');
-    if (startResellingBtn) {
-      startResellingBtn.addEventListener('click', function(e) {
+    // Start Reselling buttons (Navbar + Promo Card)
+    const resellingBtns = document.querySelectorAll('#startResellingBtn, #promoResellingBtn');
+    resellingBtns.forEach(btn => {
+      btn.addEventListener('click', function(e) {
         <?php if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])): ?>
           e.preventDefault();
           const redirectInput = document.getElementById('loginRedirectUrl');
@@ -312,7 +312,7 @@
           // Allow default navigation
         <?php endif; ?>
       });
-    }
+    });
 
     // Person icon opens login
     const personIcon = document.getElementById('personIcon');

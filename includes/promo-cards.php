@@ -21,7 +21,8 @@
           <li>Give luxury outfits a second life & earn cash</li>
         </ul>
         <a
-          href="#"
+          href="start-reselling.php"
+          id="promoResellingBtn"
           style="display: inline-block; background-color: #7e22ce; color: white; padding: 10px 30px; border-radius: 25px; font-weight: 600; text-decoration: none;"
         >
           Start Reselling
