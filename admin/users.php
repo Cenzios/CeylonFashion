@@ -11,7 +11,7 @@ if (!$isAdmin) {
 }
 
 // ---- Fetch users ----
-$sql = "SELECT id, fname, lname, email, password, type FROM users ORDER BY id DESC";
+$sql = "SELECT id, fname, lname, email, created, type FROM users ORDER BY id DESC";
 $result = $mysqli->query($sql);
 if ($result === false) {
     die("DB error: " . $mysqli->error);
@@ -69,7 +69,7 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
             <th>First Name</th>
             <th>Last Name</th>
             <th>Email</th>
-            <th>Password</th>
+            <th>Joined Date</th>
             <th>Type</th>
             <th>Actions</th>
           </tr>
@@ -81,7 +81,7 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
               <td><?php echo htmlentities($user['fname']); ?></td>
               <td><?php echo htmlentities($user['lname']); ?></td>
               <td><?php echo htmlentities($user['email']); ?></td>
-              <td><?php echo htmlentities($user['password']); ?></td>
+              <td><?php echo date('M d, Y', strtotime($user['created'])); ?></td>
               <td>
                 <span class="badge bg-<?php echo $user['type'] === 'admin' ? 'primary' : 'secondary'; ?> toggle-btn"
                       onclick="toggleUserType(<?php echo (int)$user['id']; ?>, this)">
