@@ -9,6 +9,7 @@
     
     <form method="POST" action="insert.php" id="offcanvasRegisterForm">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+      <input type="hidden" name="redirect_url" id="registerRedirectUrl" value="">
       
       <div class="mb-3">
         <label for="fname" class="form-label">First Name <span class="text-danger">*</span></label>
@@ -147,3 +148,14 @@
     color: #343a40;
   }
 </style>
+
+<script>
+  // Copy redirect URL from login form when opening register sidebar
+  document.getElementById('registerSidebar').addEventListener('show.bs.offcanvas', function () {
+    const loginRedirect = document.getElementById('loginRedirectUrl');
+    const registerRedirect = document.getElementById('registerRedirectUrl');
+    if (loginRedirect && registerRedirect) {
+      registerRedirect.value = loginRedirect.value;
+    }
+  });
+</script>
