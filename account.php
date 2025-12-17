@@ -21,9 +21,6 @@ $messageType = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fname = trim($_POST['fname']);
     $lname = trim($_POST['lname']);
-    $address = trim($_POST['address']);
-    $city = trim($_POST['city']);
-    $pin = trim($_POST['pin']);
     $email = trim($_POST['email']);
     $new_password = trim($_POST['pwd']);
     
@@ -32,8 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($fname)) $errors[] = 'First name is required';
     if (empty($lname)) $errors[] = 'Last name is required';
-    if (empty($address)) $errors[] = 'Address is required';
-    if (empty($city)) $errors[] = 'City is required';
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Valid email is required';
     }
@@ -59,12 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!empty($new_password)) {
                 // Update with new password
                 $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-                $stmt = $mysqli->prepare("UPDATE users SET fname=?, lname=?, address=?, city=?, pin=?, email=?, password=? WHERE email=?");
-                $stmt->bind_param("ssssssss", $fname, $lname, $address, $city, $pin, $email, $hashed_password, $username);
+                $stmt = $mysqli->prepare("UPDATE users SET fname=?, lname=?, email=?, password=? WHERE email=?");
+                $stmt->bind_param("sssss", $fname, $lname, $email, $hashed_password, $username);
             } else {
                 // Update without changing password
-                $stmt = $mysqli->prepare("UPDATE users SET fname=?, lname=?, address=?, city=?, pin=?, email=? WHERE email=?");
-                $stmt->bind_param("sssssss", $fname, $lname, $address, $city, $pin, $email, $username);
+                $stmt = $mysqli->prepare("UPDATE users SET fname=?, lname=?, email=? WHERE email=?");
+                $stmt->bind_param("ssss", $fname, $lname, $email, $username);
             }
             
             if ($stmt->execute()) {
@@ -73,9 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['first_name'] = $fname;
                 $_SESSION['last_name'] = $lname;
                 $_SESSION['email'] = $email;
-                $_SESSION['address'] = $address;
-                $_SESSION['city'] = $city;
-                $_SESSION['pin'] = $pin;
                 
                 $username = $email; // Update for re-fetching
                 $message = 'Profile updated successfully!';
@@ -90,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch current user data
-$stmt = $mysqli->prepare("SELECT id, fname, lname, email, address, city, pin, type, created FROM users WHERE email=?");
+$stmt = $mysqli->prepare("SELECT id, fname, lname, email, type, created FROM users WHERE email=?");
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -191,25 +183,6 @@ $stmt->close();
                             <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
                             <input type="email" class="form-control" id="email" name="email" 
                                    value="<?php echo htmlspecialchars($user['email']); ?>" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="address" class="form-label">Address <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="address" name="address" rows="2" required><?php echo htmlspecialchars($user['address']); ?></textarea>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="city" class="form-label">City <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="city" name="city" 
-                                       value="<?php echo htmlspecialchars($user['city']); ?>" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="pin" class="form-label">Pin Code <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="pin" name="pin" 
-                                       value="<?php echo htmlspecialchars($user['pin']); ?>" 
-                                       pattern="[0-9]{5,6}" required>
-                            </div>
                         </div>
 
                         <hr class="my-4">
