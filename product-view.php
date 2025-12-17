@@ -1,12 +1,17 @@
 <?php
 // ------------------------------
-// product-view.php (UPDATED - Using Components)
+// product-view.php (FIXED - Enhanced UI)
 // ------------------------------
 if (session_id() == '' || !isset($_SESSION)) { session_start(); }
 require_once 'config.php';
 
 // Include component handlers
 require_once 'components/reviews-handler.php';
+
+// Include Guest Cart Library
+if (file_exists('lib/guest-cart.php')) {
+    require_once 'lib/guest-cart.php';
+}
 
 // ------------------------------
 // Helpers
@@ -95,6 +100,29 @@ while ($f = $fabricsResult->fetch_assoc()) {
 $stmt->close();
 
 // ------------------------------
+// Fetch Available Sizes
+// ------------------------------
+$stmt = $mysqli->prepare("SELECT size FROM product_sizes WHERE product_id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$sizeResult = $stmt->get_result();
+$availableSizes = [];
+while ($row = $sizeResult->fetch_assoc()) {
+  $availableSizes[] = $row['size'];
+}
+$stmt->close();
+
+// Fallback for legacy products (if no sizes defined, show all)
+if (empty($availableSizes)) {
+  $availableSizes = ['XS','S','M','L','XL'];
+}
+// Sort sizes logically
+$sizeOrder = ['XS' => 1, 'S' => 2, 'M' => 3, 'L' => 4, 'XL' => 5, 'XXL' => 6];
+usort($availableSizes, function($a, $b) use ($sizeOrder) {
+    return ($sizeOrder[$a] ?? 99) <=> ($sizeOrder[$b] ?? 99);
+});
+
+// ------------------------------
 // Handle POST (Reviews / Q&A) - Using Component Handler
 // ------------------------------
 handle_reviews_post($mysqli, $product_id, $currentUser, $isLoggedIn);
@@ -121,6 +149,23 @@ $questionsCount = get_questions_count($mysqli, $product_id);
 // Fetch reviews and questions using component functions
 $reviews = fetch_reviews($mysqli, $product_id, $perPage, $offR);
 $questions = fetch_questions($mysqli, $product_id, $perPage, $offQ);
+
+// Check if product is in wishlist
+$inWishlist = false;
+if ($isLoggedIn) {
+    if (function_exists('getUserWishlistCount')) {
+         // We can query directly
+         $stmt = $mysqli->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
+         $stmt->bind_param("ii", $_SESSION['user_id'], $product_id);
+         $stmt->execute();
+         $inWishlist = $stmt->get_result()->num_rows > 0;
+         $stmt->close();
+    }
+} else {
+    if (function_exists('isInGuestWishlist')) {
+        $inWishlist = isInGuestWishlist($product_id);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -152,32 +197,62 @@ $questions = fetch_questions($mysqli, $product_id, $perPage, $offQ);
       </div>
     </div>
 
-    <!-- Right: Product Details (Narrower) -->
+    <!-- Right: Product Details (Enhanced Layout) -->
     <div class="right-col">
       <?php if ($isAdmin): ?>
         <a href="admin/edit-product.php?id=<?= $product_id; ?>" class="edit-pill">✏️ Edit</a>
       <?php endif; ?>
 
       <h1 class="title"><?= e($product['product_name']); ?></h1>
-      
-      <!-- Color Display -->
-      <?php if ($productColor): ?>
-      <div class="option-row d-flex align-items-center gap-2 mb-4">
-        <span class="opt-label mb-0 me-2">Color:</span>
-        <div class="d-flex align-items-center gap-2 border px-3 py-1 rounded" style="background-color: #f8f9fa;">
-            <div style="width: 24px; height: 24px; border-radius: 50%; background-color: <?= e($productColor['color_code']); ?>; border: 1px solid #dee2e6; box-shadow: inset 0 0 2px rgba(0,0,0,0.1);"></div>
-            <span style="font-weight: 500; font-size: 14px;"><?= e($productColor['color_name']); ?></span>
+
+      <!-- SKU Info -->
+      <div class="product-meta">
+        <div class="meta-item">
+          <span class="meta-label">Availability:</span>
+          <span class="meta-value stock-badge">
+            <?php if ($totalAvailableQty > 0): ?>
+              <span class="in-stock">In Stock</span>
+            <?php else: ?>
+              <span class="out-stock">Out of Stock</span>
+            <?php endif; ?>
+          </span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Product Type:</span>
+          <span class="meta-value"><?= e($product['category'] ?? 'Men T Shirt'); ?></span>
         </div>
       </div>
-      <?php endif; ?>
 
-      
+      <!-- Size Guide Button -->
+      <button type="button" class="size-guide-btn">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+          <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
+        </svg>
+        Size Guide
+      </button>
 
-      <!-- Fabrics -->
+      <!-- Size Selection -->
+      <div class="option-section">
+        <label class="section-label">
+          Size: <span class="selected-value" id="selectedSizeDisplay">M</span>
+        </label>
+        <div class="size-buttons" id="sizeList">
+          <?php foreach ($availableSizes as $s): ?>
+            <button type="button" 
+                    class="size-btn <?= $s === 'M' ? 'selected' : ''; ?>" 
+                    data-size="<?= e($s); ?>">
+              <?= e($s); ?>
+            </button>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
+      <!-- Fabric Selection -->
       <?php if (!empty($fabrics)): ?>
-      <div class="option-row">
-        <label class="opt-label">Select Fabric type</label>
-        <div class="fabric-list" id="fabricList">
+      <div class="option-section">
+        <label class="section-label">Select Fabric type</label>
+        <div class="fabric-buttons" id="fabricList">
           <?php foreach ($fabrics as $f): ?>
             <button type="button"
                     class="fabric-btn"
@@ -191,71 +266,65 @@ $questions = fetch_questions($mysqli, $product_id, $perPage, $offQ);
       </div>
       <?php endif; ?>
 
-      <!-- Sizes -->
-      <div class="option-row">
-        <label class="opt-label">Select size</label>
-        <div class="size-list" id="sizeList">
-          <?php $sizes = ['XS','S','M','L','XL']; foreach ($sizes as $s): ?>
-            <button type="button" class="size-btn" data-size="<?= e($s); ?>"><?= e($s); ?></button>
-          <?php endforeach; ?>
+      <!-- Color Display -->
+      <?php if ($productColor): ?>
+      <div class="option-section">
+        <label class="section-label">Color:</label>
+        <div class="color-display">
+          <div class="color-swatch" style="background-color: <?= e($productColor['color_code']); ?>;"></div>
+          <span class="color-name"><?= e($productColor['color_name']); ?></span>
         </div>
-        <button type="button" class="view-size-grid">View Size Grid</button>
+      </div>
+      <?php endif; ?>
+
+      <!-- Subtotal Section -->
+      <div class="subtotal-section">
+        <div class="subtotal-row">
+          <span class="subtotal-label">Subtotal:</span>
+          <span class="subtotal-price" id="subtotalPrice">Rs 0.00</span>
+        </div>
       </div>
 
-      <!-- Info message -->
-      <div class="info-message">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-        </svg>
-        Please select <strong>fabric type</strong>, and <strong>size</strong> to check the price.
-      </div>
-
-      <!-- Dynamic Price Display -->
-      <h2 id="productPrice" class="fw-bold text-dark mb-4" style="font-family: inherit;">Rs. 0.00</h2>
-
-      <!-- Quantity + Buttons at bottom -->
+      <!-- Action Form -->
       <form id="addToCartForm" action="cart-add.php" method="GET" onsubmit="return prepareCartForm(this);">
         <input type="hidden" name="id" value="<?= $product_id; ?>">
         <input type="hidden" name="fabric_id" id="formFabricId" value="">
         <input type="hidden" name="color" id="formColor" value="">
-        <input type="hidden" name="size" id="formSize" value="">
+        <input type="hidden" name="size" id="formSize" value="M">
         
-        <div class="bottom-actions">
-          <div class="action-buttons">
-  <?php if (!$isAdmin): ?>
-    <button type="submit" class="btn-cart">🛒 Add to Cart</button>
-    <?php if ($isLoggedIn): ?>
-      <button type="button" class="btn-buy buy-now-btn" data-product-id="<?= $product_id; ?>" data-product-name="<?= htmlspecialchars($product['product_name']); ?>">Buy Now</button>
-    <?php else: ?>
-      <button type="button" class="buy-now-btn" onclick="showLoginModal()">Buy Now</button>
-    <?php endif; ?>
-  <?php endif; ?>
-</div>
-
-          <div class="qty-heart-row">
-            <div class="qty-row">
-              <button type="button" class="qty-btn" id="qtyMinus">-</button>
-              <input type="number" name="qty" id="qtyField" value="1" min="1" class="qty-input">
-              <button type="button" class="qty-btn" id="qtyPlus">+</button>
-            </div>
-            
-            <?php if (!$isAdmin): ?>
-              <button type="button" class="btn-wishlist" id="wishlistBtn" onclick="toggleWishlist(<?= $product_id; ?>)">♡</button>
-            <?php endif; ?>
+        <label class="section-label mb-2">Quantity:</label>
+        
+        <div class="actions-row">
+          <!-- Quantity Selector -->
+          <div class="quantity-controls">
+            <button type="button" class="qty-btn" id="qtyMinus">−</button>
+            <input type="number" name="qty" id="qtyField" value="1" min="1" class="qty-input" readonly>
+            <button type="button" class="qty-btn" id="qtyPlus">+</button>
           </div>
+
+          <?php if (!$isAdmin): ?>
+            <!-- Add to Cart -->
+            <button type="submit" class="btn-add-cart">ADD TO CART</button>
+            
+            <!-- Wishlist Button -->
+            <button type="button" class="btn-wishlist-circle <?= $inWishlist ? 'active' : '' ?>" id="wishlistBtn" onclick="toggleProductWishlist(<?= $product_id; ?>)" title="<?= $inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist' ?>">
+              <svg width="20" height="20" fill="<?= $inWishlist ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            </button>
+          <?php endif; ?>
         </div>
 
-        <div class="delivery-info">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.563l1.481 1.85a1.5 1.5 0 0 1 .329.938V10.5a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H5a2 2 0 1 1-3.998-.085A1.5 1.5 0 0 1 0 10.5v-7zm1.294 7.456A1.999 1.999 0 0 1 4.732 11h5.536a2.01 2.01 0 0 1 .732-.732V3.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .294.456zM12 10a2 2 0 0 1 1.732 1h.768a.5.5 0 0 0 .5-.5V8.35a.5.5 0 0 0-.11-.312l-1.48-1.85A.5.5 0 0 0 13.02 6H12v4zm-9 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm9 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
-          </svg>
-          Delivery within 5 – 12 Business Days
-          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-left:6px; opacity:0.6; cursor:pointer;">
-            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-            <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/>
-          </svg>
+        <?php if (!$isAdmin): ?>
+        <div class="buy-now-row mt-3">
+          <?php if ($isLoggedIn): ?>
+            <button type="button" class="btn-buy-now buy-now-btn" data-product-id="<?= $product_id; ?>" data-product-name="<?= htmlspecialchars($product['product_name']); ?>">BUY IT NOW</button>
+          <?php else: ?>
+            <button type="button" class="btn-buy-now" onclick="showLoginModal()">BUY IT NOW</button>
+          <?php endif; ?>
         </div>
+        <?php endif; ?>
+
       </form>
 
     </div>
@@ -364,10 +433,12 @@ include 'components/review-dialog.php';
 
 <style>
   :root {
-    --primary: #4b0082;
-    --accent: #6f42c1;
+    --primary: #5a2d82;
+    --accent: #7c3aed;
     --soft-bg: #fafbfd;
     --muted: #6c757d;
+    --border: #e5e7eb;
+    --success: #10b981;
   }
   
   body { 
@@ -399,7 +470,7 @@ include 'components/review-dialog.php';
 
   .right-col { 
     flex: 0 0 35%;
-    padding: 10px 20px; 
+    padding: 0; 
     position: relative;
     display: flex;
     flex-direction: column;
@@ -451,7 +522,7 @@ include 'components/review-dialog.php';
   
   .thumb-item.active { 
     border-color: var(--accent); 
-    box-shadow: 0 4px 12px rgba(111,66,193,0.3);
+    box-shadow: 0 4px 12px rgba(124,58,237,0.3);
   }
   
   .thumb-item:hover {
@@ -466,216 +537,272 @@ include 'components/review-dialog.php';
   
   .edit-pill { 
     position: absolute; 
-    right: 20px; 
-    top: 10px; 
+    right: 0; 
+    top: 0; 
     background: var(--primary); 
     color: #fff; 
     padding: 6px 12px; 
     border-radius: 4px; 
     font-size: 13px; 
     text-decoration: none; 
+    z-index: 10;
   }
 
   .title { 
-    color: var(--primary); 
-    margin: 0 0 25px 0; 
-    font-size: 28px; 
-    font-weight: 700; 
-  }
-
-  .option-row { 
-    margin-bottom: 22px; 
-  }
-  
-  .opt-label { 
-    display: block; 
-    font-weight: 600; 
-    margin-bottom: 10px; 
     color: #000; 
-    font-size: 14px; 
+    margin: 0 0 16px 0; 
+    font-size: 26px; 
+    font-weight: 600; 
+    line-height: 1.3;
   }
 
-  /* Fabric Buttons */
-  .fabric-list { 
-    display: flex; 
-    gap: 10px; 
-    flex-wrap: wrap; 
-  }
-  
-  .fabric-btn { 
-    background: #fff; 
-    border: 1px solid #ddd; 
-    padding: 10px 16px; 
-    border-radius: 6px; 
-    cursor: pointer; 
-    font-weight: 600;
-    font-size: 13px;
-    color: #000;
-    transition: all 0.2s;
-  }
-  
-  .fabric-btn.selected { 
-    background: #f0e6ff; 
-    border-color: var(--accent); 
-    color: var(--accent);
+  /* Product Meta */
+  .product-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
   }
 
-  /* Size Buttons */
-  .size-list { 
-    display: flex; 
-    gap: 10px;
-    margin-bottom: 8px;
+  .meta-item {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
   }
-  
-  .size-btn { 
-    padding: 10px 18px; 
-    border: 1px solid #ddd; 
-    border-radius: 6px; 
-    background: #fff; 
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 13px;
+
+  .meta-label {
+    color: #666;
+    margin-right: 8px;
+    min-width: 110px;
+  }
+
+  .meta-value {
     color: #000;
-    transition: all 0.2s;
-  }
-  
-  .size-btn.selected { 
-    background: #fff7ed; 
-    border-color: #fb923c; 
-    color: #c2410c;
-  }
-  
-  .view-size-grid {
-    background: none;
-    border: none;
-    color: #000;
-    text-decoration: underline;
-    cursor: pointer;
-    padding: 4px 0;
-    font-size: 13px;
     font-weight: 500;
   }
 
-  /* Info Message */
-  .info-message {
+  .stock-badge .in-stock {
+    color: var(--success);
+    font-weight: 600;
+  }
+
+  .stock-badge .out-stock {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  /* Size Guide Button */
+  .size-guide-btn {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 12px;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
+    background: #f3f4f6;
+    border: 1px solid var(--border);
+    padding: 8px 16px;
     border-radius: 6px;
+    cursor: pointer;
     font-size: 13px;
-    color: #075985;
-    margin-bottom: 22px;
-  }
-
-  /* Bottom Actions */
-  .bottom-actions {
-    margin-top: auto;
-    padding-top: 20px;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-
-  .btn-cart {
-    flex: 1;
-    background: #7c3aed;
-    color: #fff;
-    border: none;
-    padding: 14px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 14px;
+    font-weight: 500;
+    color: #000;
+    margin-bottom: 20px;
     transition: all 0.2s;
   }
 
-  .btn-cart:hover {
-    background: #6d28d9;
+  .size-guide-btn:hover {
+    background: #e5e7eb;
   }
 
-  .btn-buy {
-    flex: 1;
-    background: #10b981;
-    color: #fff;
-    border: none;
-    padding: 14px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 700;
+  /* Option Sections */
+  .option-section {
+    margin-bottom: 20px;
+  }
+
+  .section-label {
+    display: block;
     font-size: 14px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s;
+    font-weight: 600;
+    color: #000;
+    margin-bottom: 10px;
   }
 
-  .btn-buy:hover {
-    background: #059669;
+  .selected-value {
+    font-weight: 700;
+    color: var(--accent);
   }
 
-  .qty-heart-row {
+  .mb-2 {
+    margin-bottom: 10px;
+  }
+
+  /* Size Buttons */
+  .size-buttons {
     display: flex;
     gap: 10px;
-    align-items: center;
+    flex-wrap: wrap;
   }
 
-  .qty-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #ddd;
+  .size-btn {
+    min-width: 48px;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
     border-radius: 6px;
-    height: 44px; /* Slightly reduced height */
-    width: fit-content;
     background: #fff;
-    overflow: hidden; /* Ensures child elements don't spill out */
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: #000;
+    transition: all 0.2s;
   }
 
-  .qty-btn {
-    background: #f8f9fa;
-    border: none;
-    border-right: 1px solid #eee;
-    width: 40px;
-    height: 100%;
+  .size-btn:hover {
+    border-color: #999;
+  }
+
+  .size-btn.selected {
+    background: #000;
+    border-color: #000;
+    color: #fff;
+  }
+
+  /* Fabric Buttons */
+  .fabric-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .fabric-btn {
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
     cursor: pointer;
-    font-weight: 700;
+    font-weight: 500;
+    font-size: 14px;
+    color: #000;
+    transition: all 0.2s;
+  }
+
+  .fabric-btn:hover {
+    border-color: #999;
+  }
+
+  .fabric-btn.selected {
+    background: #f0e6ff;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Color Display */
+  .color-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    box-shadow: inset 0 0 3px rgba(0,0,0,0.1);
+  }
+
+  .color-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #000;
+  }
+
+  /* Subtotal Section */
+  .subtotal-section {
+    padding: 16px 0;
+    margin-bottom: 20px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .subtotal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .subtotal-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #000;
+  }
+
+  .subtotal-price {
     font-size: 18px;
+    font-weight: 700;
+    color: #000;
+  }
+
+  /* FIXED: Actions Row Layout */
+  .actions-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+
+  /* FIXED: Quantity Controls */
+  .quantity-controls {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+    height: 48px;
+    flex-shrink: 0;
+  }
+  
+  .qty-btn {
+    width: 28px !important;
+    padding: 0;
+    height: 100%;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 400;
+    font-size: 18px;
+    color: #333;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
-    margin: 0;
-    color: #444;
     transition: background 0.2s;
-    line-height: 1;
   }
 
-  .qty-btn:hover {
-    background: #e2e6ea;
+  .qty-btn:hover { 
+    background: #f3f4f6; 
   }
 
-  .qty-btn:last-of-type {
-    border-right: none;
-    border-left: 1px solid #eee;
+  .qty-btn:active {
+    background: #e5e7eb;
   }
-
+  
   .qty-input {
-    width: 50px;
+    width: 60px;
+    min-width: 60px;
+    padding: 0;
     height: 100%;
     border: none;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
     text-align: center;
     font-weight: 600;
-    font-size: 16px;
-    padding: 0;
-    margin: 0;
-    color: #333;
-    background: transparent;
+    font-size: 15px;
+    color: #000;
+    background: #fff !important;
+    -moz-appearance: textfield; /* Firefox */
+    appearance: none;
+    border-radius: 0;
+    opacity: 1; /* Fix for some iOS disabled states */
   }
   
   .qty-input::-webkit-outer-spin-button,
@@ -683,41 +810,112 @@ include 'components/review-dialog.php';
     -webkit-appearance: none;
     margin: 0;
   }
+  
+  /* FIXED: Add To Cart Button */
+  .btn-add-cart {
+    flex: 1;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    height: 48px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    min-width: 140px;
+  }
+  
+  .btn-add-cart:hover {
+    background: #4a1f6b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(90, 45, 130, 0.3);
+  }
 
-  .btn-wishlist {
+  .btn-add-cart:active {
+    transform: translateY(0);
+  }
+  
+  /* FIXED: Wishlist Circle Button */
+  .btn-wishlist-circle {
     width: 48px;
     height: 48px;
-    background: #fff;
-    border: 1px solid #ff4d6d;
     border-radius: 6px;
-    color: #ff4d6d;
-    cursor: pointer;
-    font-size: 22px;
+    border: 1px solid var(--border);
+    background: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    cursor: pointer;
+    color: #333;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  
+  .btn-wishlist-circle:hover {
+    border-color: var(--primary);
+    background: #f9f5ff;
+    transform: translateY(-1px);
+  }
+  
+  .btn-wishlist-circle.active {
+    background: #fff0f0;
+    border-color: #ef4444;
+    color: #ef4444;
   }
 
-  .btn-wishlist:hover {
-    background: #fff1f2;
+  .btn-wishlist-circle.active:hover {
+    background: #ffe0e0;
+  }
+  
+  .btn-wishlist-circle.active svg {
+    fill: currentColor;
   }
 
-  .btn-wishlist.active {
-    background: #ff4d6d;
-    color: #fff;
+  .btn-wishlist-circle svg {
+    transition: all 0.3s ease;
   }
 
-  .delivery-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 11px;
-    background: #fefce8;
+  .btn-wishlist-circle:hover svg {
+    transform: scale(1.1);
+  }
+  
+  /* Buy Now Row */
+  .buy-now-row {
+    width: 100%;
+  }
+
+  .mt-3 {
+    margin-top: 16px;
+  }
+
+  .btn-buy-now {
+    width: 100%;
+    height: 48px;
+    background: #fff;
+    border: 2px solid var(--primary);
+    color: var(--primary);
     border-radius: 6px;
-    font-size: 12px;
-    color: #854d0e;
-    margin-top: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+  }
+  
+  .btn-buy-now:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(90, 45, 130, 0.3);
+  }
+
+  .btn-buy-now:active {
+    transform: translateY(0);
   }
 
   /* Reviews Section */
@@ -760,111 +958,20 @@ include 'components/review-dialog.php';
   }
 
   .add-btn {
-    background: #10b981;
+    background: var(--success);
     color: #fff;
     border: none;
     padding: 10px 18px;
     border-radius: 6px;
     cursor: pointer;
     font-weight: 600;
+    transition: all 0.3s ease;
   }
 
-  .tab-content {
-    padding: 10px 0;
-  }
-
-  .item {
-    padding: 15px 0;
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  .item:last-child {
-    border-bottom: none;
-  }
-
-  .stars {
-    color: #fbbf24;
-    font-size: 16px;
-    margin: 5px 0;
-  }
-
-  .meta {
-    color: #999;
-    font-size: 13px;
-  }
-
-  .pager {
-    margin-top: 20px;
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  .pager a {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #666;
-  }
-
-  .pager a.active {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-  }
-
-  /* Dialog */
-  .dialog-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-
-  .dialog-box {
-    width: 96%;
-    max-width: 500px;
-    background: #fff;
-    border-radius: 10px;
-    padding: 24px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  }
-
-  .dialog-box h3 {
-    margin: 0 0 16px 0;
-    color: var(--primary);
-  }
-
-  .dialog-box label {
-    display: block;
-    font-weight: 600;
-    margin: 12px 0 6px 0;
-    color: #000;
-  }
-
-  .dialog-box select,
-  .dialog-box textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-family: inherit;
-    resize: vertical;
-    color: #000;
-  }
-
-  .cancel-btn {
-    background: #e5e7eb;
-    color: #374151;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
+  .add-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   }
 
   .order-summary-box {
@@ -873,24 +980,27 @@ include 'components/review-dialog.php';
     border-radius: 8px;
     margin-top: 15px;
   }
+  
   .order-summary-box h6 {
-    color: #430160;
+    color: var(--primary);
     margin-bottom: 10px;
   }
+  
   .summary-row {
     display: flex;
     justify-content: space-between;
     padding: 5px 0;
     border-bottom: 1px solid #e0e0e0;
   }
+  
   .summary-row:last-child {
     border-bottom: none;
     font-weight: bold;
     font-size: 1.1em;
-    color: #430160;
+    color: var(--primary);
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 2px solid #430160;
+    border-top: 2px solid var(--primary);
   }
 
   /* Responsive */
@@ -953,12 +1063,21 @@ include 'components/review-dialog.php';
       height: 110px;
     }
 
-    .action-buttons {
-      flex-direction: column;
+    .actions-row {
+      flex-wrap: wrap;
     }
 
-    .qty-heart-row {
-      justify-content: space-between;
+    .quantity-controls {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .btn-add-cart {
+      width: calc(100% - 58px);
+    }
+
+    .btn-wishlist-circle {
+      width: 48px;
     }
     
     .main-image {
@@ -970,7 +1089,11 @@ include 'components/review-dialog.php';
     }
 
     .title {
-      font-size: 24px;
+      font-size: 22px;
+    }
+
+    .subtotal-price {
+      font-size: 16px;
     }
   }
 </style>
@@ -990,6 +1113,23 @@ include 'components/review-dialog.php';
     });
   });
 
+  // Update prices function
+  function updatePrices() {
+    const selectedFabric = document.querySelector('.fabric-btn.selected');
+    const qtyField = document.getElementById('qtyField');
+    const subtotalDisplay = document.getElementById('subtotalPrice');
+
+    if (selectedFabric) {
+      const basePrice = parseFloat(selectedFabric.dataset.price) || 0;
+      const qty = parseInt(qtyField.value) || 1;
+      const total = basePrice * qty;
+
+      if (subtotalDisplay) {
+        subtotalDisplay.textContent = 'Rs ' + total.toFixed(2);
+      }
+    }
+  }
+
   // Fabric selection
   const fabricBtns = document.querySelectorAll('.fabric-btn');
   const formFabricId = document.getElementById('formFabricId');
@@ -999,12 +1139,7 @@ include 'components/review-dialog.php';
       fabricBtns.forEach(x => x.classList.remove('selected'));
       this.classList.add('selected');
       formFabricId.value = this.dataset.fabricId || '';
-      
-      // Update Price
-      const priceDisplay = document.getElementById('productPrice');
-      if (priceDisplay) {
-        priceDisplay.textContent = 'Rs. ' + (this.dataset.price || '0.00');
-      }
+      updatePrices();
     });
   });
 
@@ -1015,10 +1150,16 @@ include 'components/review-dialog.php';
 
   // Size selection
   const sizeBtns = document.querySelectorAll('.size-btn');
+  const selectedSizeDisplay = document.getElementById('selectedSizeDisplay');
+  
   sizeBtns.forEach(s => s.addEventListener('click', function(){
     sizeBtns.forEach(x => x.classList.remove('selected'));
     this.classList.add('selected');
-    document.getElementById('formSize').value = this.dataset.size || '';
+    const sizeValue = this.dataset.size || '';
+    document.getElementById('formSize').value = sizeValue;
+    if (selectedSizeDisplay) {
+      selectedSizeDisplay.textContent = sizeValue;
+    }
   }));
 
   // Quantity handlers
@@ -1030,6 +1171,7 @@ include 'components/review-dialog.php';
     qtyMinus.addEventListener('click', () => {
       const cur = Math.max(1, parseInt(qtyField.value || 1) - 1);
       qtyField.value = cur;
+      updatePrices();
     });
   }
 
@@ -1037,6 +1179,7 @@ include 'components/review-dialog.php';
     qtyPlus.addEventListener('click', () => {
       const cur = Math.max(1, parseInt(qtyField.value || 1) + 1);
       qtyField.value = cur;
+      updatePrices();
     });
   }
 
@@ -1053,7 +1196,7 @@ include 'components/review-dialog.php';
     if (!form.color.value) {
       form.color.value = 'default';
     }
-    const qtyInput = form.qty;
+    const qtyInput = document.getElementById('qtyField');
     if (parseInt(qtyInput.value) < 1) qtyInput.value = 1;
 
     // AJAX Submission
@@ -1064,7 +1207,6 @@ include 'components/review-dialog.php';
       .then(res => res.json())
       .then(data => {
         if (data.status === 'ok') {
-          // Update cart badge if function exists
           if (typeof updateBadge === 'function' && data.cartCount !== undefined) {
              updateBadge('cartBadge', data.cartCount);
           }
@@ -1198,10 +1340,54 @@ include 'components/review-dialog.php';
       document.getElementById('orderSummaryContent').innerHTML = summaryHtml;
     }
   });
+
+  // Initialize prices on load
+  updatePrices();
 </script>
 
 <script>
-// PayHere Event Handlers
+  // Wishlist toggle handler specific for this page
+  function toggleProductWishlist(productId) {
+    const btn = document.getElementById('wishlistBtn');
+    const svg = btn.querySelector('svg');
+    
+    // Optimistic update
+    const isAdded = btn.classList.toggle('active');
+    if (isAdded) {
+      svg.setAttribute('fill', 'currentColor');
+      btn.setAttribute('title', 'Remove from Wishlist');
+    } else {
+      svg.setAttribute('fill', 'none');
+      btn.setAttribute('title', 'Add to Wishlist');
+    }
+
+    fetch('wishlist-toggle.php?id=' + productId)
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+           // Update badge
+           if (typeof updateBadge === 'function' && data.wishlistCount !== undefined) {
+              updateBadge('wishlistBadge', data.wishlistCount);
+           }
+        } else {
+           // Revert if error
+           btn.classList.toggle('active');
+           if (!isAdded) {
+              svg.setAttribute('fill', 'currentColor');
+           } else {
+              svg.setAttribute('fill', 'none');
+           }
+           console.error(data.message);
+        }
+      })
+      .catch(err => {
+         console.error(err);
+         // Revert
+         btn.classList.toggle('active');
+      });
+  }
+
+  // PayHere Event Handlers
 payhere.onCompleted = function(orderId) {
     console.log("Payment completed. OrderID:" + orderId);
     alert("Payment completed! Order ID: " + orderId);
