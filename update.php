@@ -16,9 +16,6 @@ $id = (int)$_SESSION['id'];
 // ✅ Use null coalescing to avoid undefined key warnings
 $fname   = $_POST['fname']   ?? '';
 $lname   = $_POST['lname']   ?? '';
-$address = $_POST['address'] ?? '';
-$city    = $_POST['city']    ?? '';
-$pin     = $_POST['pin']     ?? '';
 $email   = $_POST['email']   ?? '';
 $pwd     = $_POST['pwd']     ?? '';
 
@@ -35,23 +32,7 @@ if ($lname !== '') {
   $stmt->execute();
 }
 
-if ($address !== '') {
-  $stmt = $mysqli->prepare("UPDATE users SET address = ? WHERE id = ?");
-  $stmt->bind_param("si", $address, $id);
-  $stmt->execute();
-}
 
-if ($city !== '') {
-  $stmt = $mysqli->prepare("UPDATE users SET city = ? WHERE id = ?");
-  $stmt->bind_param("si", $city, $id);
-  $stmt->execute();
-}
-
-if ($pin !== '') {
-  $stmt = $mysqli->prepare("UPDATE users SET pin = ? WHERE id = ?");
-  $stmt->bind_param("si", $pin, $id);
-  $stmt->execute();
-}
 
 if ($email !== '') {
   $stmt = $mysqli->prepare("UPDATE users SET email = ? WHERE id = ?");
