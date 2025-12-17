@@ -16,8 +16,28 @@ try {
     );
     $stmt->bind_param("ssss", $fname, $lname, $email, $pwd);
     $stmt->execute();
+    $new_user_id = $mysqli->insert_id;
 
-    header("Location: index.php?register_success=1");
+    // Start session and Log user in automatically
+    if (session_id() == '' || !isset($_SESSION)) { session_start(); }
+    
+    $_SESSION['user_id'] = $new_user_id;
+    $_SESSION['username'] = $email;
+    $_SESSION['name'] = trim($fname . ' ' . $lname);
+    $_SESSION['type'] = 'user';
+
+    // Migrate Guest Data
+    if (file_exists('lib/guest-cart.php')) {
+        require_once 'lib/guest-cart.php';
+        if (function_exists('migrateGuestData')) {
+            migrateGuestData($mysqli, $new_user_id);
+        }
+    }
+
+    // Redirect logic
+    $redirect_url = isset($_POST['redirect_url']) && !empty($_POST['redirect_url']) ? $_POST['redirect_url'] : 'index.php?register_success=1';
+    
+    header("Location: " . $redirect_url);
     exit;
 
 } catch (mysqli_sql_exception $e) {

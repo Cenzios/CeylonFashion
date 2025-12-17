@@ -3,6 +3,11 @@ if (session_id() == '' || !isset($_SESSION)) {
   session_start(); 
 }
 
+require_once 'config.php';
+if (file_exists('lib/guest-cart.php')) {
+    require_once 'lib/guest-cart.php';
+}
+
 // ---- DB CONNECTION ----
 $dsn = 'mysql:host=localhost;dbname=sahan;charset=utf8mb4';
 $user = 'root';
@@ -102,6 +107,11 @@ if ($passwordMatch) {
   $_SESSION['username'] = $user['email'];
   $_SESSION['name']     = trim(($user['fname'] ?? '') . ' ' . ($user['lname'] ?? ''));
   $_SESSION['type']     = $user['type'] ?? 'user';
+
+  // Migrate Guest Data
+  if (function_exists('migrateGuestData') && isset($mysqli)) {
+      migrateGuestData($mysqli, (int)$user['id']);
+  }
 
   // Regular users are redirected to index page or the requested redirect URL
   $redirectUrl = $_POST['redirect_url'] ?? 'index.php';

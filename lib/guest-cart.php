@@ -181,5 +181,66 @@ function getUserWishlistCount($mysqli, $user_id) {
     $stmt->close();
     return $data ? (int)$data['total'] : 0;
 }
+/**
+ * Migrate guest data to user account (Cart & Wishlist)
+ */
+function migrateGuestData($mysqli, $user_id) {
+    initGuestCart();
+    initGuestWishlist();
+
+    // 1. Migrate Cart
+    if (!empty($_SESSION['guest_cart'])) {
+        $stmtCheck = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
+        $stmtInsert = $mysqli->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)");
+        $stmtUpdate = $mysqli->prepare("UPDATE cart SET quantity = quantity + ? WHERE id = ?");
+
+        foreach ($_SESSION['guest_cart'] as $pid => $item) {
+            $qty = $item['quantity'];
+            
+            // Check if exists
+            $stmtCheck->bind_param("ii", $user_id, $pid);
+            $stmtCheck->execute();
+            $res = $stmtCheck->get_result();
+            
+            if ($row = $res->fetch_assoc()) {
+                // Update
+                $stmtUpdate->bind_param("ii", $qty, $row['id']);
+                $stmtUpdate->execute();
+            } else {
+                // Insert
+                $stmtInsert->bind_param("iii", $user_id, $pid, $qty);
+                $stmtInsert->execute();
+            }
+        }
+        $stmtCheck->close();
+        $stmtInsert->close();
+        $stmtUpdate->close();
+        
+        // Clear guest cart
+        unset($_SESSION['guest_cart']);
+    }
+
+    // 2. Migrate Wishlist
+    if (!empty($_SESSION['guest_wishlist'])) {
+        $stmtCheckW = $mysqli->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
+        $stmtInsertW = $mysqli->prepare("INSERT INTO wishlist (user_id, product_id, created_at) VALUES (?, ?, NOW())");
+
+        foreach ($_SESSION['guest_wishlist'] as $pid => $item) {
+            // Check if exists
+            $stmtCheckW->bind_param("ii", $user_id, $pid);
+            $stmtCheckW->execute();
+            if ($stmtCheckW->get_result()->num_rows == 0) {
+                // Insert
+                $stmtInsertW->bind_param("ii", $user_id, $pid);
+                $stmtInsertW->execute();
+            }
+        }
+        $stmtCheckW->close();
+        $stmtInsertW->close();
+        
+        // Clear guest wishlist
+        unset($_SESSION['guest_wishlist']);
+    }
+}
 ?>
 

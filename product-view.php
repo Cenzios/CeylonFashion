@@ -1412,6 +1412,35 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', async function(e) {
             e.preventDefault();
             
+            // Check if user is logged in
+            <?php if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])): ?>
+                // Guest user: Set redirect URL and show login
+                const currentUrl = window.location.href;
+                const redirectInput = document.getElementById('loginRedirectUrl');
+                if (redirectInput) {
+                    redirectInput.value = currentUrl;
+                }
+                
+                // Show login modal
+                const loginSidebarEl = document.getElementById('loginSidebar');
+                if (loginSidebarEl) {
+                    const loginOffcanvas = new bootstrap.Offcanvas(loginSidebarEl);
+                    loginOffcanvas.show();
+                    
+                    // Optional: Show message
+                    const loginMsg = document.getElementById('loginMessage');
+                    if (loginMsg) {
+                        loginMsg.textContent = "Please login or register to complete your purchase.";
+                        loginMsg.style.display = 'block';
+                        loginMsg.className = 'login-message-error'; // Use error style for visibility or custom class
+                    }
+                } else {
+                    // Fallback if modal not present
+                    window.location.href = 'login.php?redirect=' + encodeURIComponent(currentUrl);
+                }
+                return; // Stop execution
+            <?php endif; ?>
+
             const fabricId = document.getElementById('formFabricId').value;
             const size = document.getElementById('formSize').value;
             const qty = parseInt(document.getElementById('qtyField').value) || 1;
@@ -1580,6 +1609,26 @@ async function processPayment() {
     }
 }
 </script>
+
+</script>
+
+<?php if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])): ?>
+<script>
+  // Ensure the login redirect URL is always set to the current product page for guests
+  document.addEventListener('DOMContentLoaded', function() {
+    const currentUrl = window.location.href;
+    const redirectInput = document.getElementById('loginRedirectUrl');
+    const registerRedirectInput = document.getElementById('registerRedirectUrl');
+    
+    if (redirectInput) {
+      redirectInput.value = currentUrl;
+    }
+    if (registerRedirectInput) {
+        registerRedirectInput.value = currentUrl;
+    }
+  });
+</script>
+<?php endif; ?>
 
 </body>
 </html>
