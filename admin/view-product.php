@@ -41,15 +41,12 @@ while ($f = $fabricResult->fetch_assoc()) {
 }
 $fabricStmt->close();
 
-// ---- Fetch colors for this product ----
-$colorStmt = $mysqli->prepare("SELECT color_name, color_code FROM product_colors WHERE product_id = ?");
+// ---- Fetch color for this product (ONLY ONE COLOR) ----
+$colorStmt = $mysqli->prepare("SELECT color_name, color_code FROM product_colors WHERE product_id = ? LIMIT 1");
 $colorStmt->bind_param("i", $pid);
 $colorStmt->execute();
 $colorResult = $colorStmt->get_result();
-$colors = [];
-while ($c = $colorResult->fetch_assoc()) {
-    $colors[] = $c;
-}
+$productColor = $colorResult->fetch_assoc();
 $colorStmt->close();
 
 // Prepare images
@@ -87,36 +84,47 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
 .product-img { width: 100%; height: 250px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; }
 .label { font-weight: 600; color: #555; }
 
-/* Color Display Styles */
-.color-display {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+/* Enhanced Color Display */
+.color-badge {
+    display: inline-flex;
     align-items: center;
-}
-.color-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: #f8f9fa;
-    border-radius: 20px;
-    border: 1px solid #dee2e6;
-}
-.color-dot {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+    gap: 10px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 25px;
     border: 2px solid #dee2e6;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
 }
-.color-dot.white {
+.color-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+.color-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15), inset 0 1px 2px rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.color-circle.white-border {
     border-color: #adb5bd;
 }
-.color-name {
-    font-size: 13px;
-    font-weight: 500;
+.color-text {
+    font-size: 15px;
+    font-weight: 600;
     color: #495057;
+    letter-spacing: 0.3px;
+}
+.info-row {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.info-row:last-child {
+    border-bottom: none;
 }
 </style>
 </head>
@@ -135,126 +143,184 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
 
 <main class="main">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3>View Product</h3>
-        <a href="products.php" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Back to Products</a>
+        <div>
+            <h3 class="mb-1">View Product</h3>
+            <p class="text-muted mb-0">Detailed information about the product</p>
+        </div>
+        <div>
+            <a href="edit-product.php?id=<?php echo $pid; ?>" class="btn btn-primary me-2">
+                <i class="bi bi-pencil"></i> Edit Product
+            </a>
+            <a href="products.php" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <div class="row">
-                <!-- Product Details -->
-                <div class="col-md-8">
-                    <h4 class="mb-3 text-primary"><?php echo htmlspecialchars($product['product_name']); ?></h4>
+    <div class="row">
+        <!-- Left Column: Product Details -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-3">
+                    <h4 class="mb-0 text-primary fw-bold"><?php echo htmlspecialchars($product['product_name']); ?></h4>
+                </div>
+                <div class="card-body pt-0">
                     
-                    <div class="row mb-3">
-                        <div class="col-md-3 label">Product Code:</div>
-                        <div class="col-md-9"><?php echo htmlspecialchars($product['product_code']); ?></div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-3 label">Category:</div>
-                        <div class="col-md-9">
-                            <?php 
-                            $categories = ['used'=>'Used','bridalAttire'=>'Bridal Attire','bridemaidAttire'=>'Bridesmaid Attire','partyWear'=>'Party Wear'];
-                            echo isset($categories[$product['category']]) ? $categories[$product['category']] : ucfirst($product['category']); 
-                            ?>
+                    <div class="info-row">
+                        <div class="row">
+                            <div class="col-md-4 label">Product Code</div>
+                            <div class="col-md-8">
+                                <span class="badge bg-secondary"><?php echo htmlspecialchars($product['product_code']); ?></span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Available Colors -->
-                    <?php if (!empty($colors)): ?>
-                    <div class="row mb-3">
-                        <div class="col-md-3 label">Available Colors:</div>
-                        <div class="col-md-9">
-                            <div class="color-display">
-                                <?php foreach ($colors as $color): ?>
-                                    <div class="color-item">
-                                        <div class="color-dot <?php echo strtolower($color['color_name']) === 'white' ? 'white' : ''; ?>" 
-                                             style="background-color: <?php echo htmlspecialchars($color['color_code']); ?>;">
-                                        </div>
-                                        <span class="color-name"><?php echo htmlspecialchars($color['color_name']); ?></span>
+                    <div class="info-row">
+                        <div class="row">
+                            <div class="col-md-4 label">Category</div>
+                            <div class="col-md-8">
+                                <?php 
+                                $categories = [
+                                    'used' => '🔄 Used',
+                                    'bridalAttire' => '👰 Bridal Attire',
+                                    'bridemaidAttire' => '💐 Bridesmaid Attire',
+                                    'partyWear' => '🎉 Party Wear'
+                                ];
+                                echo isset($categories[$product['category']]) ? $categories[$product['category']] : ucfirst($product['category']); 
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product Color -->
+                    <?php if ($productColor): ?>
+                    <div class="info-row">
+                        <div class="row align-items-center">
+                            <div class="col-md-4 label">Product Color</div>
+                            <div class="col-md-8">
+                                <div class="color-badge">
+                                    <div class="color-circle <?php echo strtolower($productColor['color_name']) === 'white' ? 'white-border' : ''; ?>" 
+                                         style="background-color: <?php echo htmlspecialchars($productColor['color_code']); ?>;">
                                     </div>
-                                <?php endforeach; ?>
+                                    <span class="color-text"><?php echo htmlspecialchars($productColor['color_name']); ?></span>
+                                    <small class="text-muted"><?php echo htmlspecialchars($productColor['color_code']); ?></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div class="info-row">
+                        <div class="row">
+                            <div class="col-md-4 label">Product Color</div>
+                            <div class="col-md-8">
+                                <span class="text-muted fst-italic">No color assigned</span>
                             </div>
                         </div>
                     </div>
                     <?php endif; ?>
 
-                    <div class="row mb-4">
-                        <div class="col-md-3 label">Description:</div>
-                        <div class="col-md-9 text-muted">
-                            <?php echo nl2br(htmlspecialchars($product['product_desc'])); ?>
+                    <div class="info-row">
+                        <div class="row">
+                            <div class="col-md-4 label">Description</div>
+                            <div class="col-md-8 text-muted">
+                                <?php echo nl2br(htmlspecialchars($product['product_desc'])); ?>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Main Image Preview -->
-                <div class="col-md-4">
-                    <?php if (isset($images[0])): ?>
-                        <img src="<?php echo $images[0]; ?>" alt="Main Image" class="img-fluid rounded shadow-sm">
+                </div>
+            </div>
+
+            <!-- Fabric Details -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 pt-4 pb-3">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-layers text-primary"></i> Fabric Availability
+                    </h5>
+                </div>
+                <div class="card-body pt-0">
+                    <?php if (!empty($fabrics)): ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fabric Type</th>
+                                        <th class="text-center">Available Qty</th>
+                                        <th class="text-end">Additional Price (Rs)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($fabrics as $f): ?>
+                                        <tr>
+                                            <td>
+                                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                                <?php echo htmlspecialchars($f['fabric_type']); ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-info text-dark px-3 py-2">
+                                                    <?php echo (int)$f['fabric_qty']; ?> units
+                                                </span>
+                                            </td>
+                                            <td class="text-end fw-bold text-primary">
+                                                Rs. <?php echo number_format((float)$f['fabric_price'], 2); ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-4">
+                            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3 mb-0">No specific fabric details available for this product.</p>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Additional Images -->
-    <?php if (count($images) > 1): ?>
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white">
-            <h5 class="mb-0">Product Images</h5>
-        </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <?php foreach ($images as $img): ?>
-                    <div class="col-6 col-md-3">
-                        <img src="<?php echo $img; ?>" class="product-img" alt="Product Image">
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
-
-    <!-- Fabric Details -->
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white">
-            <h5 class="mb-0">Fabric Availability</h5>
-        </div>
-        <div class="card-body">
-            <?php if (!empty($fabrics)): ?>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Fabric Type</th>
-                                <th class="text-center">Available Qty</th>
-                                <th class="text-end">Additional Price (Rs)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($fabrics as $f): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($f['fabric_type']); ?></td>
-                                    <td class="text-center">
-                                        <span class="badge bg-info text-dark"><?php echo (int)$f['fabric_qty']; ?></span>
-                                    </td>
-                                    <td class="text-end fw-bold">
-                                        <?php echo number_format((float)$f['fabric_price'], 2); ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+        <!-- Right Column: Images -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                <div class="card-header bg-white border-0 pt-4 pb-3">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-images text-primary"></i> Product Images
+                    </h5>
                 </div>
-            <?php else: ?>
-                <p class="text-muted mb-0">No specific fabric details available for this product.</p>
-            <?php endif; ?>
+                <div class="card-body">
+                    <!-- Main Image -->
+                    <div class="mb-3">
+                        <img src="<?php echo $images[0]; ?>" alt="Main Image" class="img-fluid rounded shadow-sm" style="width: 100%; height: 300px; object-fit: cover;">
+                        <p class="text-center text-muted small mt-2 mb-0">Main Image</p>
+                    </div>
+
+                    <!-- Additional Images -->
+                    <?php if (count($images) > 1): ?>
+                        <div class="row g-2">
+                            <?php for ($i = 1; $i < count($images); $i++): ?>
+                                <div class="col-4">
+                                    <img src="<?php echo $images[$i]; ?>" class="img-fluid rounded" style="height: 80px; width: 100%; object-fit: cover; cursor: pointer;" alt="Image <?php echo $i+1; ?>" onclick="changeMainImage(this.src)">
+                                </div>
+                            <?php endfor; ?>
+                        </div>
+                        <p class="text-center text-muted small mt-2 mb-0">Click to view</p>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
     </div>
 
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Function to change main image when clicking thumbnails
+function changeMainImage(src) {
+    const mainImg = document.querySelector('.card-body img[alt="Main Image"]');
+    if (mainImg) {
+        mainImg.src = src;
+    }
+}
+</script>
 </body>
 </html>
