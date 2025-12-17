@@ -19,18 +19,6 @@
         <input type="text" class="form-control form-control-lg" id="lname" name="lname" placeholder="Last Name" required>
       </div>
       <div class="mb-3">
-        <label for="address" class="form-label">Address <span class="text-danger">*</span></label>
-        <input type="text" class="form-control form-control-lg" id="address" name="address" placeholder="Address" required>
-      </div>
-      <div class="mb-3">
-        <label for="city" class="form-label">City <span class="text-danger">*</span></label>
-        <input type="text" class="form-control form-control-lg" id="city" name="city" placeholder="City" required>
-      </div>
-      <div class="mb-3">
-        <label for="pin" class="form-label">Pin Code <span class="text-danger">*</span></label>
-        <input type="text" class="form-control form-control-lg" id="pin" name="pin" placeholder="Pin Code" required pattern="[0-9]{5,6}">
-      </div>
-      <div class="mb-3">
         <label for="emailReg" class="form-label">Email <span class="text-danger">*</span></label>
         <input type="email" class="form-control form-control-lg" id="emailReg" name="email" placeholder="Email" required>
       </div>
