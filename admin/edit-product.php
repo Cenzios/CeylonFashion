@@ -11,6 +11,21 @@ if (!$isAdmin) {
     exit;
 }
 
+// Database connection (PDO for consistency)
+$dsn = 'mysql:host=localhost;dbname=sahan;charset=utf8mb4';
+$user = 'root';
+$pass = '';
+$options = [
+  PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+  PDO::ATTR_EMULATE_PREPARES => false,
+];
+try {
+  $pdo = new PDO($dsn, $user, $pass, $options);
+} catch (Throwable $e) {
+  exit('Database connection failed.');
+}
+
 // ---- Fetch product ID from GET ----
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header('Location: products.php');
@@ -19,63 +34,83 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $pid = (int)$_GET['id'];
 
 // ---- Fetch product data ----
-$stmt = $mysqli->prepare("SELECT * FROM products WHERE id=?");
-$stmt->bind_param("i", $pid);
-$stmt->execute();
-$result = $stmt->get_result();
-$product = $result->fetch_assoc();
+$stmt = $pdo->prepare("SELECT * FROM products WHERE id=?");
+$stmt->execute([$pid]);
+$product = $stmt->fetch();
 if (!$product) {
     header('Location: products.php');
     exit;
 }
 
 // ---- Fetch fabric details for this product ----
-$fabricStmt = $mysqli->prepare("SELECT fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
-$fabricStmt->bind_param("i", $pid);
-$fabricStmt->execute();
-$fabricResult = $fabricStmt->get_result();
+$fabricStmt = $pdo->prepare("SELECT fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
+$fabricStmt->execute([$pid]);
+$fabricResult = $fabricStmt->fetchAll();
 $existingFabrics = [];
-while ($f = $fabricResult->fetch_assoc()) {
+foreach ($fabricResult as $f) {
     $existingFabrics[$f['fabric_type']] = [
         'qty' => $f['fabric_qty'],
         'price' => $f['fabric_price']
     ];
 }
-$fabricStmt->close();
 
-// ---- Fetch existing colors for this product ----
-$colorStmt = $mysqli->prepare("SELECT color_name, color_code FROM product_colors WHERE product_id = ?");
-$colorStmt->bind_param("i", $pid);
-$colorStmt->execute();
-$colorResult = $colorStmt->get_result();
-$existingColors = [];
-while ($c = $colorResult->fetch_assoc()) {
-    $existingColors[] = strtolower($c['color_name']);
+// ---- Fetch existing color for this product (ONLY ONE) ----
+$colorStmt = $pdo->prepare("SELECT color_name, color_code FROM product_colors WHERE product_id = ? LIMIT 1");
+$colorStmt->execute([$pid]);
+$existingColor = $colorStmt->fetch();
+
+// ---- Fetch all available colors from database ----
+$allColorsStmt = $pdo->query("SELECT id, color_name, color_code FROM colors ORDER BY color_name");
+$availableColors = $allColorsStmt->fetchAll();
+
+// ---- Handle Add New Color via AJAX ----
+if (isset($_POST['ajax_add_color'])) {
+  header('Content-Type: application/json');
+  
+  $newColorName = trim($_POST['new_color_name']);
+  $newColorCode = trim($_POST['new_color_code']);
+  
+  if (empty($newColorName) || empty($newColorCode)) {
+    echo json_encode(['success' => false, 'message' => 'Color name and code are required']);
+    exit;
+  }
+  
+  if (!preg_match('/^#[0-9A-F]{6}$/i', $newColorCode)) {
+    echo json_encode(['success' => false, 'message' => 'Invalid color code format. Use #RRGGBB']);
+    exit;
+  }
+  
+  try {
+    $insertColor = $pdo->prepare("INSERT INTO colors (color_name, color_code) VALUES (?, ?)");
+    $insertColor->execute([$newColorName, $newColorCode]);
+    
+    echo json_encode([
+      'success' => true, 
+      'message' => 'Color added successfully',
+      'color' => [
+        'id' => $pdo->lastInsertId(),
+        'name' => $newColorName,
+        'code' => $newColorCode
+      ]
+    ]);
+  } catch (PDOException $e) {
+    if ($e->getCode() == 23000) {
+      echo json_encode(['success' => false, 'message' => 'Color name already exists']);
+    } else {
+      echo json_encode(['success' => false, 'message' => 'Database error']);
+    }
+  }
+  exit;
 }
-$colorStmt->close();
-
-// ---- Define Available Colors ----
-$availableColors = [
-  'red' => ['name' => 'Red', 'code' => '#FF0000'],
-  'blue' => ['name' => 'Blue', 'code' => '#0000FF'],
-  'green' => ['name' => 'Green', 'code' => '#00FF00'],
-  'yellow' => ['name' => 'Yellow', 'code' => '#FFFF00'],
-  'orange' => ['name' => 'Orange', 'code' => '#FFA500'],
-  'purple' => ['name' => 'Purple', 'code' => '#800080'],
-  'pink' => ['name' => 'Pink', 'code' => '#FFC0CB'],
-  'black' => ['name' => 'Black', 'code' => '#000000'],
-  'white' => ['name' => 'White', 'code' => '#FFFFFF'],
-  'brown' => ['name' => 'Brown', 'code' => '#8B4513']
-];
 
 // ---- Handle form submission ----
 $success = $error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $product_code = $mysqli->real_escape_string($_POST['product_code']);
-    $product_name = $mysqli->real_escape_string($_POST['product_name']);
-    $product_desc = $mysqli->real_escape_string($_POST['product_desc']);
-    $category = $mysqli->real_escape_string($_POST['category']);
-    $selected_colors = $_POST['colors'] ?? [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
+    $product_code = trim($_POST['product_code']);
+    $product_name = trim($_POST['product_name']);
+    $product_desc = trim($_POST['product_desc']);
+    $category = trim($_POST['category']);
+    $selected_color_id = $_POST['product_color'] ?? '';
 
     // Handle image uploads (up to 4 images)
     $img1 = $product['product_img1'];
@@ -102,16 +137,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         move_uploaded_file($_FILES['product_img4']['tmp_name'], $target_dir . $img4);
     }
 
-    // Update main product info
-    $update_stmt = $mysqli->prepare("UPDATE products SET product_code=?, product_name=?, product_desc=?, product_img1=?, product_img2=?, product_img3=?, product_img4=?, category=? WHERE id=?");
-    $update_stmt->bind_param("ssssssssi", $product_code, $product_name, $product_desc, $img1, $img2, $img3, $img4, $category, $pid);
+    try {
+        $pdo->beginTransaction();
 
-    if ($update_stmt->execute()) {
+        // Update main product info
+        $update_stmt = $pdo->prepare("UPDATE products SET product_code=?, product_name=?, product_desc=?, product_img1=?, product_img2=?, product_img3=?, product_img4=?, category=? WHERE id=?");
+        $update_stmt->execute([$product_code, $product_name, $product_desc, $img1, $img2, $img3, $img4, $category, $pid]);
+
         // Delete and re-insert fabric details
-        $deleteFabric = $mysqli->prepare("DELETE FROM product_fabrics WHERE product_id = ?");
-        $deleteFabric->bind_param("i", $pid);
-        $deleteFabric->execute();
-        $deleteFabric->close();
+        $deleteFabric = $pdo->prepare("DELETE FROM product_fabrics WHERE product_id = ?");
+        $deleteFabric->execute([$pid]);
 
         if (isset($_POST['fabric_type'])) {
             foreach ($_POST['fabric_type'] as $i => $type) {
@@ -119,68 +154,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $fabric_price = isset($_POST['fabric_price'][$i]) ? (float)$_POST['fabric_price'][$i] : 0;
 
                 if (!empty($type) && $fabric_qty > 0) {
-                    $stmtFabric = $mysqli->prepare("INSERT INTO product_fabrics (product_id, fabric_type, fabric_qty, fabric_price) VALUES (?, ?, ?, ?)");
-                    $stmtFabric->bind_param("isid", $pid, $type, $fabric_qty, $fabric_price);
-                    $stmtFabric->execute();
-                    $stmtFabric->close();
+                    $stmtFabric = $pdo->prepare("INSERT INTO product_fabrics (product_id, fabric_type, fabric_qty, fabric_price) VALUES (?, ?, ?, ?)");
+                    $stmtFabric->execute([$pid, $type, $fabric_qty, $fabric_price]);
                 }
             }
         }
 
-        // Delete and re-insert colors
-        $deleteColors = $mysqli->prepare("DELETE FROM product_colors WHERE product_id = ?");
-        $deleteColors->bind_param("i", $pid);
-        $deleteColors->execute();
-        $deleteColors->close();
+        // Delete and re-insert color (ONLY ONE)
+        $deleteColors = $pdo->prepare("DELETE FROM product_colors WHERE product_id = ?");
+        $deleteColors->execute([$pid]);
 
-        if (!empty($selected_colors)) {
-            $stmtColor = $mysqli->prepare("INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?, ?, ?)");
-            foreach ($selected_colors as $colorKey) {
-                if (isset($availableColors[$colorKey])) {
-                    $colorName = $availableColors[$colorKey]['name'];
-                    $colorCode = $availableColors[$colorKey]['code'];
-                    $stmtColor->bind_param("iss", $pid, $colorName, $colorCode);
-                    $stmtColor->execute();
-                }
+        if (!empty($selected_color_id)) {
+            $colorInfo = $pdo->prepare("SELECT color_name, color_code FROM colors WHERE id = ?");
+            $colorInfo->execute([$selected_color_id]);
+            $color = $colorInfo->fetch();
+            
+            if ($color) {
+                $stmtColor = $pdo->prepare("INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?, ?, ?)");
+                $stmtColor->execute([$pid, $color['color_name'], $color['color_code']]);
             }
-            $stmtColor->close();
         }
 
-        $success = "✅ Product updated successfully with images, fabrics, and colors!";
+        $pdo->commit();
+        $success = "✅ Product updated successfully with images, fabrics, and color!";
         
         // Refresh data
-        $stmt = $mysqli->prepare("SELECT * FROM products WHERE id=?");
-        $stmt->bind_param("i", $pid);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $product = $result->fetch_assoc();
-        $stmt->close();
+        $stmt = $pdo->prepare("SELECT * FROM products WHERE id=?");
+        $stmt->execute([$pid]);
+        $product = $stmt->fetch();
 
-        $fabricStmt = $mysqli->prepare("SELECT fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
-        $fabricStmt->bind_param("i", $pid);
-        $fabricStmt->execute();
-        $fabricResult = $fabricStmt->get_result();
+        $fabricStmt = $pdo->prepare("SELECT fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
+        $fabricStmt->execute([$pid]);
+        $fabricResult = $fabricStmt->fetchAll();
         $existingFabrics = [];
-        while ($f = $fabricResult->fetch_assoc()) {
+        foreach ($fabricResult as $f) {
             $existingFabrics[$f['fabric_type']] = [
                 'qty' => $f['fabric_qty'],
                 'price' => $f['fabric_price']
             ];
         }
-        $fabricStmt->close();
 
-        // Refresh colors
-        $colorStmt = $mysqli->prepare("SELECT color_name FROM product_colors WHERE product_id = ?");
-        $colorStmt->bind_param("i", $pid);
-        $colorStmt->execute();
-        $colorResult = $colorStmt->get_result();
-        $existingColors = [];
-        while ($c = $colorResult->fetch_assoc()) {
-            $existingColors[] = strtolower($c['color_name']);
-        }
-        $colorStmt->close();
-    } else {
-        $error = "❌ Error: " . $mysqli->error;
+        // Refresh color
+        $colorStmt = $pdo->prepare("SELECT color_name, color_code FROM product_colors WHERE product_id = ? LIMIT 1");
+        $colorStmt->execute([$pid]);
+        $existingColor = $colorStmt->fetch();
+
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        $error = "❌ Error: " . $e->getMessage();
     }
 }
 
@@ -215,77 +236,22 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
 .fabric-table input { width: 100%; }
 .image-preview { width:150px; height:150px; object-fit:cover; margin-bottom:10px; border-radius:8px; border: 2px solid #ddd; }
 
-/* Color Selection Styles */
-.color-selection {
+.color-dropdown-container {
   display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 10px;
-  border: 2px solid #e9ecef;
+  gap: 10px;
+  align-items: start;
 }
-.color-option {
-  position: relative;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: transform 0.2s ease;
+.color-dropdown-container select {
+  flex: 1;
 }
-.color-option:hover {
-  transform: translateY(-2px);
-}
-.color-option input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  width: 0;
-  height: 0;
-}
-.color-circle {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: 3px solid #dee2e6;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  position: relative;
-}
-.color-option input[type="checkbox"]:checked + .color-circle {
-  border-color: #430160ff;
-  border-width: 4px;
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(67, 1, 96, 0.4);
-}
-.color-option input[type="checkbox"]:checked + .color-circle::after {
-  content: "✓";
-  color: white;
-  font-weight: bold;
-  font-size: 24px;
-  text-shadow: 0 0 4px rgba(0,0,0,0.6);
-  position: absolute;
-}
-.color-circle.white {
-  border-color: #adb5bd;
-}
-.color-circle.white::after {
-  color: #000 !important;
-  text-shadow: 0 0 2px rgba(255,255,255,0.8);
-}
-.color-label {
-  text-align: center;
-  font-size: 12px;
-  margin-top: 6px;
-  color: #6c757d;
-  font-weight: 500;
-}
-.color-option input[type="checkbox"]:checked ~ .color-label {
-  color: #430160ff;
-  font-weight: 600;
+.color-preview {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid #dee2e6;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 10px;
 }
 </style>
 </head>
@@ -349,22 +315,39 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
             </select>
         </div>
 
-        <!-- 🎨 Color Selection Section -->
+        <!-- 🎨 Color Selection Dropdown -->
         <div class="mb-4">
-            <h5 class="fw-bold text-primary mb-2">Available Colors</h5>
-            <p class="text-muted small mb-3">Select all colors available for this product (click on circles)</p>
-            <div class="color-selection">
-                <?php foreach ($availableColors as $key => $color): 
-                    $isChecked = in_array(strtolower($color['name']), $existingColors) ? 'checked' : '';
-                ?>
-                    <div class="color-option">
-                        <label>
-                            <input type="checkbox" name="colors[]" value="<?= $key ?>" <?= $isChecked ?>>
-                            <div class="color-circle <?= $key === 'white' ? 'white' : '' ?>" style="background-color: <?= $color['code'] ?>;"></div>
-                            <div class="color-label"><?= $color['name'] ?></div>
-                        </label>
-                    </div>
-                <?php endforeach; ?>
+            <h5 class="fw-bold text-primary mb-2">Product Color</h5>
+            <p class="text-muted small mb-3">Select one color for this product</p>
+            <div class="color-dropdown-container">
+                <div style="flex: 1;">
+                    <select name="product_color" id="productColor" class="form-select" required>
+                        <option value="">-- Select Color --</option>
+                        <?php 
+                        // Find the color ID that matches existing color
+                        $selectedColorId = null;
+                        if ($existingColor) {
+                            foreach ($availableColors as $color) {
+                                if (strtolower($color['color_name']) === strtolower($existingColor['color_name'])) {
+                                    $selectedColorId = $color['id'];
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        foreach ($availableColors as $color): 
+                            $selected = ($color['id'] == $selectedColorId) ? 'selected' : '';
+                        ?>
+                            <option value="<?= $color['id'] ?>" data-color="<?= $color['color_code'] ?>" <?= $selected ?>>
+                                <?= htmlspecialchars($color['color_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div id="colorPreview" class="color-preview" style="background-color: <?= $existingColor ? htmlspecialchars($existingColor['color_code']) : '#fff' ?>;"></div>
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addColorModal">
+                    + Add New Color
+                </button>
             </div>
         </div>
 
@@ -459,6 +442,130 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
     </form>
 </main>
 
+<!-- Add Color Modal -->
+<div class="modal fade" id="addColorModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Color</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="colorModalAlert"></div>
+        <div class="mb-3">
+          <label class="form-label">Color Name <span class="text-danger">*</span></label>
+          <input type="text" id="newColorName" class="form-control" placeholder="e.g., Navy Blue">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Color Code (Hex) <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <input type="text" id="newColorCode" class="form-control" placeholder="#000000" maxlength="7">
+            <input type="color" id="newColorPicker" class="form-control form-control-color" value="#000000" title="Pick a color">
+          </div>
+          <small class="text-muted">Format: #RRGGBB</small>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Preview</label>
+          <div id="newColorPreview" style="width: 100%; height: 50px; border-radius: 8px; border: 2px solid #dee2e6; background-color: #000000;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveColorBtn">Save Color</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Color preview on selection
+document.getElementById('productColor').addEventListener('change', function() {
+  const selectedOption = this.options[this.selectedIndex];
+  const colorCode = selectedOption.getAttribute('data-color');
+  document.getElementById('colorPreview').style.backgroundColor = colorCode || '#fff';
+});
+
+// Color picker sync
+const colorPicker = document.getElementById('newColorPicker');
+const colorCode = document.getElementById('newColorCode');
+const colorPreview = document.getElementById('newColorPreview');
+
+colorPicker.addEventListener('input', function() {
+  colorCode.value = this.value.toUpperCase();
+  colorPreview.style.backgroundColor = this.value;
+});
+
+colorCode.addEventListener('input', function() {
+  const val = this.value;
+  if (/^#[0-9A-F]{6}$/i.test(val)) {
+    colorPicker.value = val;
+    colorPreview.style.backgroundColor = val;
+  }
+});
+
+// Save new color
+document.getElementById('saveColorBtn').addEventListener('click', function() {
+  const name = document.getElementById('newColorName').value.trim();
+  const code = document.getElementById('newColorCode').value.trim();
+  const alertDiv = document.getElementById('colorModalAlert');
+  
+  if (!name || !code) {
+    alertDiv.innerHTML = '<div class="alert alert-danger">Please fill in all fields</div>';
+    return;
+  }
+  
+  if (!/^#[0-9A-F]{6}$/i.test(code)) {
+    alertDiv.innerHTML = '<div class="alert alert-danger">Invalid color code format. Use #RRGGBB</div>';
+    return;
+  }
+  
+  // Send AJAX request
+  const formData = new FormData();
+  formData.append('ajax_add_color', '1');
+  formData.append('new_color_name', name);
+  formData.append('new_color_code', code);
+  
+  fetch('', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Add new option to select
+      const select = document.getElementById('productColor');
+      const option = document.createElement('option');
+      option.value = data.color.id;
+      option.setAttribute('data-color', data.color.code);
+      option.textContent = data.color.name;
+      select.appendChild(option);
+      select.value = data.color.id;
+      
+      // Update preview
+      document.getElementById('colorPreview').style.backgroundColor = data.color.code;
+      
+      // Close modal and reset
+      bootstrap.Modal.getInstance(document.getElementById('addColorModal')).hide();
+      document.getElementById('newColorName').value = '';
+      document.getElementById('newColorCode').value = '#000000';
+      colorPicker.value = '#000000';
+      colorPreview.style.backgroundColor = '#000000';
+      alertDiv.innerHTML = '';
+      
+      // Show success message
+      const successAlert = document.createElement('div');
+      successAlert.className = 'alert alert-success alert-dismissible fade show';
+      successAlert.innerHTML = `${data.message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+      document.querySelector('main').insertBefore(successAlert, document.querySelector('h3'));
+    } else {
+      alertDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+    }
+  })
+  .catch(error => {
+    alertDiv.innerHTML = '<div class="alert alert-danger">Error adding color</div>';
+  });
+});
+</script>
 </body>
 </html>
