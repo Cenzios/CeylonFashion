@@ -33,29 +33,60 @@ if (!$userData || $userData['type'] !== 'admin') {
   exit;
 }
 
-// ---- Define Available Colors ----
-$availableColors = [
-  'red' => ['name' => 'Red', 'code' => '#FF0000'],
-  'blue' => ['name' => 'Blue', 'code' => '#0000FF'],
-  'green' => ['name' => 'Green', 'code' => '#00FF00'],
-  'yellow' => ['name' => 'Yellow', 'code' => '#FFFF00'],
-  'orange' => ['name' => 'Orange', 'code' => '#FFA500'],
-  'purple' => ['name' => 'Purple', 'code' => '#800080'],
-  'pink' => ['name' => 'Pink', 'code' => '#FFC0CB'],
-  'black' => ['name' => 'Black', 'code' => '#000000'],
-  'white' => ['name' => 'White', 'code' => '#FFFFFF'],
-  'brown' => ['name' => 'Brown', 'code' => '#8B4513']
-];
+// ---- Fetch all available colors from database ----
+$colorStmt = $pdo->query("SELECT id, color_name, color_code FROM colors ORDER BY color_name");
+$availableColors = $colorStmt->fetchAll();
+
+// ---- Handle Add New Color via AJAX ----
+if (isset($_POST['ajax_add_color'])) {
+  header('Content-Type: application/json');
+  
+  $newColorName = trim($_POST['new_color_name']);
+  $newColorCode = trim($_POST['new_color_code']);
+  
+  if (empty($newColorName) || empty($newColorCode)) {
+    echo json_encode(['success' => false, 'message' => 'Color name and code are required']);
+    exit;
+  }
+  
+  // Validate hex color code
+  if (!preg_match('/^#[0-9A-F]{6}$/i', $newColorCode)) {
+    echo json_encode(['success' => false, 'message' => 'Invalid color code format. Use #RRGGBB']);
+    exit;
+  }
+  
+  try {
+    $insertColor = $pdo->prepare("INSERT INTO colors (color_name, color_code) VALUES (?, ?)");
+    $insertColor->execute([$newColorName, $newColorCode]);
+    
+    echo json_encode([
+      'success' => true, 
+      'message' => 'Color added successfully',
+      'color' => [
+        'id' => $pdo->lastInsertId(),
+        'name' => $newColorName,
+        'code' => $newColorCode
+      ]
+    ]);
+  } catch (PDOException $e) {
+    if ($e->getCode() == 23000) {
+      echo json_encode(['success' => false, 'message' => 'Color name already exists']);
+    } else {
+      echo json_encode(['success' => false, 'message' => 'Database error']);
+    }
+  }
+  exit;
+}
 
 // ---- Add Product Logic ----
 $success = $error = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
   $product_code = trim($_POST['product_code']);
   $product_name = trim($_POST['product_name']);
   $product_desc = trim($_POST['product_desc']);
   $category = $_POST['category'] ?? '';
-  $selected_colors = $_POST['colors'] ?? [];
+  $selected_color_id = $_POST['product_color'] ?? '';
 
   // Validation
   if (empty($product_code) || empty($product_name) || empty($product_desc) || empty($category)) {
@@ -127,24 +158,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           }
         }
 
-        // Insert selected colors
-        if (!empty($selected_colors)) {
-          $stmtColor = $pdo->prepare("INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?, ?, ?)");
+        // Insert selected color (ONLY ONE)
+        if (!empty($selected_color_id)) {
+          $colorInfo = $pdo->prepare("SELECT color_name, color_code FROM colors WHERE id = ?");
+          $colorInfo->execute([$selected_color_id]);
+          $color = $colorInfo->fetch();
           
-          foreach ($selected_colors as $colorKey) {
-            if (isset($availableColors[$colorKey])) {
-              $stmtColor->execute([
-                $product_id, 
-                $availableColors[$colorKey]['name'], 
-                $availableColors[$colorKey]['code']
-              ]);
-            }
+          if ($color) {
+            $stmtColor = $pdo->prepare("INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?, ?, ?)");
+            $stmtColor->execute([$product_id, $color['color_name'], $color['color_code']]);
           }
         }
 
         // Commit transaction
         $pdo->commit();
-        $success = "✅ Product added successfully with images, fabrics, and colors!";
+        $success = "✅ Product added successfully with images, fabrics, and color!";
         
       } else {
         $pdo->rollBack();
@@ -174,77 +202,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .main { margin-left:240px; padding:28px; min-height:100vh; }
     .fabric-table input { width: 100%; }
     
-    /* Color Selection Styles */
-    .color-selection {
+    .color-dropdown-container {
       display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      padding: 20px;
-      background: #f8f9fa;
-      border-radius: 10px;
-      border: 2px solid #e9ecef;
+      gap: 10px;
+      align-items: start;
     }
-    .color-option {
-      position: relative;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: transform 0.2s ease;
+    .color-dropdown-container select {
+      flex: 1;
     }
-    .color-option:hover {
-      transform: translateY(-2px);
+    .color-preview {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      border: 2px solid #dee2e6;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 10px;
     }
-    .color-option input[type="checkbox"] {
-      position: absolute;
-      opacity: 0;
-      cursor: pointer;
-      width: 0;
-      height: 0;
-    }
-    .color-circle {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      border: 3px solid #dee2e6;
-      transition: all 0.3s ease;
+    .color-select-option {
       display: flex;
       align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      position: relative;
-    }
-    .color-option input[type="checkbox"]:checked + .color-circle {
-      border-color: #430160ff;
-      border-width: 4px;
-      transform: scale(1.05);
-      box-shadow: 0 4px 12px rgba(67, 1, 96, 0.4);
-    }
-    .color-option input[type="checkbox"]:checked + .color-circle::after {
-      content: "✓";
-      color: white;
-      font-weight: bold;
-      font-size: 24px;
-      text-shadow: 0 0 4px rgba(0,0,0,0.6);
-      position: absolute;
-    }
-    .color-circle.white {
-      border-color: #adb5bd;
-    }
-    .color-circle.white::after {
-      color: #000 !important;
-      text-shadow: 0 0 2px rgba(255,255,255,0.8);
-    }
-    .color-label {
-      text-align: center;
-      font-size: 12px;
-      margin-top: 6px;
-      color: #6c757d;
-      font-weight: 500;
-    }
-    .color-option input[type="checkbox"]:checked ~ .color-label {
-      color: #430160ff;
-      font-weight: 600;
+      gap: 8px;
     }
   </style>
 </head>
@@ -302,27 +280,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
         <select name="category" class="form-select" required>
           <option value="" disabled selected>-- Select Category --</option>
-          <option value="used">Used</option>
+
           <option value="bridalAttire">Bridal Attire</option>
           <option value="bridemaidAttire">Bridesmaid Attire</option>
           <option value="partyWear">Party Wear</option>
         </select>
       </div>
 
-      <!-- 🎨 Color Selection Section -->
+      <!-- 🎨 Color Selection Dropdown -->
       <div class="mb-4">
-        <h5 class="fw-bold text-primary mb-2">Available Colors</h5>
-        <p class="text-muted small mb-3">Select all colors available for this product (click on circles)</p>
-        <div class="color-selection">
-          <?php foreach ($availableColors as $key => $color): ?>
-            <div class="color-option">
-              <label>
-                <input type="checkbox" name="colors[]" value="<?= $key ?>">
-                <div class="color-circle <?= $key === 'white' ? 'white' : '' ?>" style="background-color: <?= $color['code'] ?>;"></div>
-                <div class="color-label"><?= $color['name'] ?></div>
-              </label>
-            </div>
-          <?php endforeach; ?>
+        <h5 class="fw-bold text-primary mb-2">Product Color</h5>
+        <p class="text-muted small mb-3">Select one color for this product</p>
+        <div class="color-dropdown-container">
+          <div style="flex: 1;">
+            <select name="product_color" id="productColor" class="form-select" required>
+              <option value="">-- Select Color --</option>
+              <?php foreach ($availableColors as $color): ?>
+                <option value="<?= $color['id'] ?>" data-color="<?= $color['color_code'] ?>">
+                  <?= htmlspecialchars($color['color_name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div id="colorPreview" class="color-preview" style="background-color: #fff;"></div>
+          <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addColorModal">
+            + Add New Color
+          </button>
         </div>
       </div>
 
@@ -396,6 +379,130 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 </main>
 
+<!-- Add Color Modal -->
+<div class="modal fade" id="addColorModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Color</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="colorModalAlert"></div>
+        <div class="mb-3">
+          <label class="form-label">Color Name <span class="text-danger">*</span></label>
+          <input type="text" id="newColorName" class="form-control" placeholder="e.g., Navy Blue">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Color Code (Hex) <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <input type="text" id="newColorCode" class="form-control" placeholder="#000000" maxlength="7">
+            <input type="color" id="newColorPicker" class="form-control form-control-color" value="#000000" title="Pick a color">
+          </div>
+          <small class="text-muted">Format: #RRGGBB</small>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Preview</label>
+          <div id="newColorPreview" style="width: 100%; height: 50px; border-radius: 8px; border: 2px solid #dee2e6; background-color: #000000;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveColorBtn">Save Color</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Color preview on selection
+document.getElementById('productColor').addEventListener('change', function() {
+  const selectedOption = this.options[this.selectedIndex];
+  const colorCode = selectedOption.getAttribute('data-color');
+  document.getElementById('colorPreview').style.backgroundColor = colorCode || '#fff';
+});
+
+// Color picker sync
+const colorPicker = document.getElementById('newColorPicker');
+const colorCode = document.getElementById('newColorCode');
+const colorPreview = document.getElementById('newColorPreview');
+
+colorPicker.addEventListener('input', function() {
+  colorCode.value = this.value.toUpperCase();
+  colorPreview.style.backgroundColor = this.value;
+});
+
+colorCode.addEventListener('input', function() {
+  const val = this.value;
+  if (/^#[0-9A-F]{6}$/i.test(val)) {
+    colorPicker.value = val;
+    colorPreview.style.backgroundColor = val;
+  }
+});
+
+// Save new color
+document.getElementById('saveColorBtn').addEventListener('click', function() {
+  const name = document.getElementById('newColorName').value.trim();
+  const code = document.getElementById('newColorCode').value.trim();
+  const alertDiv = document.getElementById('colorModalAlert');
+  
+  if (!name || !code) {
+    alertDiv.innerHTML = '<div class="alert alert-danger">Please fill in all fields</div>';
+    return;
+  }
+  
+  if (!/^#[0-9A-F]{6}$/i.test(code)) {
+    alertDiv.innerHTML = '<div class="alert alert-danger">Invalid color code format. Use #RRGGBB</div>';
+    return;
+  }
+  
+  // Send AJAX request
+  const formData = new FormData();
+  formData.append('ajax_add_color', '1');
+  formData.append('new_color_name', name);
+  formData.append('new_color_code', code);
+  
+  fetch('', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Add new option to select
+      const select = document.getElementById('productColor');
+      const option = document.createElement('option');
+      option.value = data.color.id;
+      option.setAttribute('data-color', data.color.code);
+      option.textContent = data.color.name;
+      select.appendChild(option);
+      select.value = data.color.id;
+      
+      // Update preview
+      document.getElementById('colorPreview').style.backgroundColor = data.color.code;
+      
+      // Close modal and reset
+      bootstrap.Modal.getInstance(document.getElementById('addColorModal')).hide();
+      document.getElementById('newColorName').value = '';
+      document.getElementById('newColorCode').value = '#000000';
+      colorPicker.value = '#000000';
+      colorPreview.style.backgroundColor = '#000000';
+      alertDiv.innerHTML = '';
+      
+      // Show success message
+      const successAlert = document.createElement('div');
+      successAlert.className = 'alert alert-success alert-dismissible fade show';
+      successAlert.innerHTML = `${data.message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+      document.querySelector('.container-fluid').insertBefore(successAlert, document.querySelector('h2'));
+    } else {
+      alertDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+    }
+  })
+  .catch(error => {
+    alertDiv.innerHTML = '<div class="alert alert-danger">Error adding color</div>';
+  });
+});
+</script>
 </body>
 </html>
