@@ -11,7 +11,7 @@ if (!$isAdmin) {
 }
 
 // ---- Fetch users ----
-$sql = "SELECT id, fname, lname, address, city, pin, email, password, type FROM users ORDER BY id DESC";
+$sql = "SELECT id, fname, lname, email, password, type FROM users ORDER BY id DESC";
 $result = $mysqli->query($sql);
 if ($result === false) {
     die("DB error: " . $mysqli->error);
@@ -68,9 +68,6 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
             <th>ID</th>
             <th>First Name</th>
             <th>Last Name</th>
-            <th>Address</th>
-            <th>City</th>
-            <th>Pin</th>
             <th>Email</th>
             <th>Password</th>
             <th>Type</th>
@@ -83,9 +80,6 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
               <td><?php echo (int)$user['id']; ?></td>
               <td><?php echo htmlentities($user['fname']); ?></td>
               <td><?php echo htmlentities($user['lname']); ?></td>
-              <td><?php echo htmlentities($user['address']); ?></td>
-              <td><?php echo htmlentities($user['city']); ?></td>
-              <td><?php echo htmlentities($user['pin']); ?></td>
               <td><?php echo htmlentities($user['email']); ?></td>
               <td><?php echo htmlentities($user['password']); ?></td>
               <td>
