@@ -1,9 +1,12 @@
 <?php
 // ------------------------------
-// product-view.php (UPDATED - Main image wider, thumbnails on right side)
+// product-view.php (UPDATED - Using Components)
 // ------------------------------
 if (session_id() == '' || !isset($_SESSION)) { session_start(); }
 require_once 'config.php';
+
+// Include component handlers
+require_once 'components/reviews-handler.php';
 
 // ------------------------------
 // Helpers
@@ -67,6 +70,16 @@ if (empty($images)) {
 while (count($images) < 4) $images[] = $images[count($images)-1];
 
 // ------------------------------
+// Fetch Product Color
+// ------------------------------
+$stmt = $mysqli->prepare("SELECT color_name, color_code FROM product_colors WHERE product_id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$colorResult = $stmt->get_result();
+$productColor = $colorResult->fetch_assoc();
+$stmt->close();
+
+// ------------------------------
 // Fetch Fabrics
 // ------------------------------
 $stmt = $mysqli->prepare("SELECT id, fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
@@ -82,64 +95,16 @@ while ($f = $fabricsResult->fetch_assoc()) {
 $stmt->close();
 
 // ------------------------------
-// Handle POST (Reviews / Q&A)
+// Handle POST (Reviews / Q&A) - Using Component Handler
 // ------------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $ok = isset($_POST['csrf_token']) && csrf_verify($_POST['csrf_token']);
-
-  if (!$ok) {
-    http_response_code(403);
-    die("Invalid CSRF token.");
-  }
-
-  if (!$isLoggedIn) {
-    redirect_self(['msg'=>'login_required']);
-  }
-
-  if (isset($_POST['submit_review'])) {
-    $rating  = isset($_POST['rating']) ? (int)$_POST['rating'] : 0;
-    $comment = isset($_POST['comment']) ? trim($_POST['comment']) : '';
-
-    if ($rating >= 1 && $rating <= 5 && $comment !== '') {
-      $stmt = $mysqli->prepare("INSERT INTO product_reviews (product_id, username, rating, comment, created_at) VALUES (?, ?, ?, ?, NOW())");
-      if ($stmt === false) { die('MySQL prepare failed: ' . $mysqli->error); }
-      $stmt->bind_param("isis", $product_id, $currentUser, $rating, $comment);
-      if ($stmt->execute()) {
-        $stmt->close();
-        redirect_self(['msg'=>'review_added']);
-      } else {
-        die('Failed to insert review: ' . $stmt->error);
-      }
-    } else {
-      redirect_self(['msg'=>'invalid_review']);
-    }
-  }
-
-  if (isset($_POST['submit_question'])) {
-    $question = isset($_POST['question']) ? trim($_POST['question']) : '';
-    if ($question !== '') {
-      $stmt = $mysqli->prepare("INSERT INTO product_questions (product_id, username, question, created_at) VALUES (?, ?, ?, NOW())");
-      $stmt->bind_param("iss", $product_id, $currentUser, $question);
-      $stmt->execute();
-      $stmt->close();
-      redirect_self(['msg'=>'question_added']);
-    } else {
-      redirect_self(['msg'=>'invalid_question']);
-    }
-  }
-}
+handle_reviews_post($mysqli, $product_id, $currentUser, $isLoggedIn);
 
 // ------------------------------
 // Aggregate: Avg Rating & Counts
 // ------------------------------
-$avg = 0.0; $totalReviews = 0;
-$stmt = $mysqli->prepare("SELECT COALESCE(AVG(rating),0), COUNT(*) FROM product_reviews WHERE product_id = ?");
-$stmt->bind_param("i", $product_id);
-$stmt->execute();
-$stmt->bind_result($avg, $totalReviews);
-$stmt->fetch();
-$stmt->close();
-$avg = round((float)$avg, 1);
+$reviewStats = get_review_stats($mysqli, $product_id);
+$avg = $reviewStats['average'];
+$totalReviews = $reviewStats['total'];
 
 // ------------------------------
 // Pagination
@@ -150,60 +115,12 @@ $offR  = ($pageR - 1) * $perPage;
 $pageQ = isset($_GET['pageQ']) && ctype_digit($_GET['pageQ']) ? max(1, (int)$_GET['pageQ']) : 1;
 $offQ  = ($pageQ - 1) * $perPage;
 
-$stmt = $mysqli->prepare("SELECT COUNT(*) FROM product_reviews WHERE product_id = ?");
-$stmt->bind_param("i", $product_id);
-$stmt->execute();
-$stmt->bind_result($reviewsCount);
-$stmt->fetch();
-$stmt->close();
+$reviewsCount = get_reviews_count($mysqli, $product_id);
+$questionsCount = get_questions_count($mysqli, $product_id);
 
-$stmt = $mysqli->prepare("SELECT COUNT(*) FROM product_questions WHERE product_id = ?");
-$stmt->bind_param("i", $product_id);
-$stmt->execute();
-$stmt->bind_result($questionsCount);
-$stmt->fetch();
-$stmt->close();
-
-$stmt = $mysqli->prepare("
-  SELECT username, rating, comment, created_at
-  FROM product_reviews
-  WHERE product_id = ?
-  ORDER BY created_at DESC
-  LIMIT ? OFFSET ?
-");
-$stmt->bind_param("iii", $product_id, $perPage, $offR);
-$stmt->execute();
-$reviewsRes = $stmt->get_result();
-$reviews = $reviewsRes->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
-
-$stmt = $mysqli->prepare("
-  SELECT username, question, created_at
-  FROM product_questions
-  WHERE product_id = ?
-  ORDER BY created_at DESC
-  LIMIT ? OFFSET ?
-");
-$stmt->bind_param("iii", $product_id, $perPage, $offQ);
-$stmt->execute();
-$questionsRes = $stmt->get_result();
-$questions = $questionsRes->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
-
-function render_pager($total, $perPage, $currentKey, $currentPage) {
-  $pages = (int)ceil(max(1, $total)/$perPage);
-  if ($pages <= 1) return '';
-  $out = '<div class="pager">';
-  for ($p = 1; $p <= $pages; $p++) {
-    $params = $_GET;
-    $params[$currentKey] = $p;
-    $link = $_SERVER['PHP_SELF'] . '?' . http_build_query($params);
-    $cls = $p === (int)$currentPage ? 'class="active"' : '';
-    $out .= "<a $cls href=\"".e($link)."\">$p</a>";
-  }
-  $out .= '</div>';
-  return $out;
-}
+// Fetch reviews and questions using component functions
+$reviews = fetch_reviews($mysqli, $product_id, $perPage, $offR);
+$questions = fetch_questions($mysqli, $product_id, $perPage, $offQ);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -242,6 +159,19 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
       <?php endif; ?>
 
       <h1 class="title"><?= e($product['product_name']); ?></h1>
+      
+      <!-- Color Display -->
+      <?php if ($productColor): ?>
+      <div class="option-row d-flex align-items-center gap-2 mb-4">
+        <span class="opt-label mb-0 me-2">Color:</span>
+        <div class="d-flex align-items-center gap-2 border px-3 py-1 rounded" style="background-color: #f8f9fa;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background-color: <?= e($productColor['color_code']); ?>; border: 1px solid #dee2e6; box-shadow: inset 0 0 2px rgba(0,0,0,0.1);"></div>
+            <span style="font-weight: 500; font-size: 14px;"><?= e($productColor['color_name']); ?></span>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      
 
       <!-- Fabrics -->
       <?php if (!empty($fabrics)): ?>
@@ -278,8 +208,11 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
           <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
           <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
         </svg>
-        Please select <strong>colour</strong>, <strong>fabric</strong>, and <strong>size</strong> to check the price.
+        Please select <strong>fabric type</strong>, and <strong>size</strong> to check the price.
       </div>
+
+      <!-- Dynamic Price Display -->
+      <h2 id="productPrice" class="fw-bold text-dark mb-4" style="font-family: inherit;">Rs. 0.00</h2>
 
       <!-- Quantity + Buttons at bottom -->
       <form id="addToCartForm" action="cart-add.php" method="GET" onsubmit="return prepareCartForm(this);">
@@ -338,74 +271,20 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
       <button class="add-btn" id="openDialogBtn" <?= $isLoggedIn ? '' : 'onclick="showLoginModal(); return false;"' ?>>+ Add</button>
     </div>
 
-    <!-- Reviews Tab -->
-    <div class="tab-content" id="reviewsTab">
-      <?php if (!$reviews): ?>
-        <p>No reviews yet.</p>
-      <?php else: ?>
-        <?php foreach ($reviews as $r): ?>
-          <div class="item">
-            <strong><?= e($r['username']); ?></strong>
-            <div class="stars"><?= str_repeat('★', (int)$r['rating']); ?></div>
-            <p><?= nl2br(e($r['comment'])); ?></p>
-            <small class="meta"><?= e($r['created_at']); ?></small>
-          </div>
-        <?php endforeach; ?>
-        <?= render_pager($reviewsCount, $perPage, 'pageR', $pageR); ?>
-      <?php endif; ?>
-    </div>
-
-    <!-- Q&A Tab -->
-    <div class="tab-content" id="qnaTab" style="display:none;">
-      <?php if (!$questions): ?>
-        <p>No questions yet.</p>
-      <?php else: ?>
-        <?php foreach ($questions as $q): ?>
-          <div class="item">
-            <p><strong>Q:</strong> <?= nl2br(e($q['question'])); ?></p>
-            <small class="meta">By <?= e($q['username']); ?> • <?= e($q['created_at']); ?></small>
-          </div>
-        <?php endforeach; ?>
-        <?= render_pager($questionsCount, $perPage, 'pageQ', $pageQ); ?>
-      <?php endif; ?>
-    </div>
+    <?php 
+    // Include Reviews Component
+    include 'components/reviews-section.php'; 
+    
+    // Include Q&A Component
+    include 'components/qna-section.php'; 
+    ?>
   </div>
 </div>
 
-<!-- Review/Question Dialog -->
-<?php if ($isLoggedIn): ?>
-<div class="dialog-overlay" id="dialogOverlay">
-  <div class="dialog-box">
-    <form method="POST" id="dialogForm" autocomplete="off">
-      <input type="hidden" name="csrf_token" value="<?= e(csrf_token()); ?>">
-
-      <div id="reviewForm">
-        <h3>Add Review</h3>
-        <label>Rating:</label>
-        <select name="rating" required>
-          <option value="">Select rating</option>
-          <?php for ($i = 5; $i >= 1; $i--): ?>
-            <option value="<?= $i; ?>"><?= $i; ?> ★</option>
-          <?php endfor; ?>
-        </select>
-        <label>Comment:</label>
-        <textarea name="comment" rows="3" placeholder="Write your review..." required maxlength="1000"></textarea>
-        <button type="submit" name="submit_review" class="add-btn">Submit</button>
-      </div>
-
-      <div id="questionForm" style="display:none;">
-        <h3>Ask a Question</h3>
-        <textarea name="question" rows="3" placeholder="Ask about this product..." required maxlength="1000"></textarea>
-        <button type="submit" name="submit_question" class="add-btn">Post Question</button>
-      </div>
-
-      <div style="display:flex; gap:10px; justify-content:flex-end;">
-        <button type="button" class="cancel-btn" id="closeDialogBtn">Cancel</button>
-      </div>
-    </form>
-  </div>
-</div>
-<?php endif; ?>
+<?php 
+// Include Review/Question Dialog Component
+include 'components/review-dialog.php'; 
+?>
 
 <!-- Customer Details Modal -->
 <div class="modal fade" id="customerDetailsModal" tabindex="-1" aria-labelledby="customerDetailsLabel" aria-hidden="true">
@@ -476,66 +355,6 @@ function render_pager($total, $perPage, $currentKey, $currentPage) {
     </div>
   </div>
 </div>
-
-<style>
-  .order-summary-box {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    margin-top: 15px;
-  }
-  .order-summary-box h6 {
-    color: #430160;
-    margin-bottom: 10px;
-  }
-  .summary-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 5px 0;
-    border-bottom: 1px solid #e0e0e0;
-  }
-  .summary-row:last-child {
-    border-bottom: none;
-    font-weight: bold;
-    font-size: 1.1em;
-    color: #430160;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 2px solid #430160;
-  }
-</style>
-
-<script>
-// Update order summary when modal opens
-document.getElementById('customerDetailsModal').addEventListener('show.bs.modal', function() {
-    const orderDetails = window.currentOrderDetails;
-    if (orderDetails) {
-        const summaryHtml = `
-            <div class="summary-row">
-                <span>Product:</span>
-                <span>${orderDetails.productName}</span>
-            </div>
-            <div class="summary-row">
-                <span>Size:</span>
-                <span>${orderDetails.size}</span>
-            </div>
-            <div class="summary-row">
-                <span>Quantity:</span>
-                <span>${orderDetails.quantity}</span>
-            </div>
-            <div class="summary-row">
-                <span>Price per unit:</span>
-                <span>Rs. ${parseFloat(orderDetails.pricePerUnit).toFixed(2)}</span>
-            </div>
-            <div class="summary-row">
-                <span>Total Amount:</span>
-                <span>Rs. ${parseFloat(orderDetails.amount).toFixed(2)}</span>
-            </div>
-        `;
-        document.getElementById('orderSummaryContent').innerHTML = summaryHtml;
-    }
-});
-</script>
 
 <!-- Login/Register Sidebars -->
 <?php include 'includes/login-sidebar.php'; ?>
@@ -809,39 +628,65 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
   .qty-row {
     display: flex;
     align-items: center;
-    gap: 0;
+    justify-content: center;
     border: 1px solid #ddd;
     border-radius: 6px;
-    overflow: hidden;
+    height: 44px; /* Slightly reduced height */
+    width: fit-content;
+    background: #fff;
+    overflow: hidden; /* Ensures child elements don't spill out */
   }
 
   .qty-btn {
-    background: #fff;
+    background: #f8f9fa;
     border: none;
-    border-right: 1px solid #ddd;
-    padding: 10px 14px;
+    border-right: 1px solid #eee;
+    width: 40px;
+    height: 100%;
     cursor: pointer;
     font-weight: 700;
-    font-size: 15px;
-    color: #666;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    color: #444;
+    transition: background 0.2s;
+    line-height: 1;
+  }
+
+  .qty-btn:hover {
+    background: #e2e6ea;
   }
 
   .qty-btn:last-of-type {
     border-right: none;
-    border-left: 1px solid #ddd;
+    border-left: 1px solid #eee;
   }
 
   .qty-input {
-    width: 55px;
-    padding: 10px;
+    width: 50px;
+    height: 100%;
     border: none;
     text-align: center;
     font-weight: 600;
+    font-size: 16px;
+    padding: 0;
+    margin: 0;
+    color: #333;
+    background: transparent;
+  }
+  
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 
   .btn-wishlist {
-    width: 46px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
     background: #fff;
     border: 1px solid #ff4d6d;
     border-radius: 6px;
@@ -1022,6 +867,32 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
     font-weight: 600;
   }
 
+  .order-summary-box {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+  }
+  .order-summary-box h6 {
+    color: #430160;
+    margin-bottom: 10px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .summary-row:last-child {
+    border-bottom: none;
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #430160;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 2px solid #430160;
+  }
+
   /* Responsive */
   @media (max-width: 1200px) {
     .product-container {
@@ -1128,6 +999,12 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
       fabricBtns.forEach(x => x.classList.remove('selected'));
       this.classList.add('selected');
       formFabricId.value = this.dataset.fabricId || '';
+      
+      // Update Price
+      const priceDisplay = document.getElementById('productPrice');
+      if (priceDisplay) {
+        priceDisplay.textContent = 'Rs. ' + (this.dataset.price || '0.00');
+      }
     });
   });
 
@@ -1201,7 +1078,7 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
         alert('Network error. Please try again.');
       });
 
-    return false; // Prevent default form submission
+    return false;
   }
 
   // Wishlist toggle
@@ -1213,7 +1090,6 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
         .then(data => {
           if (data.status === 'ok') {
             btn.classList.toggle('active');
-            // Update badge count if exists
             const wishlistBadge = document.querySelector('#wishlistIcon + .badge');
             if (wishlistBadge) {
               const currentCount = parseInt(wishlistBadge.textContent) || 0;
@@ -1292,7 +1168,38 @@ document.getElementById('customerDetailsModal').addEventListener('show.bs.modal'
       alert('Please login to continue.');
     }
   }
+
+  // Order summary modal
+  document.getElementById('customerDetailsModal').addEventListener('show.bs.modal', function() {
+    const orderDetails = window.currentOrderDetails;
+    if (orderDetails) {
+      const summaryHtml = `
+        <div class="summary-row">
+          <span>Product:</span>
+          <span>${orderDetails.productName}</span>
+        </div>
+        <div class="summary-row">
+          <span>Size:</span>
+          <span>${orderDetails.size}</span>
+        </div>
+        <div class="summary-row">
+          <span>Quantity:</span>
+          <span>${orderDetails.quantity}</span>
+        </div>
+        <div class="summary-row">
+          <span>Price per unit:</span>
+          <span>Rs. ${parseFloat(orderDetails.pricePerUnit).toFixed(2)}</span>
+        </div>
+        <div class="summary-row">
+          <span>Total Amount:</span>
+          <span>Rs. ${parseFloat(orderDetails.amount).toFixed(2)}</span>
+        </div>
+      `;
+      document.getElementById('orderSummaryContent').innerHTML = summaryHtml;
+    }
+  });
 </script>
+
 <script>
 // PayHere Event Handlers
 payhere.onCompleted = function(orderId) {
@@ -1319,7 +1226,6 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', async function(e) {
             e.preventDefault();
             
-            // Validate selections
             const fabricId = document.getElementById('formFabricId').value;
             const size = document.getElementById('formSize').value;
             const qty = parseInt(document.getElementById('qtyField').value) || 1;
@@ -1334,7 +1240,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Get price from selected fabric
             const selectedFabric = document.querySelector('.fabric-btn.selected');
             if (!selectedFabric) {
                 alert('Please select a fabric type.');
@@ -1349,7 +1254,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Store order details in modal
             window.currentOrderDetails = {
                 productId: productId,
                 fabricId: fabricId,
@@ -1360,19 +1264,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 productName: this.dataset.productName
             };
             
-            // Show customer details modal
             showCustomerDetailsModal();
         });
     });
 });
 
-// Show customer details modal
 function showCustomerDetailsModal() {
     const modal = new bootstrap.Modal(document.getElementById('customerDetailsModal'));
     modal.show();
 }
 
-// Process payment after customer confirms details
 async function processPayment() {
     const orderDetails = window.currentOrderDetails;
     if (!orderDetails) {
@@ -1380,14 +1281,12 @@ async function processPayment() {
         return;
     }
     
-    // Get customer details from form
     const customerName = document.getElementById('customerName').value.trim();
     const customerEmail = document.getElementById('customerEmail').value.trim();
     const customerPhone = document.getElementById('customerPhone').value.trim();
     const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
     const customerCity = document.getElementById('customerCity').value.trim();
     
-    // Validation
     if (!customerName || !customerEmail || !customerPhone || !deliveryAddress || !customerCity) {
         alert('Please fill in all required fields');
         return;
@@ -1403,7 +1302,6 @@ async function processPayment() {
         return;
     }
     
-    // Show loading
     const submitBtn = document.getElementById('confirmOrderBtn');
     const btnText = document.getElementById('confirmBtnText');
     const spinner = document.getElementById('confirmSpinner');
@@ -1413,11 +1311,9 @@ async function processPayment() {
     spinner.style.display = 'inline-block';
     
     try {
-        // Generate unique order ID
         const orderId = 'ORD-' + Date.now();
         const currency = 'LKR';
         
-        // Step 1: Create order in database with customer details
         const orderResponse = await fetch('create-order.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1441,7 +1337,6 @@ async function processPayment() {
             throw new Error(orderData.error || 'Failed to create order');
         }
         
-        // Step 2: Get payment hash
         const hashResponse = await fetch('generate-hash.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1462,10 +1357,8 @@ async function processPayment() {
             throw new Error(hashData.error || 'Failed to generate payment hash');
         }
         
-        // Close modal
         bootstrap.Modal.getInstance(document.getElementById('customerDetailsModal')).hide();
         
-        // Step 3: Start PayHere payment
         const payment = {
             sandbox: <?= PAYHERE_SANDBOX ? 'true' : 'false' ?>,
             merchant_id: hashData.merchant_id,
@@ -1501,11 +1394,6 @@ async function processPayment() {
     }
 }
 </script>
-
-<?php include 'includes/login-sidebar.php'; ?>
-<?php include 'includes/register-sidebar.php'; ?>
-
-<?php include 'includes/scripts.php'; ?>
 
 </body>
 </html>
