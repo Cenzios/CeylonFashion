@@ -3,6 +3,15 @@ session_start();
 require_once 'config.php';
 
 $order_id = isset($_GET['order_id']) ? $_GET['order_id'] : '';
+
+// Clear cart for the logged-in user
+if (isset($_SESSION['user_id'])) {
+    $user_id = (int)$_SESSION['user_id'];
+    $stmt = $mysqli->prepare("DELETE FROM cart WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $stmt->close();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

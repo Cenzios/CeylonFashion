@@ -268,7 +268,7 @@ if ($isLoggedIn) {
           <?php if ($isLoggedIn): ?>
             <button type="button" class="btn btn-success flex-grow-1" onclick="showCustomerDetailsModal()">Proceed to Checkout</button>
           <?php else: ?>
-            <button type="button" class="btn btn-success flex-grow-1" onclick="showLoginModal()">Login to Checkout</button>
+            <button type="button" class="btn btn-success flex-grow-1" onclick="document.getElementById('loginRedirectUrl').value = 'cart.php'; showLoginModal()">Login to Checkout</button>
           <?php endif; ?>
         </div>
       </div>
