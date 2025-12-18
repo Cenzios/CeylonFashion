@@ -1096,6 +1096,70 @@ include 'components/review-dialog.php';
       font-size: 16px;
     }
   }
+
+  /* FIXED: Review Dialog Styles */
+  .dialog-overlay {
+    display: none;
+    position: fixed;
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+  }
+  
+  .dialog-box {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  }
+
+  .dialog-box h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .dialog-box label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+  }
+
+  .dialog-box select,
+  .dialog-box textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-family: inherit;
+  }
+
+  .dialog-box .cancel-btn {
+    background: #f3f4f6;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #555;
+    transition: all 0.2s;
+  }
+
+  .dialog-box .cancel-btn:hover {
+    background: #e5e7eb;
+    color: #333;
+  }
 </style>
 
 <script>
