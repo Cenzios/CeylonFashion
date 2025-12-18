@@ -323,6 +323,22 @@ if ($isLoggedIn) {
             <button type="button" class="btn-buy-now" onclick="showLoginModal()">BUY IT NOW</button>
           <?php endif; ?>
         </div>
+        <div class="delivery-banner mt-3" data-bs-toggle="modal" data-bs-target="#deliveryTermsModal">
+          <div class="d-flex align-items-center gap-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="delivery-icon">
+              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h1" stroke="#8b5a2b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 17h6" stroke="#8b5a2b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="7" cy="17" r="2" stroke="#8b5a2b" stroke-width="2"/>
+              <circle cx="17" cy="17" r="2" stroke="#8b5a2b" stroke-width="2"/>
+            </svg>
+            <span class="delivery-text">Delivery within 5 – 12 Business Days</span>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="info-icon-q">
+            <circle cx="12" cy="12" r="10" stroke="#a1a1aa" stroke-width="1.5"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="#a1a1aa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 17h.01" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
         <?php endif; ?>
 
       </form>
@@ -480,6 +496,37 @@ include 'components/review-dialog.php';
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delivery Terms Modal -->
+<div class="modal fade" id="deliveryTermsModal" tabindex="-1" aria-labelledby="deliveryTermsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="deliveryTermsLabel">Delivery Terms</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <p class="mb-3 text-muted" style="font-size: 0.95rem;">
+          At <strong>Ceylon Fashion</strong>, every piece is exclusively tailored to your order with great care and craftsmanship. To ensure the highest quality, please review our delivery terms below:
+        </p>
+        <ul class="delivery-terms-list">
+          <li><strong>Tailoring Time:</strong> Each item is custom-made. Please allow <strong>5–12 working days</strong> for tailoring, depending on availability and design complexity.</li>
+          <li><strong>Order Processing:</strong> Production begins only after full payment and confirmation of customization details.</li>
+          <li><strong>Shipping:</strong> Local deliveries typically arrive within <strong>2–5 business days</strong> after dispatch.</li>
+          <li><strong>Express Service:</strong> Urgent tailoring requests may be accommodated with an additional fee. Please contact our team for availability.</li>
+          <li><strong>Unforeseen Delays:</strong> While we aim to deliver within the stated timeframes, delays may occur due to public holidays, fabric sourcing, or courier disruptions.</li>
+          <li><strong>No Returns/Exchanges:</strong> As each garment is uniquely tailored, customized items are non-returnable.</li>
+        </ul>
+        <p class="mt-4 mb-1 text-muted" style="font-size: 0.95rem;">
+          We appreciate your trust in <strong>Ceylon Fashion</strong>. Our team is committed to delivering you a one-of-a-kind piece, crafted with elegance and precision.
+        </p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -994,6 +1041,52 @@ include 'components/review-dialog.php';
 
   .btn-buy-now:active {
     transform: translateY(0);
+  }
+
+  /* Delivery Banner */
+  .delivery-banner {
+    background: #fffff0; /* Light yellow from image */
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+  
+  .delivery-banner:hover {
+    background: #fdfde0;
+    border-color: #e5e7eb;
+  }
+
+  .delivery-text {
+    font-size: 14px;
+    color: #8b5a2b; /* Brownish tone from image */
+    font-weight: 500;
+  }
+  
+  .delivery-icon path, .delivery-icon circle {
+    stroke: #8b5a2b;
+  }
+
+  .info-icon-q circle, .info-icon-q path {
+    stroke: #aaa; /* Muted gray for question mark */
+  }
+
+  /* Delivery Modal List */
+  .delivery-terms-list {
+    padding-left: 20px;
+    font-size: 0.95rem;
+    color: #444;
+    line-height: 1.6;
+  }
+  .delivery-terms-list li {
+    margin-bottom: 12px;
+  }
+  .delivery-terms-list strong {
+    color: #000;
   }
 
   /* Reviews Section */
