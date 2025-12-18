@@ -27,7 +27,7 @@ include_once 'config.php';
   renderProductSection([
     'id' => 'newArrivalsSection',
     'title' => 'New Arrivals',
-    'sql' => "SELECT * FROM products WHERE created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59' ORDER BY created DESC LIMIT 6",
+    'sql' => "SELECT * FROM products WHERE category != 'used' AND created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59' ORDER BY created DESC LIMIT 6",
     'view_all_link' => 'new-arrivals.php'
   ]);
   ?>
@@ -38,8 +38,7 @@ include_once 'config.php';
     'id' => 'usedCollectionSection',
     'title' => 'Used Collection',
     'sql' => "SELECT * FROM products WHERE category = 'used' ORDER BY id DESC LIMIT 6",
-    'view_all_link' => 'used-collection.php',
-    'require_login' => true
+    'view_all_link' => 'used-collection.php'
   ]);
   ?>
   

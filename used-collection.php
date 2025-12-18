@@ -7,10 +7,12 @@ $pageTitle = 'Used Collection';
 $fallback = 'assets/no-image.png';
 
 // Check if user is logged in (as required in index.php)
+/*
 if (!isset($_SESSION['user_id'])) {
     header('Location: index.php?login_required=1');
     exit;
 }
+*/
 
 // Filter Parameters
 $minPrice = isset($_GET['min_price']) && is_numeric($_GET['min_price']) ? (float)$_GET['min_price'] : '';

@@ -16,7 +16,7 @@ $selectedCategories = isset($_GET['categories']) && is_array($_GET['categories']
 $sql = "SELECT p.*, MIN(pf.fabric_price) as min_price 
         FROM products p 
         LEFT JOIN product_fabrics pf ON p.id = pf.product_id 
-        WHERE p.created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59'";
+        WHERE p.category != 'used' AND p.created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59'";
 
 $params = [];
 $types = "";
