@@ -9,6 +9,7 @@ $fallback = 'assets/no-image.png';
 // Filter Parameters
 $minPrice = isset($_GET['min_price']) && is_numeric($_GET['min_price']) ? (float)$_GET['min_price'] : '';
 $maxPrice = isset($_GET['max_price']) && is_numeric($_GET['max_price']) ? (float)$_GET['max_price'] : '';
+$selectedColors = isset($_GET['colors']) && is_array($_GET['colors']) ? $_GET['colors'] : [];
 
 // Base Query
 $sql = "SELECT p.*, MIN(pf.fabric_price) as min_price 
@@ -29,6 +30,20 @@ if ($maxPrice !== '') {
     $sql .= " AND pf.fabric_price <= ?";
     $params[] = $maxPrice;
     $types .= "d";
+}
+
+// Color Filter (Search in Name/Desc)
+if (!empty($selectedColors)) {
+    $colorConditions = [];
+    foreach ($selectedColors as $color) {
+        $colorConditions[] = "(p.product_name LIKE ? OR p.product_desc LIKE ?)";
+        $params[] = "%$color%";
+        $params[] = "%$color%";
+        $types .= "ss";
+    }
+    if (!empty($colorConditions)) {
+        $sql .= " AND (" . implode(' OR ', $colorConditions) . ")";
+    }
 }
 
 $sql .= " GROUP BY p.id ORDER BY p.id DESC";
@@ -65,7 +80,7 @@ $result = $stmt->get_result();
                 <?php 
                 // Configure filters for this page
                 $showCategoryFilter = false;
-                $showColorFilter = false;
+                $showColorFilter = true;
                 $showPriceFilter = true;
                 $selectedMinPrice = $minPrice;
                 $selectedMaxPrice = $maxPrice;
