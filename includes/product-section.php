@@ -93,14 +93,25 @@ function renderProductSection($options) {
             </button> -->
           </div>
 
-          <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
+          <?php
+          // Determine Link
+          if ($product['category'] === 'used') {
+              $productLink = "product-view-used.php?id=" . $productId;
+              $target = 'target="_self"';
+          } else {
+              $productLink = "product-view.php?id=" . $productId;
+              $target = '';
+          }
+          ?>
+
+          <a href="<?php echo $productLink; ?>" class="card-link" <?php echo $target; ?>>
             <div class="product-image">
               <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
             </div>
           </a>
             
           <div class="product-info">
-            <a href="product-view.php?id=<?php echo $productId; ?>" class="product-link">
+            <a href="<?php echo $productLink; ?>" class="product-link" <?php echo $target; ?>>
               <h3 class="product-name"><?php echo $pname; ?></h3>
             </a>
             <?php if ($minPrice !== null): ?>

@@ -128,7 +128,7 @@ $result = $stmt->get_result();
                         ?>
                             <!-- Product Card -->
                             <div class="product-card">
-                                <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
+                                <a href="product-view-used.php?id=<?php echo $productId; ?>" class="card-link" target="_self">
                                     <div class="product-image">
                                         <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
                                     </div>
