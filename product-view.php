@@ -224,7 +224,7 @@ if ($isLoggedIn) {
       </div>
 
       <!-- Size Guide Button -->
-      <button type="button" class="size-guide-btn">
+      <button type="button" class="size-guide-btn" data-bs-toggle="modal" data-bs-target="#sizeGuideModal">
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
           <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
           <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
@@ -427,6 +427,65 @@ include 'components/review-dialog.php';
 
 <!-- Login/Register Sidebars -->
 <?php include 'includes/login-sidebar.php'; ?>
+<!-- Size Guide Modal -->
+<div class="modal fade" id="sizeGuideModal" tabindex="-1" aria-labelledby="sizeGuideLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="sizeGuideLabel">Size Grid</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table size-chart-table align-middle">
+            <thead class="bg-light">
+              <tr>
+                <th scope="col" class="py-3">Size</th>
+                <th scope="col" class="py-3">Bust (inches)</th>
+                <th scope="col" class="py-3">Waist (inches)</th>
+                <th scope="col" class="py-3">Hip (inches)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fw-bold py-3">XS</td>
+                <td class="py-3">32</td>
+                <td class="py-3">24</td>
+                <td class="py-3">34</td>
+              </tr>
+              <tr>
+                <td class="fw-bold py-3">S</td>
+                <td class="py-3">34</td>
+                <td class="py-3">26</td>
+                <td class="py-3">36</td>
+              </tr>
+              <tr>
+                <td class="fw-bold py-3">M</td>
+                <td class="py-3">36</td>
+                <td class="py-3">28</td>
+                <td class="py-3">38</td>
+              </tr>
+              <tr>
+                <td class="fw-bold py-3">L</td>
+                <td class="py-3">38</td>
+                <td class="py-3">30</td>
+                <td class="py-3">40</td>
+              </tr>
+              <tr>
+                <td class="fw-bold py-3">XL</td>
+                <td class="py-3">40</td>
+                <td class="py-3">32</td>
+                <td class="py-3">42</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Login/Register Sidebars -->
 <?php include 'includes/register-sidebar.php'; ?>
 
 <?php include 'includes/footer.php'; ?>
@@ -798,6 +857,25 @@ include 'components/review-dialog.php';
     font-weight: 600;
     font-size: 15px;
     color: #000;
+  }
+
+  /* Size Guide Modal Styles */
+  .size-chart-table {
+    text-align: center;
+    border: 1px solid #dee2e6;
+  }
+  .size-chart-table thead th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+  }
+  .size-chart-table td {
+    font-size: 15px;
+    color: #444;
+  }
+  .size-chart-table .fw-bold {
+    color: #000;
+  }
     background: #fff !important;
     -moz-appearance: textfield; /* Firefox */
     appearance: none;
