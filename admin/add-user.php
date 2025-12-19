@@ -39,18 +39,16 @@ $success = $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $fname = trim($_POST['fname']);
   $lname = trim($_POST['lname']);
-  $address = trim($_POST['address']);
-  $city = trim($_POST['city']);
-  $pin = trim($_POST['pin']);
+
   $email = trim($_POST['email']);
   $password = trim($_POST['password']);
   $type = $_POST['type'];
 
   if ($fname && $lname && $email && $password) {
     try {
-      $stmt = $pdo->prepare("INSERT INTO users (fname, lname, address, city, pin, email, password, type)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-      if ($stmt->execute([$fname, $lname, $address, $city, $pin, $email, $password, $type])) {
+      $stmt = $pdo->prepare("INSERT INTO users (fname, lname, email, password, type)
+                             VALUES (?, ?, ?, ?, ?)");
+      if ($stmt->execute([$fname, $lname, $email, $password, $type])) {
         $success = "✅ User added successfully!";
       } else {
         $error = "❌ Failed to add user.";
@@ -118,18 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label class="form-label">Last Name *</label>
             <input type="text" name="lname" class="form-control" required>
           </div>
-          <div class="col-md-12">
-            <label class="form-label">Address</label>
-            <input type="text" name="address" class="form-control">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">City</label>
-            <input type="text" name="city" class="form-control">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Postal Code</label>
-            <input type="text" name="pin" class="form-control">
-          </div>
+
           <div class="col-md-6">
             <label class="form-label">Email *</label>
             <input type="email" name="email" class="form-control" required>
