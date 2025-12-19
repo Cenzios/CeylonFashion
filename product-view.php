@@ -860,52 +860,68 @@ include 'components/review-dialog.php';
   .quantity-controls {
     display: flex;
     align-items: center;
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px; /* Softer corners */
     overflow: hidden;
     background: #fff;
     height: 48px;
+    width: 140px; /* Fixed width for consistency */
     flex-shrink: 0;
   }
   
   .qty-btn {
-    width: 28px !important;
+    width: 40px !important;
     padding: 0;
     height: 100%;
     background: #fff;
     border: none;
     cursor: pointer;
     font-weight: 400;
-    font-size: 18px;
-    color: #333;
+    font-size: 20px;
+    color: #555;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: all 0.2s;
   }
 
   .qty-btn:hover { 
-    background: #f3f4f6; 
-  }
-
-  .qty-btn:active {
-    background: #e5e7eb;
-  }
-  
-  .qty-input {
-    width: 60px;
-    min-width: 60px;
-    padding: 0;
-    height: 100%;
-    border: none;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    text-align: center;
-    font-weight: 600;
-    font-size: 15px;
+    background: #f9fafb;
     color: #000;
   }
 
+  .qty-btn:active {
+    background: #f3f4f6;
+  }
+  
+  .qty-input {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-left: 1px solid #f3f4f6;
+    border-right: 1px solid #f3f4f6;
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+    color: #000;
+    background: #fff !important; /* Override generic readonly gray */
+    opacity: 1;
+    -moz-appearance: textfield;
+    appearance: none;
+    outline: none;
+  }
+  
+  .qty-input:focus {
+    outline: none;
+  }
+  
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
   /* Size Guide Modal Styles */
   .size-chart-table {
     text-align: center;
@@ -922,18 +938,6 @@ include 'components/review-dialog.php';
   }
   .size-chart-table .fw-bold {
     color: #000;
-  }
-    background: #fff !important;
-    -moz-appearance: textfield; /* Firefox */
-    appearance: none;
-    border-radius: 0;
-    opacity: 1; /* Fix for some iOS disabled states */
-  }
-  
-  .qty-input::-webkit-outer-spin-button,
-  .qty-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
   }
   
   /* FIXED: Add To Cart Button */
