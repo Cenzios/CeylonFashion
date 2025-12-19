@@ -59,6 +59,11 @@ $colorStmt = $pdo->prepare("SELECT color_name, color_code FROM product_colors WH
 $colorStmt->execute([$pid]);
 $existingColor = $colorStmt->fetch();
 
+// ---- Fetch existing sizes ----
+$sizeStmt = $pdo->prepare("SELECT size FROM product_sizes WHERE product_id = ?");
+$sizeStmt->execute([$pid]);
+$existingSizes = $sizeStmt->fetchAll(PDO::FETCH_COLUMN);
+
 // ---- Fetch all available colors from database ----
 $allColorsStmt = $pdo->query("SELECT id, color_name, color_code FROM colors ORDER BY color_name");
 $availableColors = $allColorsStmt->fetchAll();
@@ -175,6 +180,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
             }
         }
 
+        // Delete and re-insert sizes
+        $deleteSizes = $pdo->prepare("DELETE FROM product_sizes WHERE product_id = ?");
+        $deleteSizes->execute([$pid]);
+
+        if (isset($_POST['product_sizes']) && is_array($_POST['product_sizes'])) {
+            $stmtSize = $pdo->prepare("INSERT INTO product_sizes (product_id, size) VALUES (?, ?)");
+            foreach ($_POST['product_sizes'] as $size) {
+                $stmtSize->execute([$pid, $size]);
+            }
+        }
+
         $pdo->commit();
         $success = "✅ Product updated successfully with images, fabrics, and color!";
         
@@ -198,6 +214,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
         $colorStmt = $pdo->prepare("SELECT color_name, color_code FROM product_colors WHERE product_id = ? LIMIT 1");
         $colorStmt->execute([$pid]);
         $existingColor = $colorStmt->fetch();
+
+        // Refresh sizes
+        $sizeStmt = $pdo->prepare("SELECT size FROM product_sizes WHERE product_id = ?");
+        $sizeStmt->execute([$pid]);
+        $existingSizes = $sizeStmt->fetchAll(PDO::FETCH_COLUMN);
 
     } catch (Throwable $e) {
         $pdo->rollBack();
@@ -349,6 +370,22 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
                     + Add New Color
                 </button>
             </div>
+            </div>
+        </div>
+
+        <!-- 📏 Size Selection -->
+        <div class="mb-4">
+            <h5 class="fw-bold text-primary mb-2">Available Sizes</h5>
+            <p class="text-muted small mb-3">Select available sizes (Hold Ctrl/Cmd to select multiple)</p>
+            <select name="product_sizes[]" class="form-select" multiple size="5">
+                <?php 
+                $allSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+                foreach ($allSizes as $s): 
+                    $selected = in_array($s, $existingSizes) ? 'selected' : '';
+                ?>
+                    <option value="<?= $s ?>" <?= $selected ?>><?= $s ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
         <!-- Product Images Section -->

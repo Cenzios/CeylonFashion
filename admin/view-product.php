@@ -49,6 +49,22 @@ $colorResult = $colorStmt->get_result();
 $productColor = $colorResult->fetch_assoc();
 $colorStmt->close();
 
+// ---- Fetch available sizes ----
+$sizeStmt = $mysqli->prepare("SELECT size FROM product_sizes WHERE product_id = ?");
+$sizeStmt->bind_param("i", $pid);
+$sizeStmt->execute();
+$sizeResult = $sizeStmt->get_result();
+$sizes = [];
+while ($row = $sizeResult->fetch_assoc()) {
+    $sizes[] = $row['size'];
+}
+$sizeStmt->close();
+// Sort sizes logic
+$sizeOrder = ['XS' => 1, 'S' => 2, 'M' => 3, 'L' => 4, 'XL' => 5, 'XXL' => 6];
+usort($sizes, function($a, $b) use ($sizeOrder) {
+    return ($sizeOrder[$a] ?? 99) <=> ($sizeOrder[$b] ?? 99);
+});
+
 // Prepare images
 $fallback = '../assets/no-image.png';
 $images = [];
@@ -63,6 +79,15 @@ for ($i = 1; $i <= 4; $i++) {
 if (empty($images)) {
     $images[] = $fallback;
 }
+
+// Category Label Map
+$categoryMap = [
+    'used' => 'Previously Owned',
+    'bridalAttire' => 'Bridal Attire',
+    'bridemaidAttire' => 'Bridesmaid Attire',
+    'partyWear' => 'Party Wear'
+];
+$displayCategory = $categoryMap[$product['category']] ?? ucfirst($product['category']);
 ?>
 <!doctype html>
 <html lang="en">
@@ -73,254 +98,343 @@ if (empty($images)) {
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-.sidebar { width: 240px; position: fixed; left:0; top:0; bottom:0; background:#430160ff; color:#fff; padding-top:20px; }
-.sidebar a { display:block; padding:12px 18px; color:#cfd8dc; text-decoration:none; }
-.sidebar a.active { background:#007bff; color:#fff; }
-.sidebar a:hover { background: #5a1b88; color: #fff; }
-.main { margin-left:240px; padding:28px; min-height:100vh; }
-.product-img { width: 100%; height: 250px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; }
-.label { font-weight: 600; color: #555; }
+:root {
+    --primary-color: #430160;
+    --primary-light: #5a1b88;
+    --bg-light: #f8f9fa;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+}
+body { 
+    background: var(--bg-light); 
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif; 
+    color: var(--text-dark);
+}
 
-/* Enhanced Color Display */
-.color-badge {
-    display: inline-flex;
+/* Sidebar */
+.sidebar { width: 260px; position: fixed; left:0; top:0; bottom:0; background: var(--primary-color); color:#fff; padding-top:24px; z-index: 1000; }
+.sidebar h4 { font-weight: 700; letter-spacing: -0.5px; opacity: 0.95; }
+.sidebar a { display:block; padding:14px 24px; color: rgba(255,255,255,0.7); text-decoration:none; font-weight: 500; transition: all 0.2s; border-left: 4px solid transparent; }
+.sidebar a.active { background: rgba(255,255,255,0.1); color:#fff; border-left-color: #fff; }
+.sidebar a:hover:not(.active) { background: rgba(255,255,255,0.05); color: #fff; }
+.main { margin-left:260px; padding:40px; min-height:100vh; }
+
+/* Product Page Styles */
+.page-header { margin-bottom: 32px; }
+.page-title { font-size: 24px; font-weight: 700; color: var(--text-dark); margin-bottom: 4px; }
+.page-subtitle { color: var(--text-muted); font-size: 14px; }
+
+/* Visual Column */
+.product-gallery { position: sticky; top: 40px; }
+.main-image-container {
+    background: #fff;
+    padding: 12px;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+    margin-bottom: 16px;
+}
+.main-image {
+    width: 100%;
+    aspect-ratio: 3/4;
+    object-fit: cover;
+    border-radius: 12px;
+}
+.thumbs-row {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+.thumb-btn {
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 2px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.thumb-btn.active { border-color: var(--primary-color); }
+.thumb-img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Color Card */
+.color-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 25px;
-    border: 2px solid #dee2e6;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
+    gap: 16px;
 }
-.color-badge:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
-}
-.color-circle {
-    width: 32px;
-    height: 32px;
+.color-swatch-lg {
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     border: 3px solid #fff;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15), inset 0 1px 2px rgba(255,255,255,0.3);
+    box-shadow: 0 0 0 1px #e2e8f0;
+}
+.color-swatch-lg.white-border { border-color: #e2e8f0; }
+
+/* Details Column */
+.details-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    padding: 32px;
+    margin-bottom: 24px;
+}
+.product-name { font-size: 32px; font-weight: 800; line-height: 1.2; margin-bottom: 16px; color: var(--text-dark); }
+
+.badge-soft {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+.badge-purple { background: #f3e8ff; color: #6b21a8; }
+.badge-gray { background: #f1f5f9; color: #475569; }
+
+.section-label {
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.description-text {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #475569;
+}
+
+/* Size Grid */
+.size-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.size-badge {
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-.color-circle.white-border {
-    border-color: #adb5bd;
-}
-.color-text {
-    font-size: 15px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
     font-weight: 600;
-    color: #495057;
-    letter-spacing: 0.3px;
+    color: var(--text-dark);
+    font-size: 14px;
 }
-.info-row {
-    padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
+.size-badge.available {
+    background: var(--bg-light);
+    border-color: #cbd5e1;
+    color: var(--text-dark);
 }
-.info-row:last-child {
-    border-bottom: none;
+
+/* Fabric Table */
+.fabric-table-wrapper {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
 }
+.table-custom th {
+    background: #f8fafc;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 12px 16px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.table-custom td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    color: var(--text-dark);
+    font-size: 14px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.table-custom tr:last-child td { border-bottom: none; }
+
 </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <h4 class="text-center mb-3">Ceylon Fashion</h4>
-    <a href="dashboard.php">🏠 Dashboard</a>
-    <a href="products.php" class="active">📦 Products</a>
-    <a href="orders.php">🧾 Orders</a>
-    <a href="users.php">👥 Users</a>
-    <a href="reports.php">📊 Reports</a>
-    <hr style="border-color: rgba(255,255,255,.06)">
-    <a href="logout.php" class="text-danger" onclick="return confirm('Are you sure you want to logout?');">🚪 Logout</a>
+    <h4 class="text-center mb-4">Ceylon Fashion</h4>
+    <a href="dashboard.php"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+    <a href="products.php" class="active"><i class="bi bi-box-seam me-2"></i> Products</a>
+    <a href="orders.php"><i class="bi bi-receipt me-2"></i> Orders</a>
+    <a href="users.php"><i class="bi bi-people me-2"></i> Users</a>
+    <a href="reports.php"><i class="bi bi-bar-chart me-2"></i> Reports</a>
+    <div style="flex-grow:1"></div>
+    <a href="logout.php" class="text-danger mt-auto border-0" onclick="return confirm('Are you sure you want to logout?');"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
 </div>
 
 <main class="main">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-end page-header">
         <div>
-            <h3 class="mb-1">View Product</h3>
-            <p class="text-muted mb-0">Detailed information about the product</p>
+            <h1 class="page-title">Product Details</h1>
+            <p class="page-subtitle">View and manage sizes, stock, and variations.</p>
         </div>
-        <div>
-            <a href="edit-product.php?id=<?php echo $pid; ?>" class="btn btn-primary me-2">
-                <i class="bi bi-pencil"></i> Edit Product
+        <div class="d-flex gap-2">
+            <a href="products.php" class="btn btn-light border bg-white text-muted shadow-sm">
+                 Close
             </a>
-            <a href="products.php" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Back
+            <a href="edit-product.php?id=<?php echo $pid; ?>" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm" style="background: var(--primary-color); border:none;">
+                <i class="bi bi-pencil-square"></i> Edit Product
             </a>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Left Column: Product Details -->
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white border-0 pt-4 pb-3">
-                    <h4 class="mb-0 text-primary fw-bold"><?php echo htmlspecialchars($product['product_name']); ?></h4>
+    <div class="row g-4">
+        
+        <!-- Left Column: Visuals -->
+        <div class="col-lg-4">
+            <div class="product-gallery">
+                <div class="main-image-container">
+                    <img src="<?php echo $images[0]; ?>" alt="Product Content" class="main-image" id="mainImage">
                 </div>
-                <div class="card-body pt-0">
-                    
-                    <div class="info-row">
-                        <div class="row">
-                            <div class="col-md-4 label">Product Code</div>
-                            <div class="col-md-8">
-                                <span class="badge bg-secondary"><?php echo htmlspecialchars($product['product_code']); ?></span>
-                            </div>
-                        </div>
+                
+                <?php if (count($images) > 1): ?>
+                <div class="thumbs-row">
+                    <?php foreach ($images as $idx => $img): ?>
+                    <div class="thumb-btn <?php echo $idx === 0 ? 'active' : ''; ?>" onclick="changeImage('<?php echo $img; ?>', this)">
+                        <img src="<?php echo $img; ?>" class="thumb-img" alt="Thumb">
                     </div>
-
-                    <div class="info-row">
-                        <div class="row">
-                            <div class="col-md-4 label">Category</div>
-                            <div class="col-md-8">
-                                <?php 
-                                $categories = [
-                                    'used' => '🔄 Used',
-                                    'bridalAttire' => '👰 Bridal Attire',
-                                    'bridemaidAttire' => '💐 Bridesmaid Attire',
-                                    'partyWear' => '🎉 Party Wear'
-                                ];
-                                echo isset($categories[$product['category']]) ? $categories[$product['category']] : ucfirst($product['category']); 
-                                ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Product Color -->
-                    <?php if ($productColor): ?>
-                    <div class="info-row">
-                        <div class="row align-items-center">
-                            <div class="col-md-4 label">Product Color</div>
-                            <div class="col-md-8">
-                                <div class="color-badge">
-                                    <div class="color-circle <?php echo strtolower($productColor['color_name']) === 'white' ? 'white-border' : ''; ?>" 
-                                         style="background-color: <?php echo htmlspecialchars($productColor['color_code']); ?>;">
-                                    </div>
-                                    <span class="color-text"><?php echo htmlspecialchars($productColor['color_name']); ?></span>
-                                    <small class="text-muted"><?php echo htmlspecialchars($productColor['color_code']); ?></small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <div class="info-row">
-                        <div class="row">
-                            <div class="col-md-4 label">Product Color</div>
-                            <div class="col-md-8">
-                                <span class="text-muted fst-italic">No color assigned</span>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-
-                    <div class="info-row">
-                        <div class="row">
-                            <div class="col-md-4 label">Description</div>
-                            <div class="col-md-8 text-muted">
-                                <?php echo nl2br(htmlspecialchars($product['product_desc'])); ?>
-                            </div>
-                        </div>
-                    </div>
-
+                    <?php endforeach; ?>
                 </div>
+                <?php endif; ?>
+
+                <!-- Color Card -->
+                <?php if ($productColor): ?>
+                <div class="color-card">
+                    <div class="color-swatch-lg <?php echo strtolower($productColor['color_name'])==='white'?'white-border':''; ?>" 
+                         style="background-color: <?php echo htmlspecialchars($productColor['color_code']); ?>"></div>
+                    <div>
+                        <div class="section-label mb-1" style="margin-bottom:0px;">Color Variation</div>
+                        <div class="fw-bold" style="font-size:16px;"><?php echo htmlspecialchars($productColor['color_name']); ?></div>
+                        <div class="small text-muted"><?php echo htmlspecialchars($productColor['color_code']); ?></div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
+        </div>
 
-            <!-- Fabric Details -->
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white border-0 pt-4 pb-3">
-                    <h5 class="mb-0 fw-bold">
-                        <i class="bi bi-layers text-primary"></i> Fabric Availability
-                    </h5>
+        <!-- Right Column: Details -->
+        <div class="col-lg-8">
+            <div class="details-card">
+                
+                <!-- Identification -->
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="badge badge-purple"><?php echo htmlspecialchars($displayCategory); ?></span>
+                    <span class="badge badge-gray">#<?php echo htmlspecialchars($product['product_code']); ?></span>
                 </div>
-                <div class="card-body pt-0">
+
+                <h2 class="product-name"><?php echo htmlspecialchars($product['product_name']); ?></h2>
+
+                <!-- Description -->
+                <div class="mb-5">
+                    <span class="section-label">About Item</span>
+                    <p class="description-text mb-0"><?php echo nl2br(htmlspecialchars($product['product_desc'])); ?></p>
+                </div>
+
+                <div class="row g-5">
+                    <!-- Sizes -->
+                    <div class="col-md-5">
+                        <span class="section-label">Available Sizes</span>
+                        <?php if (!empty($sizes)): ?>
+                            <div class="size-grid">
+                                <?php foreach ($sizes as $s): ?>
+                                    <div class="size-badge available" title="Available"><?php echo htmlspecialchars($s); ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-muted small fst-italic">All standard sizes available (Legacy)</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <hr class="my-5" style="border-color:#e2e8f0;">
+
+                <!-- Fabrics -->
+                <div class="mb-0">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="section-label mb-0">Fabric Inventory</span>
+                        <span class="badge bg-light text-dark border"><?php echo count($fabrics); ?> Variations</span>
+                    </div>
+
                     <?php if (!empty($fabrics)): ?>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
+                        <div class="fabric-table-wrapper">
+                            <table class="table table-custom mb-0">
+                                <thead>
                                     <tr>
                                         <th>Fabric Type</th>
-                                        <th class="text-center">Available Qty</th>
-                                        <th class="text-end">Additional Price (Rs)</th>
+                                        <th class="text-center">Stock Level</th>
+                                        <th class="text-end">Base Price</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($fabrics as $f): ?>
-                                        <tr>
-                                            <td>
-                                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    <tr>
+                                        <td class="fw-semibold text-dark">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bi bi-circle-fill" style="font-size:6px; color:var(--primary-color);"></i>
                                                 <?php echo htmlspecialchars($f['fabric_type']); ?>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-info text-dark px-3 py-2">
-                                                    <?php echo (int)$f['fabric_qty']; ?> units
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <?php if ($f['fabric_qty'] > 10): ?>
+                                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">
+                                                    <?php echo (int)$f['fabric_qty']; ?> In Stock
                                                 </span>
-                                            </td>
-                                            <td class="text-end fw-bold text-primary">
-                                                Rs. <?php echo number_format((float)$f['fabric_price'], 2); ?>
-                                            </td>
-                                        </tr>
+                                            <?php elseif ($f['fabric_qty'] > 0): ?>
+                                                <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3">
+                                                    <?php echo (int)$f['fabric_qty']; ?> Low Stock
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3">Out of Stock</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-end fw-bold font-monospace">Rs. <?php echo number_format((float)$f['fabric_price'], 2); ?></td>
+                                    </tr>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
                     <?php else: ?>
-                        <div class="text-center py-4">
-                            <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-                            <p class="text-muted mt-3 mb-0">No specific fabric details available for this product.</p>
+                        <div class="p-4 text-center border rounded-3 bg-light">
+                            <p class="text-muted mb-0">No fabric data recorded.</p>
                         </div>
                     <?php endif; ?>
                 </div>
+
             </div>
         </div>
 
-        <!-- Right Column: Images -->
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
-                <div class="card-header bg-white border-0 pt-4 pb-3">
-                    <h5 class="mb-0 fw-bold">
-                        <i class="bi bi-images text-primary"></i> Product Images
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <!-- Main Image -->
-                    <div class="mb-3">
-                        <img src="<?php echo $images[0]; ?>" alt="Main Image" class="img-fluid rounded shadow-sm" style="width: 100%; height: 300px; object-fit: cover;">
-                        <p class="text-center text-muted small mt-2 mb-0">Main Image</p>
-                    </div>
-
-                    <!-- Additional Images -->
-                    <?php if (count($images) > 1): ?>
-                        <div class="row g-2">
-                            <?php for ($i = 1; $i < count($images); $i++): ?>
-                                <div class="col-4">
-                                    <img src="<?php echo $images[$i]; ?>" class="img-fluid rounded" style="height: 80px; width: 100%; object-fit: cover; cursor: pointer;" alt="Image <?php echo $i+1; ?>" onclick="changeMainImage(this.src)">
-                                </div>
-                            <?php endfor; ?>
-                        </div>
-                        <p class="text-center text-muted small mt-2 mb-0">Click to view</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
     </div>
-
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Function to change main image when clicking thumbnails
-function changeMainImage(src) {
-    const mainImg = document.querySelector('.card-body img[alt="Main Image"]');
-    if (mainImg) {
-        mainImg.src = src;
-    }
+function changeImage(src, btn) {
+    document.getElementById('mainImage').src = src;
+    document.querySelectorAll('.thumb-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
 }
 </script>
+
 </body>
 </html>

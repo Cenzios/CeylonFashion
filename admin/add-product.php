@@ -170,6 +170,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
           }
         }
 
+        // Insert selected sizes
+        if (isset($_POST['product_sizes']) && is_array($_POST['product_sizes'])) {
+          $stmtSize = $pdo->prepare("INSERT INTO product_sizes (product_id, size) VALUES (?, ?)");
+          foreach ($_POST['product_sizes'] as $size) {
+            $stmtSize->execute([$product_id, $size]);
+          }
+        }
+
         // Commit transaction
         $pdo->commit();
         $success = "✅ Product added successfully with images, fabrics, and color!";
@@ -307,6 +315,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
             + Add New Color
           </button>
         </div>
+      </div>
+
+      <!-- 📏 Size Selection -->
+      <div class="mb-4">
+        <h5 class="fw-bold text-primary mb-2">Available Sizes</h5>
+        <p class="text-muted small mb-3">Select available sizes (Hold Ctrl/Cmd to select multiple)</p>
+        <select name="product_sizes[]" class="form-select" multiple size="5">
+          <option value="XS">XS</option>
+          <option value="S">S</option>
+          <option value="M">M</option>
+          <option value="L">L</option>
+          <option value="XL">XL</option>
+          <option value="XXL">XXL</option>
+        </select>
       </div>
 
       <!-- 🌸 Four Product Images -->
