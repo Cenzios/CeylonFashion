@@ -11,8 +11,52 @@ if (!$isAdmin) {
 }
 
 // ---- Fetch users ----
-$sql = "SELECT id, fname, lname, email, created, type FROM users ORDER BY id DESC";
-$result = $mysqli->query($sql);
+// ---- Fetch users with Filters ----
+$where = [];
+$params = [];
+$types = "";
+
+// 1. Filter by Type
+if (!empty($_GET['type'])) {
+    $where[] = "type = ?";
+    $params[] = $_GET['type'];
+    $types .= "s";
+}
+
+// 2. Filter by Date Range (using 'created' column)
+if (!empty($_GET['start_date'])) {
+    $where[] = "DATE(created) >= ?";
+    $params[] = $_GET['start_date'];
+    $types .= "s";
+}
+if (!empty($_GET['end_date'])) {
+    $where[] = "DATE(created) <= ?";
+    $params[] = $_GET['end_date'];
+    $types .= "s";
+}
+
+// 3. Search (Name, Email)
+if (!empty($_GET['search'])) {
+    $term = '%' . $_GET['search'] . '%';
+    $where[] = "(fname LIKE ? OR lname LIKE ? OR email LIKE ?)";
+    $params[] = $term; // fname
+    $params[] = $term; // lname
+    $params[] = $term; // email
+    $types .= "sss";
+}
+
+$sql = "SELECT id, fname, lname, email, created, type FROM users";
+if (!empty($where)) {
+    $sql .= " WHERE " . implode(" AND ", $where);
+}
+$sql .= " ORDER BY id DESC";
+
+$stmt = $mysqli->prepare($sql);
+if ($types) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
 if ($result === false) {
     die("DB error: " . $mysqli->error);
 }
@@ -58,8 +102,50 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
     </div>
   </div>
 
+  <!-- Filter Section -->
+  <div class="card mb-4">
+    <div class="card-body bg-light">
+      <form method="GET" action="" class="row g-3">
+        <!-- User Type -->
+        <div class="col-md-2">
+          <label class="form-label">User Type</label>
+          <select name="type" class="form-select">
+            <option value="">All Types</option>
+            <option value="admin" <?php if(isset($_GET['type']) && $_GET['type'] == 'admin') echo 'selected'; ?>>Admin</option>
+            <option value="user" <?php if(isset($_GET['type']) && $_GET['type'] == 'user') echo 'selected'; ?>>User</option>
+          </select>
+        </div>
+        
+        <!-- Date Range -->
+        <div class="col-md-2">
+          <label class="form-label">Start Date</label>
+          <input type="date" name="start_date" class="form-control" value="<?php echo isset($_GET['start_date']) ? htmlentities($_GET['start_date']) : ''; ?>">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">End Date</label>
+          <input type="date" name="end_date" class="form-control" value="<?php echo isset($_GET['end_date']) ? htmlentities($_GET['end_date']) : ''; ?>">
+        </div>
+
+        <!-- Search -->
+        <div class="col-md-4">
+          <label class="form-label">Search</label>
+          <div class="input-group">
+            <input type="text" name="search" class="form-control" placeholder="Name or Email" value="<?php echo isset($_GET['search']) ? htmlentities($_GET['search']) : ''; ?>">
+            <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+          </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="col-md-2 d-flex align-items-end gap-2">
+          <button type="submit" class="btn btn-primary w-100">Filter</button>
+          <a href="users.php" class="btn btn-secondary" title="Reset"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <?php if ($result->num_rows === 0): ?>
-      <div class="alert alert-warning">No users found.</div>
+      <div class="alert alert-warning">No users found matching your criteria.</div>
   <?php else: ?>
     <div class="table-responsive">
       <table class="table table-striped table-hover align-middle">
