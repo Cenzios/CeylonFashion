@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $message = '';
 $messageType = '';
+$showSuccess = false;
 
 // Handle product addition form
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
@@ -112,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
                     
                     $message = 'Success! Your item has been listed in the Used Collection.';
                     $messageType = 'success';
+                    $showSuccess = true;
                 } else {
                     $message = 'Error creating product: ' . $mysqli->error;
                     $messageType = 'error';
@@ -173,6 +175,19 @@ if (isset($_GET['check_item']) && isset($_GET['item_code'])) {
         $stmt->bind_param("si", $username, $eligibilityData['id']);
         $stmt->execute();
         $orderRes = $stmt->get_result()->fetch_assoc();
+        $stmt->execute();
+        $orderRes = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        // 3a. CHECK IF ALREADY RESOLD (or in process)
+        // Check reseller_products for this user and product_id
+        $alreadyResold = false;
+        $stmt = $mysqli->prepare("SELECT id FROM reseller_products WHERE user_id = ? AND product_id = ? AND status != 'rejected' LIMIT 1");
+        $stmt->bind_param("ii", $_SESSION['user_id'], $eligibilityData['id']);
+        $stmt->execute();
+        if ($stmt->get_result()->num_rows > 0) {
+            $alreadyResold = true;
+        }
         $stmt->close();
 
         $isEligible = false;
@@ -199,6 +214,7 @@ if (isset($_GET['check_item']) && isset($_GET['item_code'])) {
         }
         
         $eligibilityData['is_eligible'] = $isEligible;
+        $eligibilityData['already_resold'] = $alreadyResold;
         $eligibilityData['months_diff'] = $monthsDiff;
         $eligibilityData['purchase_date'] = $purchaseDate ? $purchaseDate : 'Not Found in Orders';
         $eligibilityData['has_fabrics'] = !empty($fabricOptions);
@@ -208,6 +224,9 @@ if (isset($_GET['check_item']) && isset($_GET['item_code'])) {
              // Show not found (or treat as not eligible)
              $eligibilityData['is_eligible'] = false;
              $eligibilityData['not_bought'] = true; 
+        } else if ($alreadyResold) {
+             $eligibilityData['is_eligible'] = false;
+             // We will handle specific UI message for this in JS or HTML below
         }
     }
 }
@@ -301,6 +320,12 @@ include_once 'includes/head.php';
             <span>✓ Your item is eligible for resale. Please select your fabric type and proceed to confirm your details.</span>
         </div>
 
+        <!-- Already Resold Message (hidden by default) -->
+        <div id="alreadyResoldMessage" class="alert-message warning-message" style="display: none;">
+            <span>⚠️ You have already submitted a resale request for this item. You cannot resell the same item twice.</span>
+            <button class="close-alert" onclick="closeAlert('alreadyResoldMessage')">✕</button>
+        </div>
+
         <!-- Product Details Section (hidden by default) -->
         <div id="productDetailsSection" class="product-details-section" style="display: none;">
             <div class="details-grid">
@@ -352,6 +377,15 @@ include_once 'includes/head.php';
 
         <!-- Contact Form Section (hidden by default) -->
         <div id="contactFormSection" class="contact-form-section" style="display: none;">
+            <?php if ($showSuccess): ?>
+            <div class="alert-message final-success-message" style="text-align: center; flex-direction: column; gap: 20px; padding: 40px;">
+                <div style="font-size: 60px;">🎉</div>
+                <h3 style="color: #065F46; margin: 0;">Submission Successful!</h3>
+                <span style="font-size: 16px;"><?= htmlspecialchars($message); ?></span>
+                <p>Your item is now listed in our Used Collection database.</p>
+                <a href="used-collection.php" class="check-btn" style="text-decoration: none; line-height: 50px; display: inline-block;">View Used Collection</a>
+            </div>
+            <?php else: ?>
             <p class="form-intro">Almost there! Just complete the details below to publish your outfit in our Used Collection. Your contact information will help interested buyers reach you directly.</p>
             
             <form method="POST" id="resellForm" enctype="multipart/form-data">
@@ -393,12 +427,14 @@ include_once 'includes/head.php';
                 <button type="submit" name="addProduct" class="submit-btn">Resell My Item</button>
             </form>
 
-            <?php if ($message): ?>
+            <?php if ($message && !$showSuccess): ?>
             <div class="alert-message <?= $messageType === 'success' ? 'final-success-message' : 'error-message'; ?>">
                 <span><?= htmlspecialchars($message); ?></span>
                 <button class="close-alert" onclick="this.parentElement.style.display='none'">✕</button>
             </div>
             <?php endif; ?>
+            
+            <?php endif; // End check for $showSuccess ?>
         </div>
     </div>
 </div>
@@ -883,7 +919,7 @@ document.getElementById('checkAvailabilityBtn').addEventListener('click', functi
     window.location.href = `?check_item=1&item_code=${encodeURIComponent(itemCode)}`;
 });
 
-<?php if (isset($_GET['check_item'])): ?>
+<?php if (!$showSuccess && isset($_GET['check_item'])): ?>
     <?php if ($eligibilityData): ?>
         <?php if (!$eligibilityData['has_fabrics']): ?>
             // Show no fabric message
@@ -956,6 +992,9 @@ document.getElementById('checkAvailabilityBtn').addEventListener('click', functi
         <?php elseif (isset($eligibilityData['not_bought']) && $eligibilityData['not_bought']): ?>
             // Show not bought message
             document.getElementById('notPurchasedMessage').style.display = 'flex';
+        <?php elseif (isset($eligibilityData['already_resold']) && $eligibilityData['already_resold']): ?>
+            // Show already resold message
+            document.getElementById('alreadyResoldMessage').style.display = 'flex';
         <?php else: ?>
             // Show warning message (expired)
             document.getElementById('warningMessage').style.display = 'flex';
