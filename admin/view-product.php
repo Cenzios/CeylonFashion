@@ -115,12 +115,11 @@ body {
 }
 
 /* Sidebar */
-.sidebar { width: 260px; position: fixed; left:0; top:0; bottom:0; background: var(--primary-color); color:#fff; padding-top:24px; z-index: 1000; }
-.sidebar h4 { font-weight: 700; letter-spacing: -0.5px; opacity: 0.95; }
-.sidebar a { display:block; padding:14px 24px; color: rgba(255,255,255,0.7); text-decoration:none; font-weight: 500; transition: all 0.2s; border-left: 4px solid transparent; }
-.sidebar a.active { background: rgba(255,255,255,0.1); color:#fff; border-left-color: #fff; }
-.sidebar a:hover:not(.active) { background: rgba(255,255,255,0.05); color: #fff; }
-.main { margin-left:260px; padding:40px; min-height:100vh; }
+.sidebar { width: 240px; position: fixed; left:0; top:0; bottom:0; background:#430160ff; color:#fff; padding-top:20px; z-index: 1000; }
+.sidebar a { display:block; padding:12px 18px; color:#cfd8dc; text-decoration:none; }
+.sidebar a.active { background:#007bff; color:#fff; }
+.sidebar a:hover { background: rgba(255,255,255,0.1); }
+.main { margin-left:240px; padding:28px; min-height:100vh; }
 
 /* Product Page Styles */
 .page-header { margin-bottom: 32px; }
@@ -272,14 +271,14 @@ body {
 <body>
 
 <div class="sidebar">
-    <h4 class="text-center mb-4">Ceylon Fashion</h4>
-    <a href="dashboard.php"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
-    <a href="products.php" class="active"><i class="bi bi-box-seam me-2"></i> Products</a>
-    <a href="orders.php"><i class="bi bi-receipt me-2"></i> Orders</a>
-    <a href="users.php"><i class="bi bi-people me-2"></i> Users</a>
-    <a href="reports.php"><i class="bi bi-bar-chart me-2"></i> Reports</a>
-    <div style="flex-grow:1"></div>
-    <a href="logout.php" class="text-danger mt-auto border-0" onclick="return confirm('Are you sure you want to logout?');"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
+    <h4 class="text-center mb-3">Ceylon Fashion</h4>
+    <a href="dashboard.php">🏠 Dashboard</a>
+    <a href="products.php" class="active">📦 Products</a>
+    <a href="orders.php">🧾 Orders</a>
+    <a href="users.php">👥 Users</a>
+    <a href="reports.php">📊 Reports</a>
+    <hr style="border-color: rgba(255,255,255,.06)">
+    <a href="logout.php" class="text-danger" onclick="return confirm('Are you sure you want to logout?');">🚪 Logout</a>
 </div>
 
 <main class="main">
