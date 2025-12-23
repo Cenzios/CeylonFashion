@@ -268,10 +268,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
       </div>
     <?php endif; ?>
 
+    <?php
+    // Generate unique product code
+    $generated_code = '';
+    do {
+        $rand_num = str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+        $generated_code = 'P' . $rand_num;
+        $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE product_code = ?");
+        $checkStmt->execute([$generated_code]);
+    } while ($checkStmt->fetchColumn() > 0);
+    ?>
+
     <form method="POST" enctype="multipart/form-data">
       <div class="mb-3">
         <label class="form-label fw-semibold">Product Code <span class="text-danger">*</span></label>
-        <input type="text" name="product_code" class="form-control" required placeholder="Enter unique product code">
+        <input type="text" name="product_code" class="form-control" value="<?= $generated_code ?>" required readonly style="background-color: #e9ecef; cursor: not-allowed;">
+        <small class="text-muted">Auto-generated unique product code.</small>
       </div>
 
       <div class="mb-3">
