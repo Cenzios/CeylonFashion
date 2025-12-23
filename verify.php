@@ -9,7 +9,7 @@ if (file_exists('lib/guest-cart.php')) {
 }
 
 // ---- DB CONNECTION ----
-$dsn = 'mysql:host=localhost;dbname=sahan;charset=utf8mb4';
+$dsn = 'mysql:host=localhost;dbname=ceylon_fashion;charset=utf8mb4';
 $user = 'root';
 $pass = '';
 $options = [

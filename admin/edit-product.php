@@ -12,7 +12,7 @@ if (!$isAdmin) {
 }
 
 // Database connection (PDO for consistency)
-$dsn = 'mysql:host=localhost;dbname=sahan;charset=utf8mb4';
+$dsn = 'mysql:host=localhost;dbname=ceylon_fashion;charset=utf8mb4';
 $user = 'root';
 $pass = '';
 $options = [

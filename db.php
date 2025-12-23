@@ -1,6 +1,6 @@
 <?php
 // db.php
-$dsn = 'mysql:host=localhost;dbname=sahan;charset=utf8mb4';
+$dsn = 'mysql:host=localhost;dbname=ceylon_fashion;charset=utf8mb4';
 $user = 'root';
 $pass = '';
 

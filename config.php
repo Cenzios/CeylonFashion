@@ -5,7 +5,7 @@
 $currency = 'Rs';
 $db_username = 'root';
 $db_password = '';  // same password used in Dockploy database setup
-$db_name = 'sahan';             // same as Database Name in Dockploy
+$db_name = 'ceylon_fashion';             // same as Database Name in Dockploy
 $db_host = 'localhost';                // service name defined in Dockploy (not localhost)
 
 $mysqli = new mysqli($db_host, $db_username, $db_password, $db_name);
