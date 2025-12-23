@@ -9,6 +9,89 @@ if (!$isAdmin) {
     exit;
 }
 
+// ---- Fetch Product History (With Filters) ----
+$prodWhere = [];
+$prodParams = [];
+$prodTypes = "";
+
+// Filters
+$p_search = $_GET['p_search'] ?? '';
+$p_cat = $_GET['p_cat'] ?? '';
+$p_color = $_GET['p_color'] ?? '';
+$p_stock = $_GET['p_stock'] ?? '';
+$p_date_from = $_GET['p_date_from'] ?? '';
+$p_date_to = $_GET['p_date_to'] ?? '';
+
+if (!empty($p_search)) {
+    $prodWhere[] = "(p.product_name LIKE ? OR p.product_code LIKE ?)";
+    $prodParams[] = "%$p_search%";
+    $prodParams[] = "%$p_search%";
+    $prodTypes .= "ss";
+}
+if (!empty($p_cat)) {
+    $prodWhere[] = "p.category = ?";
+    $prodParams[] = $p_cat;
+    $prodTypes .= "s";
+}
+if (!empty($p_color)) {
+    // Join logic handles this, we filter by color_name
+    $prodWhere[] = "pc.color_name LIKE ?";
+    $prodParams[] = "%$p_color%";
+    $prodTypes .= "s";
+}
+if (!empty($p_date_from)) {
+    $prodWhere[] = "DATE(p.created_at) >= ?";
+    $prodParams[] = $p_date_from;
+    $prodTypes .= "s";
+}
+if (!empty($p_date_to)) {
+    $prodWhere[] = "DATE(p.created_at) <= ?";
+    $prodParams[] = $p_date_to;
+    $prodTypes .= "s";
+}
+
+$whereSQL = "";
+if (!empty($prodWhere)) {
+    $whereSQL = " WHERE " . implode(" AND ", $prodWhere);
+}
+
+// Using HAVING for stock filter because it relies on aggregation
+$havingSQL = "";
+if (!empty($p_stock)) {
+    if ($p_stock == 'in') {
+        $havingSQL = " HAVING total_stock > 0";
+    } elseif ($p_stock == 'out') {
+        $havingSQL = " HAVING total_stock <= 0";
+    }
+}
+
+// Fetch Categories and Colors for Dropdowns
+$cats = $mysqli->query("SELECT DISTINCT category FROM products ORDER BY category");
+$cols = $mysqli->query("SELECT DISTINCT color_name FROM product_colors ORDER BY color_name");
+
+// Query
+$prodHistorySQL = "SELECT 
+    p.id, p.product_code, p.product_name, p.category, 
+    p.created_at, p.updated_at,
+    pc.color_name,
+    GROUP_CONCAT(DISTINCT ps.size ORDER BY ps.id SEPARATOR ', ') as size_list,
+    COALESCE(SUM(pf.fabric_qty), 0) as total_stock
+FROM products p
+LEFT JOIN product_colors pc ON p.id = pc.product_id
+LEFT JOIN product_sizes ps ON p.id = ps.product_id
+LEFT JOIN product_fabrics pf ON p.id = pf.product_id
+$whereSQL
+GROUP BY p.id
+$havingSQL
+ORDER BY p.created_at DESC";
+
+$prodStmt = $mysqli->prepare($prodHistorySQL);
+if (!empty($prodParams)) {
+    $prodStmt->bind_param($prodTypes, ...$prodParams);
+}
+$prodStmt->execute();
+$prodResult = $prodStmt->get_result();
+
 // ---- Fetch Order History ----
 $orderHistorySQL = "SELECT 
     o.id, o.order_id, o.username, o.product_name, o.fabric_type, o.size, o.quantity,
@@ -322,7 +405,108 @@ tr:nth-child(even) {
             </div>
         </div>
 
-        <!-- Order History Section -->
+        <!-- Product History Section -->
+        <div class="section-title">📂 Product History</div>
+        
+        <!-- Filters Form -->
+        <div class="mb-4 p-3 bg-light rounded border">
+            <form method="GET" action="reports.php" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" name="p_search" class="form-control form-control-sm" placeholder="Name or Code" value="<?php echo htmlspecialchars($p_search); ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Category</label>
+                    <select name="p_cat" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        <?php 
+                        if ($cats) {
+                            $cats->data_seek(0);
+                            while($c = $cats->fetch_assoc()) {
+                                $sel = $p_cat == $c['category'] ? 'selected' : '';
+                                echo "<option value='".htmlentities($c['category'])."' $sel>".htmlentities($c['category'])."</option>";
+                            }
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Color</label>
+                    <select name="p_color" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        <?php 
+                        if ($cols) {
+                            $cols->data_seek(0);
+                            while($cl = $cols->fetch_assoc()) {
+                                $sel = $p_color == $cl['color_name'] ? 'selected' : '';
+                                echo "<option value='".htmlentities($cl['color_name'])."' $sel>".htmlentities($cl['color_name'])."</option>";
+                            }
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Stock</label>
+                    <select name="p_stock" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        <option value="in" <?php echo $p_stock=='in'?'selected':''; ?>>In Stock</option>
+                        <option value="out" <?php echo $p_stock=='out'?'selected':''; ?>>Out of Stock</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Created Date</label>
+                    <div class="input-group input-group-sm">
+                        <input type="date" name="p_date_from" class="form-control" value="<?php echo $p_date_from; ?>">
+                        <span class="input-group-text">-</span>
+                        <input type="date" name="p_date_to" class="form-control" value="<?php echo $p_date_to; ?>">
+                    </div>
+                </div>
+                <div class="col-12 text-end">
+                    <a href="reports.php" class="btn btn-secondary btn-sm">Reset</a>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-filter"></i> Filter</button>
+                </div>
+            </form>
+        </div>
+
+        <?php if ($prodResult && $prodResult->num_rows > 0): ?>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Color</th>
+                            <th>Sizes</th>
+                            <th>Stock Status</th>
+                            <th>Created</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while($prod = $prodResult->fetch_assoc()): 
+                            $inStock = $prod['total_stock'] > 0;
+                            $stockClass = $inStock ? 'status-paid' : 'status-failed'; 
+                            $stockText = $inStock ? 'Available' : 'Not Available';
+                        ?>
+                            <tr>
+                                <td><strong><?php echo htmlentities($prod['product_code']); ?></strong></td>
+                                <td><?php echo htmlentities($prod['product_name']); ?></td>
+                                <td><?php echo htmlentities($prod['category']); ?></td>
+                                <td><?php echo htmlentities($prod['color_name'] ?: 'N/A'); ?></td>
+                                <td><?php echo htmlentities($prod['size_list'] ?: 'N/A'); ?></td>
+                                <td><span class="status <?php echo $stockClass; ?>"><?php echo $stockText; ?></span></td>
+                                <td><?php echo $prod['created_at'] ? date('Y-m-d', strtotime($prod['created_at'])) : '-'; ?></td>
+                                <td><?php echo $prod['updated_at'] ? date('Y-m-d', strtotime($prod['updated_at'])) : '-'; ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="alert alert-warning">No products found matching filters.</div>
+        <?php endif; ?>
+
         <div class="section-title">📦 Order History</div>
         <?php if ($orderHistoryResult && $orderHistoryResult->num_rows > 0): ?>
             <div class="table-responsive">
