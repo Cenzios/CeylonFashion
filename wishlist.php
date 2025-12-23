@@ -120,39 +120,62 @@ if ($isLoggedIn) {
     }
 }
 
-// For each wishlist item, fetch fabric details
-foreach ($wishlist_items as &$item) {
-    $product_id = (int)$item['product_id'];
-    
-    // Fetch fabric details
-    $fabricStmt = $mysqli->prepare("SELECT fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
-    $fabricStmt->bind_param("i", $product_id);
-    $fabricStmt->execute();
-    $fabricResult = $fabricStmt->get_result();
-    
-    $fabrics = [];
-    $minPrice = null;
-    $maxPrice = null;
-    $totalQty = 0;
-    
-    while ($f = $fabricResult->fetch_assoc()) {
-        $fabrics[] = $f;
-        $price = (float)$f['fabric_price'];
-        $qty = (int)$f['fabric_qty'];
+    // For each wishlist item, fetch fabric details AND sizes
+    foreach ($wishlist_items as &$item) {
+        $product_id = (int)$item['product_id'];
         
-        if ($minPrice === null || $price < $minPrice) $minPrice = $price;
-        if ($maxPrice === null || $price > $maxPrice) $maxPrice = $price;
-        $totalQty += $qty;
+        // Fetch fabric details
+        $fabricStmt = $mysqli->prepare("SELECT id, fabric_type, fabric_qty, fabric_price FROM product_fabrics WHERE product_id = ?");
+        $fabricStmt->bind_param("i", $product_id);
+        $fabricStmt->execute();
+        $fabricResult = $fabricStmt->get_result();
+        
+        $fabrics = [];
+        $minPrice = null;
+        $maxPrice = null;
+        $totalQty = 0;
+        
+        while ($f = $fabricResult->fetch_assoc()) {
+            $fabrics[] = $f;
+            $price = (float)$f['fabric_price'];
+            $qty = (int)$f['fabric_qty'];
+            
+            if ($minPrice === null || $price < $minPrice) $minPrice = $price;
+            if ($maxPrice === null || $price > $maxPrice) $maxPrice = $price;
+            $totalQty += $qty;
+        }
+        
+        $item['fabrics'] = $fabrics;
+        $item['min_price'] = $minPrice;
+        $item['max_price'] = $maxPrice;
+        $item['total_qty'] = $totalQty;
+        
+        $fabricStmt->close();
+
+        // Fetch Sizes
+        $sizeStmt = $mysqli->prepare("SELECT size FROM product_sizes WHERE product_id = ?");
+        $sizeStmt->bind_param("i", $product_id);
+        $sizeStmt->execute();
+        $sizeResult = $sizeStmt->get_result();
+        $sizes = [];
+        while ($row = $sizeResult->fetch_assoc()) {
+            $sizes[] = $row['size'];
+        }
+        $sizeStmt->close();
+        
+        // Default sizes if none defined
+        if (empty($sizes)) {
+            $sizes = ['XS','S','M','L','XL'];
+        }
+        // Specific sort order
+        $sizeOrder = ['XS' => 1, 'S' => 2, 'M' => 3, 'L' => 4, 'XL' => 5, 'XXL' => 6];
+        usort($sizes, function($a, $b) use ($sizeOrder) {
+            return ($sizeOrder[$a] ?? 99) <=> ($sizeOrder[$b] ?? 99);
+        });
+
+        $item['sizes'] = $sizes;
     }
-    
-    $item['fabrics'] = $fabrics;
-    $item['min_price'] = $minPrice;
-    $item['max_price'] = $maxPrice;
-    $item['total_qty'] = $totalQty;
-    
-    $fabricStmt->close();
-}
-unset($item);
+    unset($item);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -167,15 +190,16 @@ unset($item);
     <?php if (!empty($wishlist_items)): ?>
       <?php foreach ($wishlist_items as $item): ?>
         <?php
+          $uniqueId = $item['wishlist_id']; // Use wishlist ID (or valid unique id) for unique element IDs
           $imgPath = 'images/products/' . ($item['product_img_name'] ?: 'no-image.png');
           if (!file_exists($imgPath)) {
               $imgPath = 'assets/no-image.png';
           }
         ?>
         <div class="wishlist-item">
-          <div class="d-flex align-items-center flex-grow-1">
+          <div class="d-flex align-items-start gap-3 flex-grow-1">
             <img src="<?php echo htmlspecialchars($imgPath); ?>" alt="<?php echo htmlspecialchars($item['product_name']); ?>">
-            <div class="meta">
+            <div class="meta flex-grow-1">
               <h5 class="mb-1">
                 <a href="product-view.php?id=<?php echo (int)$item['product_id']; ?>" class="text-decoration-none text-dark">
                   <?php echo htmlspecialchars($item['product_name']); ?>
@@ -194,28 +218,43 @@ unset($item);
                 </div>
               <?php endif; ?>
 
-              <!-- Fabric Options -->
-              <?php if (!empty($item['fabrics'])): ?>
-                <div class="fabric-options-small">
-                  <small class="text-muted d-block mb-1"><strong>Available Fabrics:</strong></small>
-                  <div class="d-flex flex-wrap gap-1">
-                    <?php foreach ($item['fabrics'] as $fabric): ?>
-                      <?php if ((int)$fabric['fabric_qty'] > 0): ?>
-                        <span class="badge bg-secondary" style="font-size:0.7rem;">
-                          <?php echo htmlspecialchars($fabric['fabric_type']); ?> 
-                          (<?php echo (int)$fabric['fabric_qty']; ?>)
-                        </span>
-                      <?php endif; ?>
-                    <?php endforeach; ?>
-                  </div>
-                </div>
-              <?php endif; ?>
+              <!-- Selection Area -->
+              <div class="selection-box mt-2">
+                 <div class="row g-2">
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-bold mb-1">Fabric</label>
+                        <select class="form-select form-select-sm" 
+                                id="fabric_<?php echo $uniqueId; ?>" 
+                                onchange="validateWishlistItem('<?php echo $uniqueId; ?>')">
+                            <option value="">Select Fabric</option>
+                            <?php foreach ($item['fabrics'] as $fabric): ?>
+                                <option value="<?php echo $fabric['id']; ?>" <?php echo ((int)$fabric['fabric_qty'] <= 0) ? 'disabled' : ''; ?>>
+                                    <?php echo htmlspecialchars($fabric['fabric_type']); ?> 
+                                    (Rs. <?php echo number_format($fabric['fabric_price'], 2); ?>)
+                                    <?php if((int)$fabric['fabric_qty'] <= 0) echo ' - Out of Stock'; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-bold mb-1">Size</label>
+                        <select class="form-select form-select-sm" 
+                                id="size_<?php echo $uniqueId; ?>" 
+                                onchange="validateWishlistItem('<?php echo $uniqueId; ?>')">
+                            <option value="">Select Size</option>
+                            <?php foreach ($item['sizes'] as $size): ?>
+                                <option value="<?php echo htmlspecialchars($size); ?>"><?php echo htmlspecialchars($size); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                 </div>
+              </div>
 
               <!-- Availability -->
               <div class="mt-2">
                 <?php if ($item['total_qty'] > 0): ?>
                   <span class="badge bg-success">
-                    <i class="bi bi-check-circle"></i> In Stock (<?php echo $item['total_qty']; ?> units)
+                    <i class="bi bi-check-circle"></i> In Stock
                   </span>
                 <?php else: ?>
                   <span class="badge bg-danger">
@@ -226,31 +265,35 @@ unset($item);
             </div>
           </div>
 
-          <div class="text-end d-flex flex-column align-items-end gap-2">
+          <div class="text-end d-flex flex-column align-items-end gap-2 actions-col">
             <!-- View Details button -->
-            <a href="product-view.php?id=<?php echo (int)$item['product_id']; ?>" class="btn btn-primary btn-sm">
-              <i class="bi bi-eye"></i> View Details
+            <a href="product-view.php?id=<?php echo (int)$item['product_id']; ?>" class="btn btn-outline-primary btn-sm w-100">
+              <i class="bi bi-eye"></i> View
             </a>
 
             <?php if ($item['total_qty'] > 0): ?>
-              <!-- Add to Cart button -->
-              <button type="button" class="btn btn-success btn-sm" onclick="quickAddToCart(<?php echo (int)$item['product_id']; ?>)">
+              <!-- Add to Cart button (DISABLED BY DEFAULT) -->
+              <button type="button" 
+                      class="btn btn-success btn-sm w-100" 
+                      id="btn_add_<?php echo $uniqueId; ?>" 
+                      onclick="addWishlistItemToCart(<?php echo (int)$item['product_id']; ?>, '<?php echo $uniqueId; ?>')" 
+                      disabled>
                 <i class="bi bi-cart-plus"></i> Add to Cart
               </button>
             <?php endif; ?>
 
             <!-- Remove form -->
             <?php if ($isLoggedIn): ?>
-              <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0">
+              <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0 w-100">
                 <input type="hidden" name="wishlist_id" value="<?php echo (int)$item['wishlist_id']; ?>">
-                <button type="submit" class="btn-remove" title="Remove">
+                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Remove">
                   <i class="bi bi-trash"></i> Remove
                 </button>
               </form>
             <?php else: ?>
-              <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0">
+              <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0 w-100">
                 <input type="hidden" name="product_id" value="<?php echo (int)$item['product_id']; ?>">
-                <button type="submit" class="btn-remove" title="Remove">
+                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Remove">
                   <i class="bi bi-trash"></i> Remove
                 </button>
               </form>
@@ -276,7 +319,7 @@ unset($item);
 <style>
   body { background:#f8f9fa; }
   .wishlist-container {
-    max-width: 1100px;
+    max-width: 1000px;
     margin: 40px auto;
     background: #fff;
     padding: 30px;
@@ -285,7 +328,7 @@ unset($item);
   }
   .wishlist-item {
     display:flex;
-    align-items:center;
+    align-items:flex-start;
     justify-content:space-between;
     border-bottom:1px solid #eee;
     padding:20px 0;
@@ -301,54 +344,97 @@ unset($item);
     border-radius:10px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   }
-  .wishlist-item .meta {
-    flex:1;
-    margin-left:16px;
-  }
-  .btn-remove {
-    background:none;
-    border:1px solid #dc3545;
-    color:#dc3545;
-    font-size:14px;
-    padding: 6px 12px;
+  .selection-box {
+    background: #fdfdfd; 
+    border: 1px dashed #ced4da; 
+    padding: 8px; 
     border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    max-width: 400px;
   }
-  .btn-remove:hover {
-    background:#dc3545;
-    color:#fff;
-  }
-  .fabric-options-small {
-    margin-top: 8px;
+  .actions-col {
+      min-width: 140px;
   }
   
   @media (max-width: 768px) {
     .wishlist-item {
       flex-direction: column;
-      align-items: flex-start;
+      align-items: stretch;
     }
     .wishlist-item img {
-      width: 100%;
-      max-width: 200px;
-      height: auto;
+      width: 100px;
+      height: 100px;
     }
-    .wishlist-item .meta {
-      margin-left: 0;
-      margin-top: 12px;
+    .selection-box {
+        max-width: 100%;
     }
-    .text-end {
-      width: 100%;
-      text-align: left !important;
+    .d-flex.align-items-start.gap-3 {
+        align-items: center !important;
     }
-    .text-end .d-flex {
-      flex-direction: row !important;
-      justify-content: flex-start !important;
+    .actions-col {
+        width: 100%;
+        flex-direction: row !important;
+        justify-content: space-between;
+    }
+    .actions-col .btn {
+        flex: 1;
     }
   }
 </style>
 
 <?php include 'includes/scripts.php'; ?>
 
+<script>
+    function validateWishlistItem(uniqueId) {
+        const fabricSelect = document.getElementById('fabric_' + uniqueId);
+        const sizeSelect = document.getElementById('size_' + uniqueId);
+        const addBtn = document.getElementById('btn_add_' + uniqueId);
+        
+        if (fabricSelect && sizeSelect && addBtn) {
+            // Check if both have values
+            if (fabricSelect.value !== "" && sizeSelect.value !== "") {
+                addBtn.disabled = false;
+            } else {
+                addBtn.disabled = true;
+            }
+        }
+    }
+
+    function addWishlistItemToCart(productId, uniqueId) {
+        const fabricSelect = document.getElementById('fabric_' + uniqueId);
+        const sizeSelect = document.getElementById('size_' + uniqueId);
+        
+        const fabricId = fabricSelect ? fabricSelect.value : '';
+        const size = sizeSelect ? sizeSelect.value : '';
+
+        // Validation (double check)
+        if (!fabricId || !size) {
+            alert("Please select both Fabric and Size.");
+            return;
+        }
+
+        // Add to cart with Ajax
+        // Note: The cart-add.php might need updates to handle fabric_id and size parameters if it doesn't already.
+        // For now, we pass them as GET parameters.
+        const url = `cart-add.php?id=${productId}&qty=1&ajax=1&fabric_id=${fabricId}&size=${encodeURIComponent(size)}`;
+
+        fetch(url)
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'ok') {
+              alert(data.message || 'Item added successfully to cart');
+              if (data.cartCount !== undefined) {
+                updateBadge('cartBadge', data.cartCount);
+              }
+            } else {
+              alert(data.message || 'Failed to add to cart.');
+            }
+          })
+          .catch(err => {
+              console.error(err);
+              alert("An error occurred while adding to cart.");
+          });
+    }
+</script>
+
 </body>
-</html
+</html>
