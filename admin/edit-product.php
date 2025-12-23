@@ -309,7 +309,8 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
     <form method="POST" enctype="multipart/form-data">
         <div class="mb-3">
             <label class="form-label fw-semibold">Product Code <span class="text-danger">*</span></label>
-            <input type="text" name="product_code" class="form-control" value="<?= htmlspecialchars($product['product_code']) ?>" required>
+            <input type="text" name="product_code" class="form-control" value="<?= htmlspecialchars($product['product_code']) ?>" required readonly style="background-color: #e9ecef; cursor: not-allowed;">
+            <small class="text-muted">Product code cannot be changed.</small>
         </div>
 
         <div class="mb-3">
