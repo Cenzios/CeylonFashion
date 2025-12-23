@@ -162,9 +162,15 @@ function clearGuestWishlist() {
 
 /**
  * Get cart count for logged-in user from database
+ * Only counts items where the product still exists
  */
 function getUserCartCount($mysqli, $user_id) {
-    $stmt = $mysqli->prepare("SELECT SUM(quantity) as total_qty FROM cart WHERE user_id = ?");
+    $stmt = $mysqli->prepare("
+        SELECT SUM(c.quantity) as total_qty 
+        FROM cart c 
+        JOIN products p ON c.product_id = p.id 
+        WHERE c.user_id = ?
+    ");
     if (!$stmt) {
         return 0;
     }
@@ -178,9 +184,15 @@ function getUserCartCount($mysqli, $user_id) {
 
 /**
  * Get wishlist count for logged-in user from database
+ * Only counts items where the product still exists
  */
 function getUserWishlistCount($mysqli, $user_id) {
-    $stmt = $mysqli->prepare("SELECT COUNT(*) as total FROM wishlist WHERE user_id = ?");
+    $stmt = $mysqli->prepare("
+        SELECT COUNT(*) as total 
+        FROM wishlist w 
+        JOIN products p ON w.product_id = p.id 
+        WHERE w.user_id = ?
+    ");
     if (!$stmt) {
         return 0;
     }
