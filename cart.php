@@ -275,18 +275,18 @@ if ($isLoggedIn) {
           </div>
 
           <div class="text-end d-flex flex-column align-items-end gap-2">
-            <div class="fw-bold text-primary fs-5">Rs. <?php echo number_format($subtotal,2); ?></div>
+            <div class="fw-bold text-primary fs-5" id="subtotal-<?php echo $row['cart_id']; ?>">Rs. <?php echo number_format($subtotal,2); ?></div>
 
             <!-- Quantity Update -->
             <div class="qty-controls d-flex align-items-center gap-2">
               <?php if ($isLoggedIn): ?>
-                <a href="cart-update.php?id=<?php echo $row['cart_id']; ?>&action=decrease" class="btn btn-sm btn-outline-secondary">
+                <button onclick="updateQty(<?php echo $row['cart_id']; ?>, 'decrease')" class="btn btn-sm btn-outline-secondary">
                   <i class="bi bi-dash"></i>
-                </a>
-                <span class="qty-display"><?php echo (int)$row['quantity']; ?></span>
-                <a href="cart-update.php?id=<?php echo $row['cart_id']; ?>&action=increase" class="btn btn-sm btn-outline-secondary">
+                </button>
+                <span class="qty-display" id="qty-<?php echo $row['cart_id']; ?>"><?php echo (int)$row['quantity']; ?></span>
+                <button onclick="updateQty(<?php echo $row['cart_id']; ?>, 'increase')" class="btn btn-sm btn-outline-secondary">
                   <i class="bi bi-plus"></i>
-                </a>
+                </button>
               <?php else: ?>
                 <!-- For guest, we pass cart_id (which is product_id_fabric_id_... key) -->
                 <!-- Ideally cart-set-qty.php needs to be updated to accept cart_id instead of just product_id -->
@@ -335,7 +335,7 @@ if ($isLoggedIn) {
       <div class="cart-summary">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h4 class="mb-0">Subtotal:</h4>
-          <h4 class="mb-0 text-primary">Rs. <?php echo number_format($grand,2); ?></h4>
+          <h4 class="mb-0 text-primary" id="grand-total">Rs. <?php echo number_format($grand,2); ?></h4>
         </div>
         <div class="text-muted small mb-3">Shipping and taxes calculated at checkout</div>
         <div class="d-flex gap-2">
@@ -602,6 +602,44 @@ async function processCartPayment() {
         btnText.style.display = 'inline';
         spinner.style.display = 'none';
     }
+}
+
+function updateQty(cartId, action) {
+    fetch(`cart-update.php?id=${cartId}&action=${action}&ajax=1`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update Quantity Display
+            document.getElementById(`qty-${cartId}`).innerText = data.new_qty;
+            
+            // Update Subtotal Display
+            document.getElementById(`subtotal-${cartId}`).innerText = 'Rs. ' + data.new_subtotal;
+            
+            // Update Grand Total Display
+            document.getElementById(`grand-total`).innerText = 'Rs. ' + data.grand_total;
+            
+            // Update Navbar Cart Badge
+            const badge = document.getElementById('cartBadge');
+            if (badge) {
+                if (data.cart_count > 0) {
+                   badge.innerText = data.cart_count;
+                   badge.style.display = 'inline-block';
+                } else {
+                   badge.style.display = 'none';
+                }
+            }
+            
+            // Optional: If qty changed to 0 (though backend logic keeps at 1 min usually), 
+            // reload or remove element. Current logic min is 1.
+
+        } else {
+            alert(data.error || 'Failed to update quantity');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    });
 }
 </script>
 
