@@ -26,14 +26,20 @@ function initGuestWishlist() {
 /**
  * Add product to guest cart
  */
-function addToGuestCart($product_id, $quantity = 1, $price = 0) {
+function addToGuestCart($product_id, $quantity = 1, $price = 0, $fabric_id = 0, $size = '') {
     initGuestCart();
     
-    if (isset($_SESSION['guest_cart'][$product_id])) {
-        $_SESSION['guest_cart'][$product_id]['quantity'] += $quantity;
+    // Create a composite key to uniquely identify the variation
+    // Use separator that won't appear in IDs
+    $key = $product_id . '_' . $fabric_id . '_' . $size;
+    
+    if (isset($_SESSION['guest_cart'][$key])) {
+        $_SESSION['guest_cart'][$key]['quantity'] += $quantity;
     } else {
-        $_SESSION['guest_cart'][$product_id] = [
+        $_SESSION['guest_cart'][$key] = [
             'product_id' => $product_id,
+            'fabric_id' => $fabric_id,
+            'size' => $size,
             'quantity' => $quantity,
             'price' => $price
         ];
@@ -44,11 +50,15 @@ function addToGuestCart($product_id, $quantity = 1, $price = 0) {
 
 /**
  * Remove product from guest cart
+ * Expects key or we need to change logic. 
+ * Since cart.php will loop through items and provide an identifier (the key), we should accept the key.
+ * For backward compatibility, if only product_id passed, we try to remove all matching? 
+ * Simpler: let's change param to $cart_id (which is the key for guests)
  */
-function removeFromGuestCart($product_id) {
+function removeFromGuestCart($cart_id) {
     initGuestCart();
-    if (isset($_SESSION['guest_cart'][$product_id])) {
-        unset($_SESSION['guest_cart'][$product_id]);
+    if (isset($_SESSION['guest_cart'][$cart_id])) {
+        unset($_SESSION['guest_cart'][$cart_id]);
         return true;
     }
     return false;
@@ -57,13 +67,13 @@ function removeFromGuestCart($product_id) {
 /**
  * Update guest cart quantity
  */
-function updateGuestCartQty($product_id, $quantity) {
+function updateGuestCartQty($cart_id, $quantity) {
     initGuestCart();
-    if (isset($_SESSION['guest_cart'][$product_id])) {
+    if (isset($_SESSION['guest_cart'][$cart_id])) {
         if ($quantity <= 0) {
-            unset($_SESSION['guest_cart'][$product_id]);
+            unset($_SESSION['guest_cart'][$cart_id]);
         } else {
-            $_SESSION['guest_cart'][$product_id]['quantity'] = $quantity;
+            $_SESSION['guest_cart'][$cart_id]['quantity'] = $quantity;
         }
         return true;
     }
@@ -190,15 +200,20 @@ function migrateGuestData($mysqli, $user_id) {
 
     // 1. Migrate Cart
     if (!empty($_SESSION['guest_cart'])) {
-        $stmtCheck = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
-        $stmtInsert = $mysqli->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)");
+        // Query to check if same variant exists
+        $stmtCheck = $mysqli->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ? AND fabric_id = ? AND size = ?");
+        $stmtInsert = $mysqli->prepare("INSERT INTO cart (user_id, product_id, fabric_id, size, quantity, price) VALUES (?, ?, ?, ?, ?, ?)");
         $stmtUpdate = $mysqli->prepare("UPDATE cart SET quantity = quantity + ? WHERE id = ?");
 
-        foreach ($_SESSION['guest_cart'] as $pid => $item) {
+        foreach ($_SESSION['guest_cart'] as $key => $item) {
+            $pid = $item['product_id'];
+            $fid = $item['fabric_id'] ?? 0;
+            $siz = $item['size'] ?? '';
             $qty = $item['quantity'];
+            $price = $item['price'];
             
             // Check if exists
-            $stmtCheck->bind_param("ii", $user_id, $pid);
+            $stmtCheck->bind_param("iiis", $user_id, $pid, $fid, $siz);
             $stmtCheck->execute();
             $res = $stmtCheck->get_result();
             
@@ -208,7 +223,7 @@ function migrateGuestData($mysqli, $user_id) {
                 $stmtUpdate->execute();
             } else {
                 // Insert
-                $stmtInsert->bind_param("iii", $user_id, $pid, $qty);
+                $stmtInsert->bind_param("iiisid", $user_id, $pid, $fid, $siz, $qty, $price);
                 $stmtInsert->execute();
             }
         }

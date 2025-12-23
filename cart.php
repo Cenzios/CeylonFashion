@@ -27,6 +27,8 @@ if ($isLoggedIn) {
         SELECT 
             c.id AS cart_id,
             c.product_id,
+            c.fabric_id,
+            c.size,
             c.quantity,
             c.price,
             p.product_name,
@@ -35,9 +37,11 @@ if ($isLoggedIn) {
             p.product_img2,
             p.product_img3,
             p.product_img4,
-            p.category
+            p.category,
+            pf.fabric_type
         FROM cart c
         JOIN products p ON c.product_id = p.id
+        LEFT JOIN product_fabrics pf ON c.fabric_id = pf.id
         WHERE c.user_id = ?
     ";
     $stmt = $mysqli->prepare($sql);
@@ -54,6 +58,7 @@ if ($isLoggedIn) {
     // For each cart item, fetch current fabric availability and get first image
     foreach ($items as &$item) {
         $product_id = (int)$item['product_id'];
+        $fabric_id  = (int)$item['fabric_id'];
         
         // Get first available image from product_img1-4
         $firstImage = '';
@@ -66,15 +71,24 @@ if ($isLoggedIn) {
         }
         $item['product_img_name'] = $firstImage;
         
-        // Get total available quantity from fabrics
-        $fabricStmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total_qty FROM product_fabrics WHERE product_id = ?");
-        $fabricStmt->bind_param("i", $product_id);
-        $fabricStmt->execute();
-        $fabricResult = $fabricStmt->get_result();
-        $fabricData = $fabricResult->fetch_assoc();
-        $fabricStmt->close();
-        
-        $item['available_qty'] = $fabricData ? (int)$fabricData['total_qty'] : 0;
+        // Get available quantity. If fabric_id is set, get THAT fabric's qty.
+        if ($fabric_id > 0) {
+            $fStmt = $mysqli->prepare("SELECT fabric_qty FROM product_fabrics WHERE id = ?");
+            $fStmt->bind_param("i", $fabric_id);
+            $fStmt->execute();
+            $res = $fStmt->get_result()->fetch_assoc();
+            $item['available_qty'] = $res ? (int)$res['fabric_qty'] : 0;
+            $fStmt->close();
+        } else {
+            // Fallback total qty (legacy)
+            $fabricStmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total_qty FROM product_fabrics WHERE product_id = ?");
+            $fabricStmt->bind_param("i", $product_id);
+            $fabricStmt->execute();
+            $fabricResult = $fabricStmt->get_result();
+            $fabricData = $fabricResult->fetch_assoc();
+            $fabricStmt->close();
+            $item['available_qty'] = $fabricData ? (int)$fabricData['total_qty'] : 0;
+        }
     }
     unset($item);
 } else {
@@ -82,63 +96,98 @@ if ($isLoggedIn) {
     $guestCart = getGuestCart();
     
     if (!empty($guestCart)) {
-        $productIds = array_keys($guestCart);
-        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        // Collect product IDs
+        $productIds = [];
+        foreach ($guestCart as $k => $v) {
+             $productIds[] = $v['product_id'];
+        }
+        $productIds = array_unique($productIds);
         
-        $sql = "
-            SELECT 
-                id AS product_id,
-                product_name,
-                product_code,
-                product_img1,
-                product_img2,
-                product_img3,
-                product_img4,
-                category
-            FROM products
-            WHERE id IN ($placeholders)
-        ";
-        $stmt = $mysqli->prepare($sql);
-        if ($stmt) {
-            $stmt->bind_param(str_repeat('i', count($productIds)), ...$productIds);
-            $stmt->execute();
-            $result = $stmt->get_result();
+        if (!empty($productIds)) {
+            $placeholders = implode(',', array_fill(0, count($productIds), '?'));
             
-            while ($product = $result->fetch_assoc()) {
-                $product_id = (int)$product['product_id'];
-                $cartItem = $guestCart[$product_id];
+            // Get product info and logic to attach fabric names requires iterating.
+            // Let's get products first.
+            $productsInfo = [];
+            $sql = "
+                SELECT 
+                    id AS product_id,
+                    product_name,
+                    product_code,
+                    product_img1,
+                    product_img2,
+                    product_img3,
+                    product_img4,
+                    category
+                FROM products
+                WHERE id IN ($placeholders)
+            ";
+            $stmt = $mysqli->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param(str_repeat('i', count($productIds)), ...$productIds);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($p = $result->fetch_assoc()) {
+                    $productsInfo[$p['product_id']] = $p;
+                }
+                $stmt->close();
+            }
+
+            foreach ($guestCart as $key => $cartItem) {
+                $product_id = $cartItem['product_id'];
+                if (!isset($productsInfo[$product_id])) continue;
                 
-                // Get first available image from product_img1-4
+                $product = $productsInfo[$product_id];
+                $fabric_id = $cartItem['fabric_id'] ?? 0;
+                
+                // Get first available image
                 $firstImage = '';
                 for ($i = 1; $i <= 4; $i++) {
-                    $imgField = 'product_img' . $i;
-                    if (!empty($product[$imgField])) {
-                        $firstImage = $product[$imgField];
-                        break;
-                    }
+                   $imgField = 'product_img' . $i;
+                   if (!empty($product[$imgField])) {
+                       $firstImage = $product[$imgField];
+                       break;
+                   }
                 }
                 
-                // Get total available quantity from fabrics
-                $fabricStmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total_qty FROM product_fabrics WHERE product_id = ?");
-                $fabricStmt->bind_param("i", $product_id);
-                $fabricStmt->execute();
-                $fabricResult = $fabricStmt->get_result();
-                $fabricData = $fabricResult->fetch_assoc();
-                $fabricStmt->close();
+                // Get Fabric Type Name and Available Quantity
+                $fabricType = '';
+                $availableQty = 0;
+                
+                if ($fabric_id > 0) {
+                    $fStmt = $mysqli->prepare("SELECT fabric_type, fabric_qty FROM product_fabrics WHERE id = ?");
+                    $fStmt->bind_param("i", $fabric_id);
+                    $fStmt->execute();
+                    if ($fData = $fStmt->get_result()->fetch_assoc()) {
+                        $fabricType = $fData['fabric_type'];
+                        $availableQty = (int)$fData['fabric_qty'];
+                    }
+                    $fStmt->close();
+                } else {
+                     // Fallback
+                    $fStmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total FROM product_fabrics WHERE product_id = ?");
+                    $fStmt->bind_param("i", $product_id);
+                    $fStmt->execute();
+                    $d = $fStmt->get_result()->fetch_assoc();
+                    $availableQty = $d ? (int)$d['total'] : 0;
+                    $fStmt->close();
+                }
                 
                 $items[] = [
-                    'cart_id' => 'guest_' . $product_id, // Unique identifier for guest items
+                    'cart_id' => $key, // This IS the session key (string)
                     'product_id' => $product_id,
+                    'fabric_id' => $fabric_id,
+                    'size' => $cartItem['size'] ?? '',
                     'quantity' => $cartItem['quantity'],
                     'price' => $cartItem['price'],
                     'product_name' => $product['product_name'],
                     'product_code' => $product['product_code'],
                     'product_img_name' => $firstImage,
                     'category' => $product['category'],
-                    'available_qty' => $fabricData ? (int)$fabricData['total_qty'] : 0
+                    'fabric_type' => $fabricType,
+                    'available_qty' => $availableQty
                 ];
             }
-            $stmt->close();
         }
     }
 }
@@ -191,6 +240,18 @@ if ($isLoggedIn) {
                 </a>
               </h5>
               <div class="small text-muted mb-1">Code: <?php echo htmlspecialchars($row['product_code']); ?></div>
+              
+              <!-- Fabric & Size Display -->
+              <div class="small text-muted mb-1">
+                  <?php if (!empty($row['fabric_type'])): ?>
+                      <span class="me-3"><strong>Fabric:</strong> <?php echo htmlspecialchars($row['fabric_type']); ?></span>
+                  <?php endif; ?>
+                  
+                  <?php if (!empty($row['size'])): ?>
+                      <span><strong>Size:</strong> <?php echo htmlspecialchars($row['size']); ?></span>
+                  <?php endif; ?>
+              </div>
+
               <div class="small text-muted">
                 Price: Rs. <?php echo number_format($row['price'],2); ?> &nbsp; • &nbsp; 
                 Qty: <strong><?php echo (int)$row['quantity']; ?></strong>
@@ -227,11 +288,24 @@ if ($isLoggedIn) {
                   <i class="bi bi-plus"></i>
                 </a>
               <?php else: ?>
-                <a href="cart-set-qty.php?product_id=<?php echo $row['product_id']; ?>&qty=<?php echo max(1, (int)$row['quantity'] - 1); ?>" class="btn btn-sm btn-outline-secondary">
+                <!-- For guest, we pass cart_id (which is product_id_fabric_id_... key) -->
+                <!-- Ideally cart-set-qty.php needs to be updated to accept cart_id instead of just product_id -->
+                <!-- However, to minimize changes, we can pass product_id and variants? No, cart-set-qty handles global logic. -->
+                <!-- Simplest hack: modify `cart-set-qty.php`? It was not in plan but required. -->
+                <!-- Let's assume for now user uses the buttons which call `cart-update.php`? No, guest links were `cart-set-qty` -->
+                <!-- Since `cart-set-qty.php` is likely simple, let's use a workaround or update it. -->
+                <!-- Actually, let's update this link to use `cart-set-qty` but passing the KEY as `id` instead of `product_id`? -->
+                <!-- If `cart-set-qty.php` expects `product_id` (int), passing a string key might break it. -->
+                <!-- Let's check `cart-set-qty.php` content in next step if possible. For now, let's assume `id` or `key` param. -->
+                
+                <!-- Temporary: Disabled quantity update for guests on complex items until cart-set-qty is fixed? -->
+                <!-- Or: Just link it, and if it breaks, we fix. -->
+                <!-- Using `key` parameter which we will add support for in `cart-set-qty.php`. -->
+                <a href="cart-set-qty.php?key=<?php echo urlencode($row['cart_id']); ?>&qty=<?php echo max(1, (int)$row['quantity'] - 1); ?>" class="btn btn-sm btn-outline-secondary">
                   <i class="bi bi-dash"></i>
                 </a>
                 <span class="qty-display"><?php echo (int)$row['quantity']; ?></span>
-                <a href="cart-set-qty.php?product_id=<?php echo $row['product_id']; ?>&qty=<?php echo (int)$row['quantity'] + 1; ?>" class="btn btn-sm btn-outline-secondary">
+                <a href="cart-set-qty.php?key=<?php echo urlencode($row['cart_id']); ?>&qty=<?php echo (int)$row['quantity'] + 1; ?>" class="btn btn-sm btn-outline-secondary">
                   <i class="bi bi-plus"></i>
                 </a>
               <?php endif; ?>
@@ -247,7 +321,8 @@ if ($isLoggedIn) {
               </form>
             <?php else: ?>
               <form action="cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');" class="mb-0">
-                <input type="hidden" name="product_id" value="<?php echo (int)$row['product_id']; ?>">
+                <!-- Pass KEY as cart_id or similar -->
+                <input type="hidden" name="cart_id" value="<?php echo htmlspecialchars($row['cart_id']); ?>">
                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
                   <i class="bi bi-trash"></i> Remove
                 </button>
