@@ -26,13 +26,20 @@ if ($isLoggedIn) {
     $stmt->close();
 } else {
     // Guest user - remove from session
-    if (!isset($_POST['product_id']) || !ctype_digit(strval($_POST['product_id']))) {
-        header('Location: cart.php');
-        exit;
+    // We expect cart_id to be valid key
+    if (!isset($_POST['cart_id'])) {
+        // Fallback for legacy calls?
+        if (isset($_POST['product_id'])) {
+            $key = $_POST['product_id'];
+        } else {
+            header('Location: cart.php');
+            exit;
+        }
+    } else {
+        $key = $_POST['cart_id'];
     }
 
-    $product_id = (int) $_POST['product_id'];
-    removeFromGuestCart($product_id);
+    removeFromGuestCart($key);
 }
 
 header('Location: cart.php');
