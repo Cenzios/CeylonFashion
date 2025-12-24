@@ -31,6 +31,27 @@ while ($f = $fabricsRes->fetch_assoc()) {
 }
 $stmt->close();
 
+// Fetch Available Sizes
+$stmt = $mysqli->prepare("SELECT size FROM product_sizes WHERE product_id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$sizeResult = $stmt->get_result();
+$availableSizes = [];
+while ($row = $sizeResult->fetch_assoc()) {
+  $availableSizes[] = $row['size'];
+}
+$stmt->close();
+
+// Fallback logic
+if (empty($availableSizes)) {
+  $availableSizes = ['XS','S','M','L','XL'];
+}
+// Sort sizes
+$sizeOrder = ['XS' => 1, 'S' => 2, 'M' => 3, 'L' => 4, 'XL' => 5, 'XXL' => 6];
+usort($availableSizes, function($a, $b) use ($sizeOrder) {
+    return ($sizeOrder[$a] ?? 99) <=> ($sizeOrder[$b] ?? 99);
+});
+
 // Determine Price
 $minPrice = 0.00;
 if (!empty($fabrics)) {
@@ -108,9 +129,8 @@ $payzyInstallment = $minPrice / 4;
                 <div class="mp-option-row">
                     <label>Size: <span id="mpSelectedSizeLabel"></span></label>
                     <div class="mp-size-list">
-                        <?php $sizes = ['XS','S','M','L','XL']; // Adjusted to match product-view.php ?>
-                        <?php foreach($sizes as $s): ?>
-                            <button type="button" class="mp-size-btn" onclick="mpSelectSize('<?php echo $s; ?>', this)"><?php echo $s; ?></button>
+                        <?php foreach($availableSizes as $s): ?>
+                            <button type="button" class="mp-size-btn" onclick="mpSelectSize('<?php echo htmlspecialchars($s); ?>', this)"><?php echo htmlspecialchars($s); ?></button>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -137,7 +157,11 @@ $payzyInstallment = $minPrice / 4;
         font-family: 'Segoe UI', sans-serif;
         position: relative;
         background: #fff;
-        border-radius: 4px; /* Image shows sharp corners? No, standard modal */
+        border-radius: 4px;
+        max-width: 100%;
+    }
+    .modal-product-view-container * {
+        box-sizing: border-box;
     }
     .close-reveal-modal {
         position: absolute;
@@ -150,13 +174,16 @@ $payzyInstallment = $minPrice / 4;
         background: none;
         border: none;
         z-index: 100;
+        padding: 0;
     }
     .mp-row {
         display: flex;
         flex-wrap: wrap;
+        margin: 0;
     }
     .mp-col-left {
-        width: 50%;
+        flex: 1;
+        min-width: 300px; /* Prevent too narrow */
         padding: 20px;
         border-right: 1px solid #eee;
         display: flex;
@@ -164,7 +191,8 @@ $payzyInstallment = $minPrice / 4;
         justify-content: center;
     }
     .mp-col-right {
-        width: 50%;
+        flex: 1;
+        min-width: 300px;
         padding: 40px 30px;
     }
     
@@ -176,6 +204,7 @@ $payzyInstallment = $minPrice / 4;
         height: 450px;
         display: flex;
         align-items: center;
+        margin: 0 auto;
     }
     .mp-slider-wrapper {
         width: 100%;
@@ -207,7 +236,7 @@ $payzyInstallment = $minPrice / 4;
         transform: translateY(-50%);
         background: rgba(255,255,255,0.8);
         border: 1px solid #ddd;
-        border-radius: 50%; /* Circle? Image calls for < > arrows */
+        border-radius: 50%;
         width: 40px;
         height: 40px;
         cursor: pointer;
@@ -218,6 +247,7 @@ $payzyInstallment = $minPrice / 4;
         align-items: center;
         justify-content: center;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        padding: 0;
     }
     .mp-prev { left: -20px; }
     .mp-next { right: -20px; }
@@ -237,38 +267,14 @@ $payzyInstallment = $minPrice / 4;
         margin-bottom: 20px;
     }
     
-    .mp-installments {
-        margin-bottom: 25px;
-        font-size: 13px;
-        color: #666;
-    }
-    .mp-inst-row {
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-    }
-    .brand-koko { color: #d63384; font-weight: bold; margin-left: 4px; }
-    .brand-mintpay { background: #000; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px; }
-    .brand-payzy { color: #0dcaf0; font-weight: bold; margin-left: 4px; }
-    .info-icon {
-        display: inline-block;
-        width: 14px;
-        height: 14px;
-        background: #333;
-        color: #fff;
-        border-radius: 50%;
-        text-align: center;
-        line-height: 14px;
-        font-size: 10px;
-        margin-left: 5px;
-        font-style: normal;
-        cursor: pointer;
-    }
-
     /* Size */
     .mp-option-row { margin-bottom: 20px; }
     .mp-option-row label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
-    .mp-size-list { display: flex; gap: 8px; }
+    .mp-size-list { 
+        display: flex; 
+        gap: 8px; 
+        flex-wrap: wrap; /* Allow wrapping */
+    }
     .mp-size-btn {
         min-width: 40px;
         height: 40px;
@@ -286,18 +292,18 @@ $payzyInstallment = $minPrice / 4;
     .mp-size-btn:hover { border-color: #1a1a5e; }
     .mp-size-btn.selected {
         border-color: #1a1a5e;
-        background: #fff; /* Image shows white bg with blue border and blue text */
-        color: #1a1a5e; /* Actually image shows blue text too for selected */
+        background: #fff; 
+        color: #1a1a5e; 
         font-weight: 600;
         border-width: 2px;
     }
-    .mp-size-btn.disabled { opacity: 0.5; cursor: not-allowed; text-decoration: line-through; } /* For style */
     
     /* Actions */
     .mp-actions-row {
         display: flex;
         gap: 15px;
         margin-bottom: 15px;
+        flex-wrap: wrap; /* Ensure robustness */
     }
     .mp-qty-box {
         display: flex;
@@ -311,6 +317,7 @@ $payzyInstallment = $minPrice / 4;
         cursor: pointer;
         font-size: 18px;
         color: #666;
+        padding: 0;
     }
     .mp-qty-box input {
         width: 40px;
@@ -318,14 +325,13 @@ $payzyInstallment = $minPrice / 4;
         text-align: center;
         font-size: 16px;
         color: #333;
-        -moz-appearance: textfield;
+        padding: 0;
     }
-    .mp-qty-box input::-webkit-outer-spin-button,
-    .mp-qty-box input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
     .mp-btn-add {
         flex: 1;
-        background: #001f5c; /* Navy Blue like image */
+        min-width: 120px;
+        background: #001f5c;
         color: #fff;
         border: none;
         font-weight: 700;
@@ -333,6 +339,7 @@ $payzyInstallment = $minPrice / 4;
         cursor: pointer;
         text-transform: uppercase;
         letter-spacing: 1px;
+        padding: 0 20px;
     }
     .mp-btn-add:hover { background: #001540; }
 
@@ -351,8 +358,6 @@ $payzyInstallment = $minPrice / 4;
     .mp-btn-view-full:hover { background: #f0f4ff; }
 
     @media (max-width: 768px) {
-        .mp-row { flex-direction: column; }
-        .mp-col-left, .mp-col-right { width: 100%; }
         .mp-col-left { border-right: none; border-bottom: 1px solid #eee; padding: 10px; }
         .mp-col-right { padding: 20px; }
     }
