@@ -383,7 +383,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
                 <th>Unit Price (Rs)</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="fabricTableBody">
               <?php
               $fabrics = ["Silk", "Lace and Net", "Satin", "Georgette", "Velvet"];
               foreach ($fabrics as $f): ?>
@@ -394,10 +394,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
                   </td>
                   <td><input type="number" name="fabric_qty[]" min="0" class="form-control" placeholder="0"></td>
                   <td><input type="number" name="fabric_price[]" step="0.01" min="0" class="form-control" placeholder="0.00"></td>
+                  <td></td> <!-- Empty for default delete check or strict layout -->
                 </tr>
               <?php endforeach; ?>
             </tbody>
           </table>
+          <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addFabricBtn">
+            <i class="bi bi-plus-lg"></i> Add New Fabric
+          </button>
         </div>
       </div>
 
@@ -450,6 +454,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Dynamic Fabric Rows
+document.getElementById('addFabricBtn').addEventListener('click', function() {
+    const tbody = document.getElementById('fabricTableBody');
+    const row = document.createElement('tr');
+    
+    row.innerHTML = `
+        <td>
+            <input type="text" name="fabric_type[]" class="form-control" placeholder="Enter Fabric Name" required>
+        </td>
+        <td>
+            <input type="number" name="fabric_qty[]" min="0" class="form-control" placeholder="0">
+        </td>
+        <td>
+            <input type="number" name="fabric_price[]" step="0.01" min="0" class="form-control" placeholder="0.00">
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-fabric-btn" title="Remove">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    `;
+    
+    tbody.appendChild(row);
+});
+
+// Event delegation for remove buttons
+document.getElementById('fabricTableBody').addEventListener('click', function(e) {
+    if (e.target.closest('.remove-fabric-btn')) {
+        e.target.closest('tr').remove();
+    }
+});
 // Color preview on selection
 document.getElementById('productColor').addEventListener('change', function() {
   const selectedOption = this.options[this.selectedIndex];

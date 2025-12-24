@@ -435,10 +435,9 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
             </div>
         </div>
 
-        <!-- Fabric Type Section -->
         <div class="mb-4">
             <h5 class="fw-bold mb-3 text-primary">Fabric Types & Details</h5>
-            <p class="text-muted small mb-3">Enter quantity and price for available fabrics (leave empty if not available)</p>
+            <p class="text-muted small mb-3">Enter quantity and price for available fabrics.</p>
             <div class="table-responsive">
                 <table class="table table-bordered align-middle fabric-table">
                     <thead class="table-light">
@@ -446,15 +445,22 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
                             <th>Fabric Type</th>
                             <th>Available Quantity</th>
                             <th>Unit Price (Rs)</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="fabricTableBody">
                         <?php
-                        $fabrics = ["Silk", "Lace and Net", "Satin", "Georgette", "Velvet"];
-                        foreach ($fabrics as $f):
+                        $defaultFabrics = ["Silk", "Lace and Net", "Satin", "Georgette", "Velvet"];
+                        
+                        // Merge defaults with existing from DB to capture everything
+                        // But we want to distinguish them for display purposes potentially
+                        // Best way: Loop through defaults first, then loop through any extras in $existingFabrics that aren't defaults.
+                        
+                        // 1. Render Defaults
+                        foreach ($defaultFabrics as $f) {
                             $qty = isset($existingFabrics[$f]) ? $existingFabrics[$f]['qty'] : 0;
                             $price = isset($existingFabrics[$f]) ? $existingFabrics[$f]['price'] : 0;
-                        ?>
+                            ?>
                             <tr>
                                 <td>
                                     <input type="hidden" name="fabric_type[]" value="<?= $f ?>">
@@ -462,12 +468,76 @@ body { background:#f8f9fa; font-family: "Poppins", system-ui, -apple-system, "Se
                                 </td>
                                 <td><input type="number" name="fabric_qty[]" min="0" class="form-control" placeholder="0" value="<?= $qty ?>"></td>
                                 <td><input type="number" name="fabric_price[]" step="0.01" min="0" class="form-control" placeholder="0.00" value="<?= number_format($price, 2, '.', '') ?>"></td>
+                                <td></td> <!-- Defaults cannot be removed via UI in this design -->
                             </tr>
-                        <?php endforeach; ?>
+                            <?php
+                            // Remove from processed list so we know what's left as custom
+                            unset($existingFabrics[$f]);
+                        }
+                        
+                        // 2. Render Remaining (Custom) Fabrics
+                        foreach ($existingFabrics as $type => $data) {
+                            ?>
+                            <tr>
+                                <td>
+                                    <input type="text" name="fabric_type[]" class="form-control" value="<?= htmlspecialchars($type) ?>" required>
+                                </td>
+                                <td><input type="number" name="fabric_qty[]" min="0" class="form-control" placeholder="0" value="<?= $data['qty'] ?>"></td>
+                                <td><input type="number" name="fabric_price[]" step="0.01" min="0" class="form-control" placeholder="0.00" value="<?= number_format($data['price'], 2, '.', '') ?>"></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-fabric-btn" title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <?php
+                        }
+                        ?>
                     </tbody>
                 </table>
+                <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addFabricBtn">
+                    <i class="bi bi-plus-lg"></i> Add New Fabric
+                </button>
             </div>
         </div>
+
+        <script>
+        // Dynamic Fabric Rows Logic (Embedded for immediate execution availability)
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('addFabricBtn').addEventListener('click', function() {
+                const tbody = document.getElementById('fabricTableBody');
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>
+                        <input type="text" name="fabric_type[]" class="form-control" placeholder="Enter Fabric Name" required>
+                    </td>
+                    <td>
+                        <input type="number" name="fabric_qty[]" min="0" class="form-control" placeholder="0">
+                    </td>
+                    <td>
+                        <input type="number" name="fabric_price[]" step="0.01" min="0" class="form-control" placeholder="0.00">
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-fabric-btn" title="Remove">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+
+            // Event delegation for remove buttons
+            document.getElementById('fabricTableBody').addEventListener('click', function(e) {
+                if (e.target.closest('.remove-fabric-btn')) {
+                    if (confirm('Are you sure you want to remove this fabric row?')) {
+                        e.target.closest('tr').remove();
+                    }
+                }
+            });
+        });
+        </script>
 
         <div class="text-center mt-4">
             <button type="submit" class="btn btn-primary btn-lg px-5">
