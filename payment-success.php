@@ -28,5 +28,6 @@ if (isset($_SESSION['user_id'])) {
 </div>
 
 <?php include 'includes/footer.php'; ?>
+<?php include 'includes/scripts.php'; ?>
 </body>
 </html>
