@@ -289,25 +289,13 @@ if ($isLoggedIn) {
                 </button>
               <?php else: ?>
                 <!-- For guest, we pass cart_id (which is product_id_fabric_id_... key) -->
-                <!-- Ideally cart-set-qty.php needs to be updated to accept cart_id instead of just product_id -->
-                <!-- However, to minimize changes, we can pass product_id and variants? No, cart-set-qty handles global logic. -->
-                <!-- Simplest hack: modify `cart-set-qty.php`? It was not in plan but required. -->
-                <!-- Let's assume for now user uses the buttons which call `cart-update.php`? No, guest links were `cart-set-qty` -->
-                <!-- Since `cart-set-qty.php` is likely simple, let's use a workaround or update it. -->
-                <!-- Actually, let's update this link to use `cart-set-qty` but passing the KEY as `id` instead of `product_id`? -->
-                <!-- If `cart-set-qty.php` expects `product_id` (int), passing a string key might break it. -->
-                <!-- Let's check `cart-set-qty.php` content in next step if possible. For now, let's assume `id` or `key` param. -->
-                
-                <!-- Temporary: Disabled quantity update for guests on complex items until cart-set-qty is fixed? -->
-                <!-- Or: Just link it, and if it breaks, we fix. -->
-                <!-- Using `key` parameter which we will add support for in `cart-set-qty.php`. -->
-                <a href="cart-set-qty.php?key=<?php echo urlencode($row['cart_id']); ?>&qty=<?php echo max(1, (int)$row['quantity'] - 1); ?>" class="btn btn-sm btn-outline-secondary">
+                <button onclick="updateQty('<?php echo $row['cart_id']; ?>', 'decrease')" class="btn btn-sm btn-outline-secondary">
                   <i class="bi bi-dash"></i>
-                </a>
-                <span class="qty-display"><?php echo (int)$row['quantity']; ?></span>
-                <a href="cart-set-qty.php?key=<?php echo urlencode($row['cart_id']); ?>&qty=<?php echo (int)$row['quantity'] + 1; ?>" class="btn btn-sm btn-outline-secondary">
+                </button>
+                <span class="qty-display" id="qty-<?php echo $row['cart_id']; ?>"><?php echo (int)$row['quantity']; ?></span>
+                <button onclick="updateQty('<?php echo $row['cart_id']; ?>', 'increase')" class="btn btn-sm btn-outline-secondary">
                   <i class="bi bi-plus"></i>
-                </a>
+                </button>
               <?php endif; ?>
             </div>
 
@@ -605,7 +593,7 @@ async function processCartPayment() {
 }
 
 function updateQty(cartId, action) {
-    fetch(`cart-update.php?id=${cartId}&action=${action}&ajax=1`)
+    fetch(`cart-update.php?id=${encodeURIComponent(cartId)}&action=${action}&ajax=1`)
     .then(response => response.json())
     .then(data => {
         if (data.success) {
