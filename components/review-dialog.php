@@ -48,6 +48,7 @@
         <button type="submit" name="submit_review" class="add-btn w-100">Submit</button>
       </div>
 
+      <!-- 
       <div id="questionForm" style="display:none;">
         <h3>Ask a Question</h3>
         <div class="mb-3">
@@ -55,6 +56,7 @@
         </div>
         <button type="submit" name="submit_question" class="add-btn w-100">Post Question</button>
       </div>
+      -->
 
       <div style="display:flex; gap:10px; justify-content:flex-end;">
         <button type="button" class="cancel-btn" id="closeDialogBtn">Cancel</button>

@@ -351,7 +351,7 @@ if ($isLoggedIn) {
     <div class="tabs-header">
       <div class="tab-buttons">
         <button class="tab-button active" id="reviewsTabBtn">Reviews (<?= (int)$reviewsCount; ?>)</button>
-        <button class="tab-button" id="qnaTabBtn">Q&amp;A (<?= (int)$questionsCount; ?>)</button>
+        <!-- <button class="tab-button" id="qnaTabBtn">Q&amp;A (<?= (int)$questionsCount; ?>)</button> -->
       </div>
       <button class="add-btn" id="openDialogBtn" <?= $isLoggedIn ? '' : 'onclick="showLoginModal(window.location.href); return false;"' ?>>+ Add</button>
     </div>
@@ -361,7 +361,7 @@ if ($isLoggedIn) {
     include 'components/reviews-section.php'; 
     
     // Include Q&A Component
-    include 'components/qna-section.php'; 
+    // include 'components/qna-section.php'; 
     ?>
   </div>
 </div>
