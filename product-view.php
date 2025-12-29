@@ -320,7 +320,7 @@ if ($isLoggedIn) {
           <?php if ($isLoggedIn): ?>
             <button type="button" class="btn-buy-now buy-now-btn" data-product-id="<?= $product_id; ?>" data-product-name="<?= htmlspecialchars($product['product_name']); ?>">BUY IT NOW</button>
           <?php else: ?>
-            <button type="button" class="btn-buy-now" onclick="showLoginModal()">BUY IT NOW</button>
+            <button type="button" class="btn-buy-now" onclick="showLoginModal(window.location.href)">BUY IT NOW</button>
           <?php endif; ?>
         </div>
         <div class="delivery-banner mt-3" data-bs-toggle="modal" data-bs-target="#deliveryTermsModal">
@@ -353,7 +353,7 @@ if ($isLoggedIn) {
         <button class="tab-button active" id="reviewsTabBtn">Reviews (<?= (int)$reviewsCount; ?>)</button>
         <button class="tab-button" id="qnaTabBtn">Q&amp;A (<?= (int)$questionsCount; ?>)</button>
       </div>
-      <button class="add-btn" id="openDialogBtn" <?= $isLoggedIn ? '' : 'onclick="showLoginModal(); return false;"' ?>>+ Add</button>
+      <button class="add-btn" id="openDialogBtn" <?= $isLoggedIn ? '' : 'onclick="showLoginModal(window.location.href); return false;"' ?>>+ Add</button>
     </div>
 
     <?php 

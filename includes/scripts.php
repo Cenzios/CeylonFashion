@@ -23,7 +23,13 @@
     }
   }
 
-  function showLoginModal() {
+  function showLoginModal(redirectUrl = null) {
+    if (redirectUrl) {
+      const redirectInput = document.getElementById('loginRedirectUrl');
+      if (redirectInput) {
+        redirectInput.value = redirectUrl;
+      }
+    }
     const loginSidebar = new bootstrap.Offcanvas(document.getElementById('loginSidebar'));
     loginSidebar.show();
   }

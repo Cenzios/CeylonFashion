@@ -43,9 +43,21 @@ try {
 } catch (mysqli_sql_exception $e) {
 
     if ($e->getCode() == 1062) {
-        header("Location: index.php?register_error=email_exists");
+        $error_code = "email_exists";
     } else {
-        header("Location: index.php?register_error=unknown");
+        $error_code = "unknown";
     }
+
+    // Determine redirect URL
+    $redirect_url = isset($_POST['redirect_url']) && !empty($_POST['redirect_url']) ? $_POST['redirect_url'] : 'index.php';
+    
+    // Append error param
+    if (strpos($redirect_url, '?') !== false) {
+        $redirect_url .= '&register_error=' . $error_code;
+    } else {
+        $redirect_url .= '?register_error=' . $error_code;
+    }
+
+    header("Location: " . $redirect_url);
     exit;
 }
