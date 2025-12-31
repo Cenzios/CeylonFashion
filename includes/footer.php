@@ -326,3 +326,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?php include 'login-sidebar.php'; ?>
+<?php include 'register-sidebar.php'; ?>
