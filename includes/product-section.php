@@ -121,9 +121,13 @@ function renderProductSection($options) {
             <?php endif; ?>
           </div>
 
-          <!-- Quick Add Button -->
+          <!-- Button Logic -->
           <div class="card-footer">
-            <button class="btn-quick-add" onclick="quickView(<?php echo $productId; ?>)">QUICK ADD</button>
+            <?php if ($product['category'] === 'used'): ?>
+                <a href="<?php echo $productLink; ?>" class="btn-view-item" style="display:block; width:100%; text-align:center; padding:14px 20px; background:#1a1a5e; color:white; border-radius:6px; font-weight:700; font-size:14px; letter-spacing:1px; text-decoration:none; text-transform:uppercase; transition: all 0.3s ease;">VIEW ITEM</a>
+            <?php else: ?>
+                <button class="btn-quick-add" onclick="quickView(<?php echo $productId; ?>)">QUICK ADD</button>
+            <?php endif; ?>
           </div>
         </div>
       <?php endwhile; ?>
@@ -312,6 +316,12 @@ function renderProductSection($options) {
   .btn-quick-add:hover {
     background: #1a1a5e;
     color: #fff;
+  }
+
+  .btn-view-item:hover {
+    background: #0f0f4a !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
   }
 
   .no-products {
