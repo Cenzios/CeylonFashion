@@ -568,13 +568,16 @@ include_once 'includes/head.php';
     .item-input {
         width: 100%;
         max-width: 500px;
-        height: 50px;
-        padding: 0 20px;
-        border: 2px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 16px;
+        height: 50px !important;
+        padding: 0 20px !important;
+        border: 2px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        font-size: 16px !important;
         outline: none;
         transition: border-color 0.3s;
+        box-sizing: border-box !important;
+        line-height: 1.5 !important;
+        margin: 0;
     }
 
     .item-input:focus {
@@ -582,17 +585,23 @@ include_once 'includes/head.php';
     }
 
     .check-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         background: var(--medium-purple);
         color: white;
-        border: none;
-        height: 50px;
-        padding: 0 35px;
-        border-radius: 8px;
-        font-size: 16px;
+        border: 2px solid transparent !important;
+        height: 50px !important;
+        padding: 0 35px !important;
+        border-radius: 8px !important;
+        font-size: 16px !important;
         font-weight: 600;
         cursor: pointer;
         transition: background 0.3s;
         white-space: nowrap;
+        box-sizing: border-box !important;
+        line-height: normal !important;
+        margin: 0;
     }
 
     .check-btn:hover {
