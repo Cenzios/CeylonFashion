@@ -171,13 +171,25 @@ if (isset($_GET['check_item']) && isset($_GET['item_code'])) {
              $uStmt->close();
         }
 
-        $stmt = $mysqli->prepare("SELECT created_at FROM orders WHERE username = ? AND product_id = ? ORDER BY created_at DESC LIMIT 1");
+        $stmt = $mysqli->prepare("SELECT created_at, fabric_type FROM orders WHERE username = ? AND product_id = ? ORDER BY created_at DESC LIMIT 1");
         $stmt->bind_param("si", $username, $eligibilityData['id']);
         $stmt->execute();
         $orderRes = $stmt->get_result()->fetch_assoc();
-        $stmt->execute();
-        $orderRes = $stmt->get_result()->fetch_assoc();
         $stmt->close();
+        
+        // Find price for the order's fabric
+        $startPrice = 0;
+        if ($orderRes && isset($orderRes['fabric_type'])) {
+             // Find price for this fabric in the product_fabrics list we already fetched
+             foreach ($fabricOptions as $fo) {
+                 if ($fo['fabric_type'] === $orderRes['fabric_type']) {
+                     $startPrice = $fo['fabric_price'];
+                     break;
+                 }
+             }
+        }
+        $eligibilityData['order_fabric_type'] = $orderRes['fabric_type'] ?? '';
+        $eligibilityData['order_fabric_price'] = $startPrice;
 
         // 3a. CHECK IF ALREADY RESOLD (or in process)
         // Check reseller_products for this user and product_id
@@ -350,17 +362,10 @@ include_once 'includes/head.php';
                         <span class="info-value" id="purchaseDate"></span>
                     </div>
                     
-                    <!-- Fabric Selection -->
-                    <div class="fabric-selection">
-                        <label class="fabric-label">Select Your Fabric Type:</label>
-                        <select id="fabricTypeSelect" class="fabric-select">
-                            <option value="">-- Choose Fabric Type --</option>
-                            <?php foreach ($fabricOptions as $fabric): ?>
-                                <option value="<?= htmlspecialchars($fabric['fabric_type']); ?>" data-price="<?= $fabric['fabric_price']; ?>">
-                                    <?= htmlspecialchars($fabric['fabric_type']); ?> - Rs. <?= number_format($fabric['fabric_price'], 2); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="info-row">
+                        <span class="info-label">Fabric Type:</span>
+                        <span class="info-value"><?= htmlspecialchars($eligibilityData['order_fabric_type']); ?></span>
+                        <input type="hidden" id="fabricTypeSelect" value="<?= htmlspecialchars($eligibilityData['order_fabric_type']); ?>" data-price="<?= $eligibilityData['order_fabric_price']; ?>">
                     </div>
 
                     <div class="info-row" id="originalPriceRow" style="display: none;">
@@ -954,50 +959,39 @@ document.getElementById('checkAvailabilityBtn').addEventListener('click', functi
             document.getElementById('purchaseDate').textContent = '<?= date('F d, Y', strtotime($eligibilityData['purchase_date'])); ?>';
             document.getElementById('formItemCode').value = '<?= htmlspecialchars($eligibilityData['product_code']); ?>';
 
-            // Handle fabric type selection
-            const fabricSelect = document.getElementById('fabricTypeSelect');
+            // Handle fabric type (Auto-calculated now)
+            const fabricHidden = document.getElementById('fabricTypeSelect');
             const originalPriceRow = document.getElementById('originalPriceRow');
             const resalePriceRow = document.getElementById('resalePriceRow');
             const originalPriceEl = document.getElementById('originalPrice');
             const resalePriceEl = document.getElementById('resalePrice');
             const submitBtn = document.querySelector('.submit-btn');
 
-            // Disable submit button initially
-            submitBtn.disabled = true;
+            // Auto-calculate immediately
+            const fabricType = fabricHidden.value;
+            const price = parseFloat(fabricHidden.getAttribute('data-price')) || 0;
 
-            fabricSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const fabricType = selectedOption.value;
-                const price = parseFloat(selectedOption.getAttribute('data-price'));
+            if (fabricType && price > 0) {
+                const resalePrice = price * 0.6;
 
-                if (fabricType && price) {
-                    const resalePrice = price * 0.6;
+                // Update hidden form field
+                document.getElementById('formFabricType').value = fabricType;
 
-                    // Update hidden form field
-                    document.getElementById('formFabricType').value = fabricType;
+                // Show price information
+                originalPriceEl.textContent = 'Rs. ' + price.toFixed(2);
+                resalePriceEl.textContent = 'Rs. ' + resalePrice.toFixed(2);
+                originalPriceRow.style.display = 'flex';
+                resalePriceRow.style.display = 'flex';
 
-                    // Show price information
-                    originalPriceEl.textContent = 'Rs. ' + price.toFixed(2);
-                    resalePriceEl.textContent = 'Rs. ' + resalePrice.toFixed(2);
-                    originalPriceRow.style.display = 'flex';
-                    resalePriceRow.style.display = 'flex';
-
-                    // Show contact form and enable submit button
-                    formSection.style.display = 'block';
-                    submitBtn.disabled = false;
-
-                    // Scroll to form
-                    setTimeout(() => {
-                        formSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }, 100);
-                } else {
-                    // Hide price information and form
-                    originalPriceRow.style.display = 'none';
-                    resalePriceRow.style.display = 'none';
-                    formSection.style.display = 'none';
-                    submitBtn.disabled = true;
-                }
-            });
+                // Show contact form and enable submit button
+                formSection.style.display = 'block';
+                submitBtn.disabled = false;
+            } else {
+                 // Should not happen if data is correct, but handle gracefully
+                 originalPriceEl.textContent = 'N/A';
+                 resalePriceEl.textContent = 'N/A';
+                 // Maybe show error or keep disabled
+            }
         <?php elseif (isset($eligibilityData['not_bought']) && $eligibilityData['not_bought']): ?>
             // Show not bought message
             document.getElementById('notPurchasedMessage').style.display = 'flex';
