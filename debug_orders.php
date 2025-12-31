@@ -1,7 +1,8 @@
 <?php
 require_once 'config.php';
-$result = $mysqli->query("SHOW COLUMNS FROM orders");
-while ($row = $result->fetch_assoc()) {
-    echo $row['Field'] . "\n";
+$stmt = $mysqli->query("SELECT id, order_id, size, created_at FROM orders ORDER BY created_at DESC LIMIT 5");
+echo "Last 5 Orders:\n";
+while ($row = $stmt->fetch_assoc()) {
+    echo "ID: " . $row['id'] . " | OrderID: " . $row['order_id'] . " | Size: '" . $row['size'] . "' | Created: " . $row['created_at'] . "\n";
 }
 ?>

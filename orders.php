@@ -13,13 +13,15 @@ $username = $_SESSION["username"];
 // Fetch user's orders from new orders table
 $stmt = $mysqli->prepare("
     SELECT 
-        id, order_id, product_name, fabric_type, size, quantity,
-        unit_price, total_amount, payment_status, payment_id, delivery_status,
-        customer_name, customer_email, customer_phone, delivery_address, city,
-        created_at, updated_at
-    FROM orders 
-    WHERE username = ? 
-    ORDER BY created_at DESC
+        o.id, o.order_id, o.product_name, o.fabric_type, o.size, o.quantity,
+        o.unit_price, o.total_amount, o.payment_status, o.payment_id, o.delivery_status,
+        o.customer_name, o.customer_email, o.customer_phone, o.delivery_address, o.city,
+        o.created_at, o.updated_at,
+        p.product_code
+    FROM orders o
+    LEFT JOIN products p ON o.product_id = p.id
+    WHERE o.username = ? 
+    ORDER BY o.created_at DESC
 ");
 $stmt->bind_param("s", $username);
 $stmt->execute();
@@ -315,10 +317,13 @@ $result = $stmt->get_result();
                         </h5>
                         <div class="product-specs">
                             <div class="product-spec">
+                                <strong>Item Code:</strong> <?php echo htmlspecialchars($order['product_code'] ?? 'N/A'); ?>
+                            </div>
+                            <div class="product-spec">
                                 <strong>Fabric:</strong> <?php echo htmlspecialchars($order['fabric_type']); ?>
                             </div>
                             <div class="product-spec">
-                                <strong>Size:</strong> <?php echo htmlspecialchars($order['size']); ?>
+                                <strong>Size:</strong> <?php echo ($order['size'] === '0' || $order['size'] == 0) ? 'Standard' : htmlspecialchars($order['size']); ?>
                             </div>
                             <div class="product-spec">
                                 <strong>Quantity:</strong> <?php echo (int)$order['quantity']; ?>

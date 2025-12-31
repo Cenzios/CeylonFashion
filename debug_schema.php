@@ -1,8 +1,7 @@
 <?php
-include 'config.php';
-$result = $mysqli->query("DESCRIBE products");
-while ($row = $result->fetch_assoc()) {
-    print_r($row);
-    echo "<br>";
+require_once 'config.php';
+$stmt = $mysqli->query("DESCRIBE cart");
+while ($row = $stmt->fetch_assoc()) {
+    echo $row['Field'] . " - " . $row['Type'] . "\n";
 }
 ?>

@@ -111,7 +111,7 @@ try {
             $f_id = 0; $f_type = 'Default'; $sz = 'Standard'; // Fallback
 
             $stmtInsert->bind_param(
-                "ssisssiddssssss",
+                "ssissssddssssss",
                 $order_id, $username, $item['product_id'], $p_name,
                 $f_id, $f_type, $sz, $qty,
                 $u_price, $t_amt,
@@ -171,7 +171,7 @@ try {
         ");
         
         $stmt->bind_param(
-            "ssisssiddssssss",
+            "ssissssddssssss",
             $order_id, 
             $username, 
             $product_id, 
