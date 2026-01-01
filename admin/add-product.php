@@ -286,14 +286,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
     <?php endif; ?>
 
     <?php
-    // Generate unique product code
-    $generated_code = '';
-    do {
-        $rand_num = str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
-        $generated_code = 'P' . $rand_num;
-        $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE product_code = ?");
-        $checkStmt->execute([$generated_code]);
-    } while ($checkStmt->fetchColumn() > 0);
+    // Generate sequential product code (filling gaps starting from 1)
+    $stmt = $pdo->query("SELECT product_code FROM products WHERE product_code REGEXP '^P[0-9]+$'");
+    $existingCodes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $existingNums = [];
+    foreach ($existingCodes as $code) {
+        $existingNums[] = (int)substr($code, 1);
+    }
+    
+    $nextNum = 1;
+    while (in_array($nextNum, $existingNums)) {
+        $nextNum++;
+    }
+    $generated_code = 'P' . str_pad($nextNum, 6, '0', STR_PAD_LEFT);
     ?>
 
     <form method="POST" enctype="multipart/form-data">
