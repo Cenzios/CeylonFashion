@@ -98,6 +98,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
       if ($stmt->fetchColumn() > 0) {
           $error = "❌ Product Code '$product_code' already exists. Please use a unique code.";
       }
+      
+      // Check if at least one fabric with price is added
+      if (!$error) {
+          $valid_fabric_found = false;
+          if (isset($_POST['fabric_type'])) {
+              foreach ($_POST['fabric_type'] as $i => $type) {
+                  $price = $_POST['fabric_price'][$i] ?? 0;
+                  if (!empty($type) && $price > 0) {
+                      $valid_fabric_found = true;
+                      break;
+                  }
+              }
+          }
+          if (!$valid_fabric_found) {
+              $error = "❌ At least one fabric with a valid price is required.";
+          }
+      }
   }
 
   if (!$error) {
@@ -571,6 +588,23 @@ document.getElementById('saveColorBtn').addEventListener('click', function() {
   .catch(error => {
     alertDiv.innerHTML = '<div class="alert alert-danger">Error adding color</div>';
   });
+});
+
+// Form validation script
+document.querySelector('form').addEventListener('submit', function(e) {
+    const fabricPrices = document.querySelectorAll('input[name="fabric_price[]"]');
+    let valid = false;
+    
+    fabricPrices.forEach(input => {
+        if (input.value > 0) {
+            valid = true;
+        }
+    });
+
+    if (!valid) {
+        e.preventDefault();
+        alert('Please add at least one fabric with a valid price.');
+    }
 });
 </script>
 </body>
