@@ -140,9 +140,8 @@ $fallback = '../assets/no-image.png';
                   <p class="text-muted small mb-3"><em>No fabric details</em></p>
                 <?php endif; ?>
 
-                <div class="mt-auto d-flex justify-content-between align-items-center">
-                  <span class="text-muted small">ID: <?php echo $pid; ?></span>
-                  <div class="card-icons">
+                  <div class="mt-auto d-flex justify-content-end align-items-center">
+                    <div class="card-icons">
                     <a href="view-product.php?id=<?php echo $pid; ?>" title="View"><i class="bi bi-eye"></i></a>
                     <a href="edit-product.php?id=<?php echo $pid; ?>" title="Edit"><i class="bi bi-pencil-square"></i></a>
                     <a href="#" class="text-danger" title="Delete" onclick="showDeleteModal('<?php echo $pid; ?>','<?php echo addslashes($pname); ?>'); return false;">
