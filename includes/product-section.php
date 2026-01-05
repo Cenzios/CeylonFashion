@@ -71,6 +71,73 @@ function renderProductSection($options) {
         $fabricData = $fabricResult->fetch_assoc();
         $minPrice = $fabricData['min_price'] ?? null;
         $fabricStmt->close();
+
+        // ------------------------------------------
+        // Status Lookup for Used Items
+        // ------------------------------------------
+        $itemStatusLabel = '';
+        $itemStatusClass = '';
+
+        if ($product['category'] === 'used') {
+            // Logic copied from product-view-used.php to find status
+            $usedCode = $product['product_code'];
+            $baseCode = $usedCode;
+            $pos = strrpos($usedCode, '-U-');
+            if ($pos !== false) {
+                 $baseCode = substr($usedCode, 0, $pos);
+            }
+
+             // Find base product ID
+             $bpStmt = $mysqli->prepare("SELECT id FROM products WHERE product_code = ? LIMIT 1");
+             $bpStmt->bind_param("s", $baseCode);
+             $bpStmt->execute();
+             $bpRes = $bpStmt->get_result()->fetch_assoc();
+             $bpStmt->close();
+
+             if ($bpRes) {
+                 $baseProductId = $bpRes['id'];
+                 // Get 'created' field from current used product row
+                 // Note: 'created' is not in the SELECT fields of renderProductSection, I need to add it to SQL in index.php OR just fetch it here.
+                 // Wait, renderProductSection 'sql' option is manually passed. index.php selects *. So 'created' should be available if * was used.
+                 // BUT renderProductSection DEFAULT sql (lines 25-29) ONLY SELECTS specific fields.
+                 
+                 // Let's rely on 'created' if available, or fetch it.
+                 $usedCreated = $product['created'] ?? null;
+                 
+                 if (!$usedCreated) {
+                     // Fetch if missing
+                     $tStmt = $mysqli->prepare("SELECT created FROM products WHERE id = ?");
+                     $tStmt->bind_param("i", $productId);
+                     $tStmt->execute();
+                     $tRes = $tStmt->get_result()->fetch_assoc();
+                     $usedCreated = $tRes['created'];
+                     $tStmt->close();
+                 }
+
+                 if ($usedCreated) {
+                     $rStmt = $mysqli->prepare("
+                        SELECT status FROM reseller_products 
+                        WHERE product_id = ? AND (status = 'approved' OR status = 'sold') 
+                        ORDER BY ABS(TIMESTAMPDIFF(SECOND, created_at, ?)) ASC 
+                        LIMIT 1
+                     ");
+                     $rStmt->bind_param("is", $baseProductId, $usedCreated);
+                     $rStmt->execute();
+                     $rRes = $rStmt->get_result()->fetch_assoc();
+                     $rStmt->close();
+
+                     if ($rRes) {
+                         if ($rRes['status'] === 'sold') {
+                             $itemStatusLabel = 'Sold Out';
+                             $itemStatusClass = 'badge-sold-out';
+                         } else {
+                             $itemStatusLabel = 'Available';
+                             $itemStatusClass = 'badge-available';
+                         }
+                     }
+                 }
+             }
+        }
     ?>
         <!-- Product Card -->
         <div class="product-card">
@@ -107,6 +174,9 @@ function renderProductSection($options) {
           <a href="<?php echo $productLink; ?>" class="card-link" <?php echo $target; ?>>
             <div class="product-image">
               <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
+              <?php if ($itemStatusLabel): ?>
+                  <span class="product-badge <?php echo $itemStatusClass; ?>"><?php echo $itemStatusLabel; ?></span>
+              <?php endif; ?>
             </div>
           </a>
             
@@ -418,6 +488,29 @@ function renderProductSection($options) {
       padding: 12px 30px;
       font-size: 14px;
     }
+  }
+
+  /* Status Badges */
+  .product-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      z-index: 10;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .badge-sold-out {
+      background-color: #ef4444; /* Red */
+      color: white;
+  }
+  .badge-available {
+      background-color: #10b981; /* Green */
+      color: white;
   }
 </style>
 
