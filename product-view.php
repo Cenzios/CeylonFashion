@@ -117,10 +117,14 @@ if (empty($availableSizes)) {
   $availableSizes = ['XS','S','M','L','XL'];
 }
 // Sort sizes logically
+// Sort sizes logically
 $sizeOrder = ['XS' => 1, 'S' => 2, 'M' => 3, 'L' => 4, 'XL' => 5, 'XXL' => 6];
 usort($availableSizes, function($a, $b) use ($sizeOrder) {
     return ($sizeOrder[$a] ?? 99) <=> ($sizeOrder[$b] ?? 99);
 });
+
+// Determine default size (first in list)
+$defaultSize = !empty($availableSizes) ? $availableSizes[0] : '';
 
 // ------------------------------
 // Handle POST (Reviews / Q&A) - Using Component Handler
@@ -235,12 +239,12 @@ if ($isLoggedIn) {
       <!-- Size Selection -->
       <div class="option-section">
         <label class="section-label">
-          Size: <span class="selected-value" id="selectedSizeDisplay">M</span>
+          Size: <span class="selected-value" id="selectedSizeDisplay"><?= e($defaultSize); ?></span>
         </label>
         <div class="size-buttons" id="sizeList">
           <?php foreach ($availableSizes as $s): ?>
             <button type="button" 
-                    class="size-btn <?= $s === 'M' ? 'selected' : ''; ?>" 
+                    class="size-btn <?= $s === $defaultSize ? 'selected' : ''; ?>" 
                     data-size="<?= e($s); ?>">
               <?= e($s); ?>
             </button>
@@ -290,7 +294,7 @@ if ($isLoggedIn) {
         <input type="hidden" name="id" value="<?= $product_id; ?>">
         <input type="hidden" name="fabric_id" id="formFabricId" value="">
         <input type="hidden" name="color" id="formColor" value="">
-        <input type="hidden" name="size" id="formSize" value="M">
+        <input type="hidden" name="size" id="formSize" value="<?= e($defaultSize); ?>">
         
         <label class="section-label mb-2">Quantity:</label>
         
