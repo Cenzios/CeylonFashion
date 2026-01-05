@@ -262,166 +262,151 @@ $result = $stmt->get_result();
 
     <?php include 'includes/navbar.php'; ?>
 
+<?php
+    // Fetch Resale Items
+    $resaleStmt = $mysqli->prepare("
+        SELECT 
+            rp.id, rp.product_id, rp.created_at, rp.status,
+            p.product_name, p.product_code
+        FROM reseller_products rp
+        LEFT JOIN products p ON rp.product_id = p.id
+        WHERE rp.user_id = ?
+        ORDER BY rp.created_at DESC
+    ");
+    $resaleStmt->bind_param("i", $_SESSION['user_id']);
+    $resaleStmt->execute();
+    $resaleResult = $resaleStmt->get_result();
+?>
+
     <div class="orders-container">
-        <h1 class="page-title">My Orders</h1>
-
-        <?php if ($result->num_rows === 0): ?>
-            <div class="empty-state">
-                <div class="empty-state-icon">📦</div>
-                <h4>No Orders Yet</h4>
-                <p>You haven't placed any orders yet. Start shopping now!</p>
-                <a href="products.php" class="btn-browse">Browse Products</a>
-            </div>
-        <?php else: ?>
-            <?php 
-            $orderCount = 0;
-            while($order = $result->fetch_assoc()): 
-                $orderCount++;
-            ?>
-                <div class="order-card">
-                    <!-- Order Header -->
-                    <div class="order-header">
-                        <div>
-                            <div class="order-id">Order #<?php echo htmlspecialchars($order['order_id']); ?></div>
-                            <small style="color: #6b7280;">
-                                Placed on <?php echo date('F j, Y', strtotime($order['created_at'])); ?> 
-                                at <?php echo date('g:i A', strtotime($order['created_at'])); ?>
-                            </small>
-                        </div>
-                        <div class="order-status">
-                            <?php
-                            // Payment status badge
-                            $paymentClass = 'badge-pending';
-                            if ($order['payment_status'] === 'paid') $paymentClass = 'badge-paid';
-                            elseif ($order['payment_status'] === 'failed') $paymentClass = 'badge-failed';
-                            elseif ($order['payment_status'] === 'cancelled') $paymentClass = 'badge-cancelled';
-                            
-                            echo '<span class="badge ' . $paymentClass . '">' . ucfirst($order['payment_status']) . '</span>';
-                            
-                            // Delivery status badge
-                            $deliveryClass = 'badge-pending';
-                            if ($order['delivery_status'] === 'delivered') $deliveryClass = 'badge-delivered';
-                            elseif ($order['delivery_status'] === 'shipped') $deliveryClass = 'badge-shipped';
-                            elseif ($order['delivery_status'] === 'processing') $deliveryClass = 'badge-processing';
-                            elseif ($order['delivery_status'] === 'cancelled') $deliveryClass = 'badge-cancelled';
-                            
-                            echo '<span class="badge ' . $deliveryClass . '">' . ucfirst($order['delivery_status']) . '</span>';
-                            ?>
-                        </div>
-                    </div>
-
-                    <!-- Product Information -->
-                    <div class="product-info">
-                        <h5 style="margin: 0 0 10px 0; color: #430160;">
-                            <?php echo htmlspecialchars($order['product_name']); ?>
-                        </h5>
-                        <div class="product-specs">
-                            <div class="product-spec">
-                                <strong>Item Code:</strong> <?php echo htmlspecialchars($order['product_code'] ?? 'N/A'); ?>
-                            </div>
-                            <div class="product-spec">
-                                <strong>Fabric:</strong> <?php echo htmlspecialchars($order['fabric_type']); ?>
-                            </div>
-                            <div class="product-spec">
-                                <strong>Size:</strong> <?php echo ($order['size'] === '0' || $order['size'] == 0) ? 'Standard' : htmlspecialchars($order['size']); ?>
-                            </div>
-                            <div class="product-spec">
-                                <strong>Quantity:</strong> <?php echo (int)$order['quantity']; ?>
-                            </div>
-                            <div class="product-spec">
-                                <strong>Price per unit:</strong> Rs. <?php echo number_format((float)$order['unit_price'], 2); ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Order Details Grid -->
-                    <div class="order-details">
-                        <div class="detail-group">
-                            <div class="detail-label">Total Amount</div>
-                            <div class="total-amount">Rs. <?php echo number_format((float)$order['total_amount'], 2); ?></div>
-                        </div>
-
-                        <?php if ($order['payment_id']): ?>
-                        <div class="detail-group">
-                            <div class="detail-label">Payment ID</div>
-                            <div class="detail-value">
-                                <span class="payment-id"><?php echo htmlspecialchars($order['payment_id']); ?></span>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <div class="detail-group">
-                            <div class="detail-label">Delivery Address</div>
-                            <div class="detail-value">
-                                <?php echo htmlspecialchars($order['delivery_address']); ?><br>
-                                <?php echo htmlspecialchars($order['city']); ?>
-                            </div>
-                        </div>
-
-                        <div class="detail-group">
-                            <div class="detail-label">Contact Information</div>
-                            <div class="detail-value">
-                                <?php echo htmlspecialchars($order['customer_phone']); ?><br>
-                                <?php echo htmlspecialchars($order['customer_email']); ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Delivery Timeline -->
-                    <?php if ($order['payment_status'] === 'paid'): ?>
-                    <div class="order-timeline">
-                        <strong>📦 Delivery Status:</strong>
-                        <?php
-                        switch($order['delivery_status']) {
-                            case 'pending':
-                                echo 'Your order has been received and is being processed.';
-                                break;
-                            case 'processing':
-                                echo 'Your order is being prepared for shipment.';
-                                break;
-                            case 'shipped':
-                                echo 'Your order has been shipped and is on the way! Expected delivery: 5-12 business days.';
-                                break;
-                            case 'delivered':
-                                echo '✅ Your order has been delivered! Thank you for shopping with us.';
-                                break;
-                            case 'cancelled':
-                                echo 'This order has been cancelled.';
-                                break;
-                            default:
-                                echo 'Status: ' . htmlspecialchars($order['delivery_status']);
-                        }
-                        ?>
-                    </div>
-                    <?php elseif ($order['payment_status'] === 'pending'): ?>
-                    <div class="order-timeline" style="background: #fee2e2; border-left-color: #ef4444;">
-                        <strong>⚠️ Payment Pending:</strong> Your payment is still being processed. Please wait for confirmation.
-                    </div>
-                    <?php elseif ($order['payment_status'] === 'failed'): ?>
-                    <div class="order-timeline" style="background: #fee2e2; border-left-color: #ef4444;">
-                        <strong>❌ Payment Failed:</strong> Your payment was not successful. Please try again or contact support.
-                    </div>
+        
+        <!-- Section 1: Order History -->
+        <h2 style="font-weight:700; color:#333; margin-bottom:20px;">Order History</h2>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle" style="background:#fff;">
+                <thead style="background:#f8f9fa;">
+                    <tr>
+                        <th style="width:15%; color:#555; font-weight:600;">Product Code</th>
+                        <th style="width:40%; color:#555; font-weight:600;">Item Name</th>
+                        <th style="width:20%; color:#555; font-weight:600;">Purchase Date</th>
+                        <th style="width:25%; color:#555; font-weight:600;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if ($result->num_rows > 0): ?>
+                        <?php while($order = $result->fetch_assoc()): ?>
+                            <tr>
+                                <td style="color:#555;"><?php echo htmlspecialchars($order['product_code']); ?></td>
+                                <td style="color:#555;"><?php echo htmlspecialchars($order['product_name']); ?></td>
+                                <td style="color:#555;"><?php echo date('Y.m.d', strtotime($order['created_at'])); ?></td>
+                                <td>
+                                    <?php 
+                                        // Map status to simpler text or keep as is
+                                        $statusText = 'Processing';
+                                        if ($order['delivery_status'] == 'delivered') $statusText = 'Delivered';
+                                        elseif ($order['delivery_status'] == 'shipped') $statusText = 'Shipped';
+                                        elseif ($order['delivery_status'] == 'cancelled') $statusText = 'Cancelled';
+                                        elseif ($order['payment_status'] == 'paid' && $order['delivery_status'] == 'pending') $statusText = 'Ready to Deliver'; 
+                                        
+                                        echo htmlspecialchars($statusText);
+                                    ?>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="4" class="text-center text-muted">No orders found.</td></tr>
                     <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
 
-                    <!-- Last Updated -->
-                    <?php if ($order['updated_at'] !== $order['created_at']): ?>
-                    <div class="last-updated">
-                        <small>
-                            Last updated: <?php echo date('F j, Y g:i A', strtotime($order['updated_at'])); ?>
-                        </small>
-                    </div>
+        <div style="border-top: 3px solid #ff0000; margin: 40px 0 20px 0;"></div>
+
+        <!-- Section 2: Resale History -->
+        <h2 style="font-weight:700; color:#333; margin-bottom:5px;">Resale History</h2>
+        <p style="color:#666; margin-bottom:20px;">Sold your item? Great! Mark it as sold to keep your listings up to date."</p>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle" style="background:#fff;">
+                <thead style="background:#f8f9fa;">
+                    <tr>
+                        <th style="width:15%; color:#555; font-weight:600;">Product Code</th>
+                        <th style="width:40%; color:#555; font-weight:600;">Item Name</th>
+                        <th style="width:20%; color:#555; font-weight:600;">Listed on</th>
+                        <th style="width:25%; color:#555; font-weight:600;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if ($resaleResult->num_rows > 0): ?>
+                        <?php while($resale = $resaleResult->fetch_assoc()): ?>
+                            <tr>
+                                <td style="color:#555;">
+                                    <?php 
+                                        // Resale tracking ID or Product Code
+                                        echo htmlspecialchars($resale['product_code'] ?? 'N/A'); 
+                                    ?>
+                                </td>
+                                <td style="color:#555;"><?php echo htmlspecialchars($resale['product_name']); ?></td>
+                                <td style="color:#555;"><?php echo date('Y.m.d', strtotime($resale['created_at'])); ?></td>
+                                <td>
+                                    <select class="form-select form-select-sm" 
+                                            style="border-radius:4px; border-color:#ccc; color:#555;"
+                                            onchange="updateResaleStatus(this, <?php echo $resale['id']; ?>)">
+                                        <option value="available" <?php echo ($resale['status'] == 'available' || $resale['status'] == 'approved') ? 'selected' : ''; ?>>Available</option>
+                                        <option value="sold" <?php echo ($resale['status'] == 'sold') ? 'selected' : ''; ?>>Sold Out</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="4" class="text-center text-muted">No resale items found.</td></tr>
                     <?php endif; ?>
-                </div>
-            <?php endwhile; ?>
-
-            <!-- Summary -->
-            <div class="order-summary">
-                <h5>📊 Total Orders: <?php echo $orderCount; ?></h5>
-            </div>
-        <?php endif; ?>
-
-        <?php $stmt->close(); ?>
+                </tbody>
+            </table>
+        </div>
+        
+        <?php 
+        $stmt->close(); 
+        $resaleStmt->close();
+        ?>
     </div>
+
+    <!-- Script to handle status update -->
+    <script>
+    function updateResaleStatus(selectEl, resaleId) {
+        const status = selectEl.value;
+        const originalStatus = status === 'sold' ? 'available' : 'sold'; // fallback
+
+        // Disable while updating
+        selectEl.disabled = true;
+
+        fetch('update-resale-status.php', {
+            method: 'POST',
+            body: JSON.stringify({id: resaleId, status: status}),
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            selectEl.disabled = false;
+            if (data.success) {
+                // Optional: Show a toast or small success indicator
+                // alert('Status updated');
+                selectEl.style.borderColor = status === 'sold' ? '#ff0000' : '#ccc';
+            } else {
+                alert('Failed to update status: ' + (data.message || 'Unknown error'));
+                // Revert
+                selectEl.value = originalStatus;
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            selectEl.disabled = false;
+            selectEl.value = originalStatus;
+            alert('An error occurred. Please try again.');
+        });
+    }
+    </script>
 
     <?php include 'includes/footer.php'; ?>
     <?php include 'includes/scripts.php'; ?>

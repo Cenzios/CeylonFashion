@@ -48,10 +48,18 @@ if ($baseProdRes) {
     $baseProductId = $baseProdRes['id'];
 
     // 3. Fetch Reseller Details from reseller_products
-    // We just take the latest approved one for this original product ID
-    // (Assuming the used item corresponds to the latest resell request for that base product)
-    $stmt = $mysqli->prepare("SELECT * FROM reseller_products WHERE product_id = ? AND status = 'approved' ORDER BY id DESC LIMIT 1");
-    $stmt->bind_param("i", $baseProductId);
+    // We match by product_id and find the entry closest in creation time to the used product.
+    // This handles cases where multiple used items of the same base product exist.
+    $usedCreated = $usedProduct['created'];
+    
+    // We include 'sold' status now
+    $stmt = $mysqli->prepare("
+        SELECT * FROM reseller_products 
+        WHERE product_id = ? AND (status = 'approved' OR status = 'sold') 
+        ORDER BY ABS(TIMESTAMPDIFF(SECOND, created_at, ?)) ASC 
+        LIMIT 1
+    ");
+    $stmt->bind_param("is", $baseProductId, $usedCreated);
     $stmt->execute();
     $resellerInfo = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -228,6 +236,21 @@ include_once 'includes/head.php';
             align-items: center;
             gap: 5px;
         }
+        
+        /* Sold Out Badge (Optional style) */
+        .badge-sold {
+            background-color: #ef4444;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-available {
+            color: #10b981; /* Success Green text */
+            font-weight: 600;
+        }
 
         @media (max-width: 768px) {
             .product-grid {
@@ -328,7 +351,13 @@ include_once 'includes/head.php';
                     -->
                     <div class="detail-row">
                         <span class="detail-label">Status:</span>
-                        <span class="detail-value text-success">Available</span>
+                        <span class="detail-value">
+                            <?php if (isset($resellerInfo['status']) && $resellerInfo['status'] === 'sold'): ?>
+                                <span class="badge-sold">Sold Out</span>
+                            <?php else: ?>
+                                <span class="badge-available">Available</span>
+                            <?php endif; ?>
+                        </span>
                     </div>
                 </div>
 
