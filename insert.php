@@ -26,7 +26,15 @@ try {
 
     // Redirect logic
 
-    $redirect_url = isset($_POST['redirect_url']) && !empty($_POST['redirect_url']) ? $_POST['redirect_url'] : 'index.php?register_success=1';
+    // Redirect logic
+    $redirect_url = isset($_POST['redirect_url']) && !empty($_POST['redirect_url']) ? $_POST['redirect_url'] : 'index.php';
+
+    // Append success param
+    if (strpos($redirect_url, '?') !== false) {
+        $redirect_url .= '&register_success=1';
+    } else {
+        $redirect_url .= '?register_success=1';
+    }
     
     header("Location: " . $redirect_url);
     exit;

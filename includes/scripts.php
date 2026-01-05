@@ -405,12 +405,23 @@
     if (urlParams.has('register_success')) {
       const loginSidebarEl = document.getElementById('loginSidebar');
       if (loginSidebarEl) {
+        // Set redirect URL to current page so user stays here after login
+        const currentUrl = window.location.href.split('?')[0]; // simple clean url or full href
+        // Actually best to keep query params if needed, but remove register_success
+        const cleanUrl = window.location.href.replace(/[?&]register_success=1/, '').replace(/[?&]register_error=[^&]+/, '');
+        
+        const redirectInput = document.getElementById('loginRedirectUrl');
+        if (redirectInput) {
+            redirectInput.value = cleanUrl;
+        }
+
         const loginSidebar = new bootstrap.Offcanvas(loginSidebarEl);
         loginSidebar.show();
         showMessage('loginMessage', 'Registration successful! Please login.', 'success');
       }
       // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      const newUrl = window.location.href.replace(/[?&]register_success=1/, '').replace(/[?&]register_error=[^&]+/, '');
+      window.history.replaceState({}, document.title, newUrl);
     }
 
   });
