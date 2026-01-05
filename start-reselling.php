@@ -444,6 +444,67 @@ include_once 'includes/head.php';
     </div>
 </div>
 
+
+<script>
+// Close Alert Helper
+function closeAlert(id) {
+    document.getElementById(id).style.display = 'none';
+}
+
+// Resale Form Validation
+const resellForm = document.getElementById('resellForm');
+if (resellForm) {
+    resellForm.addEventListener('submit', function(e) {
+        const fname = document.getElementById('first_name').value.trim();
+        const lname = document.getElementById('last_name').value.trim();
+        const contact = document.getElementById('contact_number').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const address = document.getElementById('address').value.trim();
+        
+        if (!fname || !lname || !contact || !email || !address) {
+            alert('Please fill in all required fields.');
+            e.preventDefault();
+            return;
+        }
+        
+        // Validate Name (No numbers)
+        if (/\d/.test(fname) || /\d/.test(lname)) {
+            alert('Name validation error: Names cannot contain numbers.');
+            e.preventDefault();
+            return;
+        }
+        
+        // Validate Contact Number
+        if (!/^[0-9]{9,12}$/.test(contact)) {
+             alert('Please enter a valid numeric contact number (9-12 digits).');
+             e.preventDefault();
+             return;
+        }
+
+        // Validate Email
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+             alert('Please enter a valid email address.');
+             e.preventDefault();
+             return;
+        }
+    });
+}
+
+// Eligibility Check Validation
+const checkBtn = document.getElementById('checkAvailabilityBtn');
+if (checkBtn) {
+    checkBtn.addEventListener('click', function(e) {
+        const val = document.getElementById('itemCodeInput').value.trim();
+        if (!val) {
+            alert('Please enter an Item Code first.');
+            e.stopImmediatePropagation();
+            // Prevent other handlers if possible, though mostly this alerts the user
+            return false;
+        }
+    }, true); 
+}
+</script>
+
 <?php include_once 'includes/footer.php'; ?>
 
 <style>

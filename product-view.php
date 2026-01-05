@@ -1857,13 +1857,19 @@ async function processPayment() {
         return;
     }
     
+    // Name Validation
+    if (/\d/.test(customerName)) {
+        alert('Name validation error: Name cannot contain numbers.');
+        return;
+    }
+    
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
         alert('Please enter a valid email address');
         return;
     }
     
-    if (!/^[0-9]{10,15}$/.test(customerPhone)) {
-        alert('Please enter a valid phone number (10-15 digits)');
+    if (!/^[0-9]{9,15}$/.test(customerPhone)) {
+        alert('Please enter a valid phone number (digits only, 9-15 char)');
         return;
     }
     

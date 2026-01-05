@@ -158,4 +158,38 @@
       registerRedirect.value = loginRedirect.value;
     }
   });
+
+  // Client-side Registration Validation
+  document.getElementById('offcanvasRegisterForm').addEventListener('submit', function(e) {
+      const fname = document.getElementById('fname').value.trim();
+      const lname = document.getElementById('lname').value.trim();
+      const email = document.getElementById('emailReg').value.trim();
+      const pwd = document.getElementById('pwd').value;
+      const pwdConfirm = document.getElementById('pwdConfirm').value;
+      const msgDiv = document.getElementById('registerMessage');
+      
+      let error = '';
+
+      if (!fname || !lname || !email || !pwd || !pwdConfirm) {
+          error = 'Please fill in all fields.';
+      } else if (/\d/.test(fname) || /\d/.test(lname)) {
+          error = 'Name validation error: Names cannot contain numbers.';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          error = 'Please enter a valid email address.';
+      } else if (pwd.length < 6) {
+          error = 'Password must be at least 6 characters.';
+      } else if (pwd !== pwdConfirm) {
+          error = 'Passwords do not match.';
+      }
+
+      if (error) {
+          e.preventDefault();
+          msgDiv.style.display = 'block';
+          msgDiv.className = 'register-message-error';
+          msgDiv.textContent = error;
+      } else {
+          // Clear error if any
+          msgDiv.style.display = 'none';
+      }
+  });
 </script>
