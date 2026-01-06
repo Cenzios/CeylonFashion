@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
             // Calculate resale price (60% of original)
             $resalePrice = $originalPrice * 0.6;
             
-            // 1. Insert into reseller_products table (Keep for record/admin)
+            // Insert into reseller_products table only (not into products table)
             $sql = "INSERT INTO reseller_products (product_id, user_id, first_name, last_name, contact_number, email, address, notes, fabric_type, resale_price, original_price, status, created_at) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', NOW())";
             
@@ -62,63 +62,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
                     $resalePrice, 
                     $originalPrice
                 );
-                $stmt->execute();
-                $stmt->close();
-                
-                // 2. Insert into PRODUCTS table as 'used' item
-                // Generate unique code for used item
-                $usedProductCode = $product['product_code'] . '-U-' . time();
-                $usedProductName = $product['product_name'] . ' (Pre-Loved)';
-                $usedProductDesc = $notes . "\n\nOriginal Description:\n" . $product['product_desc'];
-                // Use original images
-                $img1 = $product['product_img_name'] ?? ($product['product_img1'] ?? '');
-                
-                // Check if product columns match current schema (using img1-4 or single img_name? Old schema had product_img_name, new has img1-4 based on file list.
-                // Wait, index.php used product_img1...4. DB schema showed product_img_name in dump but file list showed product-view utilizing product_img1.
-                // start-reselling.php previously used: $product['product_img_name'].
-                // I should verify columns. DB dump showed product_img_name. BUT product-view.php query was: "SELECT ... product_img1, product_img2..."
-                // Schema update must have happened. I will try to read product_img1..4 if they exist, or fallback.
-                // Actually, I'll copy data from the fetched $product array.
-                
-                $pImg1 = $product['product_img1'] ?? $product['product_img_name'] ?? '';
-                $pImg2 = $product['product_img2'] ?? '';
-                $pImg3 = $product['product_img3'] ?? '';
-                $pImg4 = $product['product_img4'] ?? '';
-                
-                $insertProdSql = "INSERT INTO products (product_code, product_name, product_desc, category, product_img1, product_img2, product_img3, product_img4, created) 
-                                  VALUES (?, ?, ?, 'used', ?, ?, ?, ?, NOW())";
-                                  
-                $stmt = $mysqli->prepare($insertProdSql);
-                
-                $stmt->bind_param("sssssss", 
-                    $usedProductCode, 
-                    $usedProductName, 
-                    $usedProductDesc, 
-                    $pImg1, // product_img1
-                    $pImg2, 
-                    $pImg3, 
-                    $pImg4
-                );
                 
                 if ($stmt->execute()) {
-                    $newProductId = $stmt->insert_id;
                     $stmt->close();
-                    
-                    // 3. Insert into PRODUCT_FABRICS
-                    $fabricSql = "INSERT INTO product_fabrics (product_id, fabric_type, fabric_qty, fabric_price) VALUES (?, ?, 1, ?)";
-                    $stmt = $mysqli->prepare($fabricSql);
-                    $stmt->bind_param("isd", $newProductId, $fabricType, $resalePrice);
-                    $stmt->execute();
-                    $stmt->close();
-                    
                     $message = 'Success! Your item has been listed in the Used Collection.';
                     $messageType = 'success';
                     $showSuccess = true;
                 } else {
-                    $message = 'Error creating product: ' . $mysqli->error;
+                    $message = 'Error creating resale listing: ' . $mysqli->error;
                     $messageType = 'error';
+                    $stmt->close();
                 }
-
             } else {
                  $message = 'Error: ' . $mysqli->error;
                  $messageType = 'error';
@@ -387,7 +341,7 @@ include_once 'includes/head.php';
                 <div style="font-size: 60px;">🎉</div>
                 <h3 style="color: #065F46; margin: 0;">Submission Successful!</h3>
                 <span style="font-size: 16px;"><?= htmlspecialchars($message); ?></span>
-                <p>Your item is now listed in our Used Collection database.</p>
+                <p>Your item has been submitted and will appear in our Used Collection once approved.</p>
                 <a href="used-collection.php" class="check-btn" style="text-decoration: none; line-height: 50px; display: inline-block;">View Used Collection</a>
             </div>
             <?php else: ?>

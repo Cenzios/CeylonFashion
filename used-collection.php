@@ -19,24 +19,28 @@ $minPrice = isset($_GET['min_price']) && is_numeric($_GET['min_price']) ? (float
 $maxPrice = isset($_GET['max_price']) && is_numeric($_GET['max_price']) ? (float)$_GET['max_price'] : '';
 $selectedColors = isset($_GET['colors']) && is_array($_GET['colors']) ? $_GET['colors'] : [];
 
-// Base Query
-$sql = "SELECT p.*, MIN(pf.fabric_price) as min_price 
-        FROM products p 
-        LEFT JOIN product_fabrics pf ON p.id = pf.product_id 
+// Base Query - Query from reseller_products table and join with products for product details
+$sql = "SELECT rp.*, 
+               p.product_code, p.product_name, p.product_desc, 
+               p.product_img1, p.product_img2, p.product_img3, p.product_img4,
+               rp.resale_price as min_price,
+               pc.color_name
+        FROM reseller_products rp
+        INNER JOIN products p ON rp.product_id = p.id
         LEFT JOIN product_colors pc ON p.id = pc.product_id 
-        WHERE p.category = 'used'";
+        WHERE rp.status = 'approved' AND p.category != 'used'";
 
 $params = [];
 $types = "";
 
 // Price Filter
 if ($minPrice !== '') {
-    $sql .= " AND pf.fabric_price >= ?";
+    $sql .= " AND rp.resale_price >= ?";
     $params[] = $minPrice;
     $types .= "d";
 }
 if ($maxPrice !== '') {
-    $sql .= " AND pf.fabric_price <= ?";
+    $sql .= " AND rp.resale_price <= ?";
     $params[] = $maxPrice;
     $types .= "d";
 }
@@ -51,7 +55,7 @@ if (!empty($selectedColors)) {
     }
 }
 
-$sql .= " GROUP BY p.id ORDER BY p.id DESC";
+$sql .= " ORDER BY rp.created_at DESC";
 
 $stmt = $mysqli->prepare($sql);
 if (!empty($params)) {
@@ -103,16 +107,16 @@ $result = $stmt->get_result();
 
                     <!-- Products Grid -->
                     <div class="products-grid">
-                        <?php while ($product = $result->fetch_assoc()):
-                            $productId = (int)$product['id'];
-                            $pname = htmlentities($product['product_name'], ENT_QUOTES, 'UTF-8');
+                        <?php while ($resellerProduct = $result->fetch_assoc()):
+                            $resellerId = (int)$resellerProduct['id'];
+                            $pname = htmlentities($resellerProduct['product_name'], ENT_QUOTES, 'UTF-8');
                             
                             // Get first available image
                             $firstImage = '';
                             for ($i = 1; $i <= 4; $i++) {
                                 $imgField = 'product_img' . $i;
-                                if (!empty($product[$imgField])) {
-                                    $firstImage = $product[$imgField];
+                                if (!empty($resellerProduct[$imgField])) {
+                                    $firstImage = $resellerProduct[$imgField];
                                     break;
                                 }
                             }
@@ -122,17 +126,17 @@ $result = $stmt->get_result();
                                 $imgPath = $fallback;
                             }
 
-                            $minPriceDisplay = $product['min_price'] ?? null;
+                            $minPriceDisplay = $resellerProduct['min_price'] ?? null;
                         ?>
                             <!-- Product Card -->
                             <div class="product-card">
-                                <a href="product-view-used.php?id=<?php echo $productId; ?>" class="card-link" target="_self">
+                                <a href="product-view-used.php?id=<?php echo $resellerId; ?>" class="card-link" target="_self">
                                     <div class="product-image">
                                         <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
                                     </div>
                                     
                                     <div class="product-info">
-                                        <h3 class="product-name"><?php echo $pname; ?></h3>
+                                        <h3 class="product-name"><?php echo $pname; ?> (Pre-Loved)</h3>
                                         <?php if ($minPriceDisplay !== null): ?>
                                             <p class="product-price">Rs : <?php echo number_format($minPriceDisplay, 2); ?></p>
                                         <?php else: ?>

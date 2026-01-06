@@ -62,81 +62,93 @@ function renderProductSection($options) {
           $imgPath = $fallback;
         }
 
-        // Fetch lowest fabric price for this product
-        $fabricSql = "SELECT MIN(fabric_price) as min_price FROM product_fabrics WHERE product_id = ? AND fabric_qty > 0";
-        $fabricStmt = $mysqli->prepare($fabricSql);
-        $fabricStmt->bind_param("i", $productId);
-        $fabricStmt->execute();
-        $fabricResult = $fabricStmt->get_result();
-        $fabricData = $fabricResult->fetch_assoc();
-        $minPrice = $fabricData['min_price'] ?? null;
-        $fabricStmt->close();
+        // Check if this is a reseller product (from reseller_products table)
+        $isResellerProduct = isset($product['reseller_id']) || (isset($options['is_reseller']) && $options['is_reseller']);
+        $resellerId = $product['reseller_id'] ?? $productId;
+        
+        // Fetch price - use resale_price for reseller products, otherwise fetch from product_fabrics
+        if ($isResellerProduct && isset($product['min_price'])) {
+            $minPrice = $product['min_price'];
+        } else {
+            $fabricSql = "SELECT MIN(fabric_price) as min_price FROM product_fabrics WHERE product_id = ? AND fabric_qty > 0";
+            $fabricStmt = $mysqli->prepare($fabricSql);
+            $fabricStmt->bind_param("i", $productId);
+            $fabricStmt->execute();
+            $fabricResult = $fabricStmt->get_result();
+            $fabricData = $fabricResult->fetch_assoc();
+            $minPrice = $fabricData['min_price'] ?? null;
+            $fabricStmt->close();
+        }
 
         // ------------------------------------------
-        // Status Lookup for Used Items
+        // Status Lookup for Used Items (Reseller Products)
         // ------------------------------------------
         $itemStatusLabel = '';
         $itemStatusClass = '';
 
-        if ($product['category'] === 'used') {
-            // Logic copied from product-view-used.php to find status
-            $usedCode = $product['product_code'];
-            $baseCode = $usedCode;
-            $pos = strrpos($usedCode, '-U-');
-            if ($pos !== false) {
-                 $baseCode = substr($usedCode, 0, $pos);
-            }
+        if ($product['category'] === 'used' || $isResellerProduct) {
+            if ($isResellerProduct && isset($product['reseller_status'])) {
+                // Direct status from reseller_products table
+                if ($product['reseller_status'] === 'sold') {
+                    $itemStatusLabel = 'Sold Out';
+                    $itemStatusClass = 'badge-sold-out';
+                } else if ($product['reseller_status'] === 'approved') {
+                    $itemStatusLabel = 'Available';
+                    $itemStatusClass = 'badge-available';
+                }
+            } else {
+                // Legacy logic for old used products (if any still exist)
+                $usedCode = $product['product_code'];
+                $baseCode = $usedCode;
+                $pos = strrpos($usedCode, '-U-');
+                if ($pos !== false) {
+                     $baseCode = substr($usedCode, 0, $pos);
+                }
 
-             // Find base product ID
-             $bpStmt = $mysqli->prepare("SELECT id FROM products WHERE product_code = ? LIMIT 1");
-             $bpStmt->bind_param("s", $baseCode);
-             $bpStmt->execute();
-             $bpRes = $bpStmt->get_result()->fetch_assoc();
-             $bpStmt->close();
+                 // Find base product ID
+                 $bpStmt = $mysqli->prepare("SELECT id FROM products WHERE product_code = ? LIMIT 1");
+                 $bpStmt->bind_param("s", $baseCode);
+                 $bpStmt->execute();
+                 $bpRes = $bpStmt->get_result()->fetch_assoc();
+                 $bpStmt->close();
 
-             if ($bpRes) {
-                 $baseProductId = $bpRes['id'];
-                 // Get 'created' field from current used product row
-                 // Note: 'created' is not in the SELECT fields of renderProductSection, I need to add it to SQL in index.php OR just fetch it here.
-                 // Wait, renderProductSection 'sql' option is manually passed. index.php selects *. So 'created' should be available if * was used.
-                 // BUT renderProductSection DEFAULT sql (lines 25-29) ONLY SELECTS specific fields.
-                 
-                 // Let's rely on 'created' if available, or fetch it.
-                 $usedCreated = $product['created'] ?? null;
-                 
-                 if (!$usedCreated) {
-                     // Fetch if missing
-                     $tStmt = $mysqli->prepare("SELECT created FROM products WHERE id = ?");
-                     $tStmt->bind_param("i", $productId);
-                     $tStmt->execute();
-                     $tRes = $tStmt->get_result()->fetch_assoc();
-                     $usedCreated = $tRes['created'];
-                     $tStmt->close();
-                 }
+                 if ($bpRes) {
+                     $baseProductId = $bpRes['id'];
+                     $usedCreated = $product['created'] ?? null;
+                     
+                     if (!$usedCreated) {
+                         $tStmt = $mysqli->prepare("SELECT created FROM products WHERE id = ?");
+                         $tStmt->bind_param("i", $productId);
+                         $tStmt->execute();
+                         $tRes = $tStmt->get_result()->fetch_assoc();
+                         $usedCreated = $tRes['created'];
+                         $tStmt->close();
+                     }
 
-                 if ($usedCreated) {
-                     $rStmt = $mysqli->prepare("
-                        SELECT status FROM reseller_products 
-                        WHERE product_id = ? AND (status = 'approved' OR status = 'sold') 
-                        ORDER BY ABS(TIMESTAMPDIFF(SECOND, created_at, ?)) ASC 
-                        LIMIT 1
-                     ");
-                     $rStmt->bind_param("is", $baseProductId, $usedCreated);
-                     $rStmt->execute();
-                     $rRes = $rStmt->get_result()->fetch_assoc();
-                     $rStmt->close();
+                     if ($usedCreated) {
+                         $rStmt = $mysqli->prepare("
+                            SELECT status FROM reseller_products 
+                            WHERE product_id = ? AND (status = 'approved' OR status = 'sold') 
+                            ORDER BY ABS(TIMESTAMPDIFF(SECOND, created_at, ?)) ASC 
+                            LIMIT 1
+                         ");
+                         $rStmt->bind_param("is", $baseProductId, $usedCreated);
+                         $rStmt->execute();
+                         $rRes = $rStmt->get_result()->fetch_assoc();
+                         $rStmt->close();
 
-                     if ($rRes) {
-                         if ($rRes['status'] === 'sold') {
-                             $itemStatusLabel = 'Sold Out';
-                             $itemStatusClass = 'badge-sold-out';
-                         } else {
-                             $itemStatusLabel = 'Available';
-                             $itemStatusClass = 'badge-available';
+                         if ($rRes) {
+                             if ($rRes['status'] === 'sold') {
+                                 $itemStatusLabel = 'Sold Out';
+                                 $itemStatusClass = 'badge-sold-out';
+                             } else {
+                                 $itemStatusLabel = 'Available';
+                                 $itemStatusClass = 'badge-available';
+                             }
                          }
                      }
                  }
-             }
+            }
         }
     ?>
         <!-- Product Card -->
@@ -144,10 +156,12 @@ function renderProductSection($options) {
           <!-- Action Icons -->
           <div class="card-actions">
             <?php 
-            $inWishlist = in_array($productId, $wishlistItems);
+            // For reseller products, use original product_id for wishlist
+            $wishlistProductId = $isResellerProduct && isset($product['product_id']) ? (int)$product['product_id'] : $productId;
+            $inWishlist = in_array($wishlistProductId, $wishlistItems);
             $activeClass = $inWishlist ? 'active' : '';
             ?>
-            <button class="action-btn wishlist-btn <?php echo $activeClass; ?>" onclick="toggleWishlist(<?php echo $productId; ?>)" title="<?php echo $inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'; ?>" aria-label="Wishlist">
+            <button class="action-btn wishlist-btn <?php echo $activeClass; ?>" onclick="toggleWishlist(<?php echo $wishlistProductId; ?>)" title="<?php echo $inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'; ?>" aria-label="Wishlist">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
               </svg>
@@ -161,9 +175,10 @@ function renderProductSection($options) {
           </div>
 
           <?php
-          // Determine Link
-          if ($product['category'] === 'used') {
-              $productLink = "product-view-used.php?id=" . $productId;
+          // Determine Link - use reseller_id for reseller products
+          if ($product['category'] === 'used' || $isResellerProduct) {
+              $linkId = $isResellerProduct ? $resellerId : $productId;
+              $productLink = "product-view-used.php?id=" . $linkId;
               $target = 'target="_self"';
           } else {
               $productLink = "product-view.php?id=" . $productId;
@@ -182,7 +197,7 @@ function renderProductSection($options) {
             
           <div class="product-info">
             <a href="<?php echo $productLink; ?>" class="product-link" <?php echo $target; ?>>
-              <h3 class="product-name"><?php echo $pname; ?></h3>
+              <h3 class="product-name"><?php echo $pname; ?><?php if ($isResellerProduct): ?> (Pre-Loved)<?php endif; ?></h3>
             </a>
             <?php if ($minPrice !== null): ?>
               <p class="product-price">Rs <?php echo number_format($minPrice, 2); ?></p>
@@ -193,7 +208,7 @@ function renderProductSection($options) {
 
           <!-- Button Logic -->
           <div class="card-footer">
-            <?php if ($product['category'] === 'used'): ?>
+            <?php if ($product['category'] === 'used' || $isResellerProduct): ?>
                 <a href="<?php echo $productLink; ?>" class="btn-view-item" style="display:block; width:100%; text-align:center; padding:14px 20px; background:#1a1a5e; color:white; border-radius:6px; font-weight:700; font-size:14px; letter-spacing:1px; text-decoration:none; text-transform:uppercase; transition: all 0.3s ease;">VIEW ITEM</a>
             <?php else: ?>
                 <button class="btn-quick-add" onclick="quickView(<?php echo $productId; ?>)">QUICK ADD</button>

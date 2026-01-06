@@ -33,12 +33,20 @@ include_once 'config.php';
   ?>
   
   <?php 
-  // Used Collection Section
+  // Used Collection Section - Query from reseller_products table
   renderProductSection([
     'id' => 'usedCollectionSection',
     'title' => 'Used Collection',
-    'sql' => "SELECT * FROM products WHERE category = 'used' ORDER BY id DESC LIMIT 6",
-    'view_all_link' => 'used-collection.php'
+    'sql' => "SELECT rp.id as reseller_id, rp.id, rp.product_id, rp.resale_price as min_price, rp.status as reseller_status, rp.created_at as reseller_created,
+                     p.product_code, p.product_name, p.product_desc,
+                     p.product_img1, p.product_img2, p.product_img3, p.product_img4,
+                     'used' as category
+              FROM reseller_products rp
+              INNER JOIN products p ON rp.product_id = p.id
+              WHERE rp.status = 'approved' AND p.category != 'used'
+              ORDER BY rp.created_at DESC LIMIT 6",
+    'view_all_link' => 'used-collection.php',
+    'is_reseller' => true
   ]);
   ?>
   

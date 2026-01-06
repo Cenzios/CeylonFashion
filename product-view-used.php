@@ -2,102 +2,69 @@
 session_start();
 require_once 'config.php';
 
-$product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$reseller_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-if (!$product_id) {
+if (!$reseller_id) {
     header('Location: index.php');
     exit;
 }
 
-// 1. Fetch the Used Product Details
-$stmt = $mysqli->prepare("SELECT * FROM products WHERE id = ? AND category = 'used'");
-$stmt->bind_param("i", $product_id);
+// 1. Fetch Reseller Product Details from reseller_products table
+$stmt = $mysqli->prepare("
+    SELECT rp.*, 
+           p.product_code, p.product_name, p.product_desc,
+           p.product_img1, p.product_img2, p.product_img3, p.product_img4
+    FROM reseller_products rp
+    INNER JOIN products p ON rp.product_id = p.id
+    WHERE rp.id = ? AND rp.status = 'approved'
+");
+$stmt->bind_param("i", $reseller_id);
 $stmt->execute();
-$usedProduct = $stmt->get_result()->fetch_assoc();
+$resellerInfo = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-if (!$usedProduct) {
-    header('Location: index.php'); // Not found or not a used product
+if (!$resellerInfo) {
+    header('Location: index.php'); // Not found or not approved
     exit;
 }
 
-// 2. Parse Base Product Code/ID to find Reseller Info
-// Format: BASECODE-U-TIMESTAMP (e.g. BG001-U-1736622...)
-$usedCode = $usedProduct['product_code'];
-$baseCode = $usedCode;
+// Get product details from joined data
+$product = [
+    'product_code' => $resellerInfo['product_code'],
+    'product_name' => $resellerInfo['product_name'],
+    'product_desc' => $resellerInfo['product_desc'],
+    'product_img1' => $resellerInfo['product_img1'],
+    'product_img2' => $resellerInfo['product_img2'],
+    'product_img3' => $resellerInfo['product_img3'],
+    'product_img4' => $resellerInfo['product_img4']
+];
 
-// Try to extract original code.
-// Strategy: Reseller logic appended '-U-timestamp'.
-// Find last occurrence of '-U-'.
-$pos = strrpos($usedCode, '-U-');
-if ($pos !== false) {
-    $baseCode = substr($usedCode, 0, $pos);
-}
-
-// Fetch Original Product to get its ID (needed for reseller_products lookup)
-$stmt = $mysqli->prepare("SELECT id FROM products WHERE product_code = ? LIMIT 1");
-$stmt->bind_param("s", $baseCode);
-$stmt->execute();
-$baseProdRes = $stmt->get_result()->fetch_assoc();
-$stmt->close();
-
-$resellerInfo = null;
+// 2. Fetch Purchase Date from Orders
 $purchaseDate = 'N/A';
+$baseProductId = $resellerInfo['product_id'];
+$sellerUserId = $resellerInfo['user_id'];
 
-if ($baseProdRes) {
-    $baseProductId = $baseProdRes['id'];
-
-    // 3. Fetch Reseller Details from reseller_products
-    // We match by product_id and find the entry closest in creation time to the used product.
-    // This handles cases where multiple used items of the same base product exist.
-    $usedCreated = $usedProduct['created'];
-    
-    // We include 'sold' status now
-    $stmt = $mysqli->prepare("
-        SELECT * FROM reseller_products 
-        WHERE product_id = ? AND (status = 'approved' OR status = 'sold') 
-        ORDER BY ABS(TIMESTAMPDIFF(SECOND, created_at, ?)) ASC 
-        LIMIT 1
-    ");
-    $stmt->bind_param("is", $baseProductId, $usedCreated);
-    $stmt->execute();
-    $resellerInfo = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    // 4. Fetch Purchase Date from Orders
-    if ($resellerInfo) {
-        $sellerUserId = $resellerInfo['user_id'];
-        
-        $stmt = $mysqli->prepare("SELECT created_at FROM orders WHERE product_id = ? AND username = (SELECT email FROM users WHERE id = ?) ORDER BY created_at DESC LIMIT 1");
-        $stmt->bind_param("ii", $baseProductId, $sellerUserId);
-        $stmt->execute();
-        $orderRes = $stmt->get_result()->fetch_assoc();
-        if ($orderRes) {
-            $purchaseDate = date('d M Y', strtotime($orderRes['created_at']));
-        }
-        $stmt->close();
-    }
+$stmt = $mysqli->prepare("SELECT created_at FROM orders WHERE product_id = ? AND username = (SELECT email FROM users WHERE id = ?) ORDER BY created_at DESC LIMIT 1");
+$stmt->bind_param("ii", $baseProductId, $sellerUserId);
+$stmt->execute();
+$orderRes = $stmt->get_result()->fetch_assoc();
+if ($orderRes) {
+    $purchaseDate = date('d M Y', strtotime($orderRes['created_at']));
 }
+$stmt->close();
 
 // Images
-$img1 = !empty($usedProduct['product_img1']) ? 'images/products/' . $usedProduct['product_img1'] : 'assets/no-image.png';
-$img2 = !empty($usedProduct['product_img2']) ? 'images/products/' . $usedProduct['product_img2'] : '';
-$img3 = !empty($usedProduct['product_img3']) ? 'images/products/' . $usedProduct['product_img3'] : '';
-$img4 = !empty($usedProduct['product_img4']) ? 'images/products/' . $usedProduct['product_img4'] : '';
+$img1 = !empty($product['product_img1']) ? 'images/products/' . $product['product_img1'] : 'assets/no-image.png';
+$img2 = !empty($product['product_img2']) ? 'images/products/' . $product['product_img2'] : '';
+$img3 = !empty($product['product_img3']) ? 'images/products/' . $product['product_img3'] : '';
+$img4 = !empty($product['product_img4']) ? 'images/products/' . $product['product_img4'] : '';
 
-// Prices
-// Used items usually have a single fabric entry created in start-reselling.php which holds the price
-$stmt = $mysqli->prepare("SELECT fabric_price FROM product_fabrics WHERE product_id = ? LIMIT 1");
-$stmt->bind_param("i", $product_id);
-$stmt->execute();
-$priceRes = $stmt->get_result()->fetch_assoc();
-$stmt->close();
-
-$resalePrice = $priceRes ? (float)$priceRes['fabric_price'] : 0;
-$originalPrice = $resellerInfo ? (float)$resellerInfo['original_price'] : ($resalePrice / 0.6); // Fallback estimate
+// Prices from reseller_products table
+$resalePrice = (float)$resellerInfo['resale_price'];
+$originalPrice = (float)$resellerInfo['original_price'];
 $savings = ($originalPrice > 0) ? round((($originalPrice - $resalePrice) / $originalPrice) * 100) : 0;
 
-$pageTitle = $usedProduct['product_name'];
+$pageTitle = $product['product_name'] . ' (Pre-Loved)';
 include_once 'includes/head.php';
 ?>
 <!DOCTYPE html>
@@ -274,8 +241,6 @@ include_once 'includes/head.php';
                 gap: 20px;
             }
         }
-            }
-        }
         
 
     </style>
@@ -306,13 +271,13 @@ include_once 'includes/head.php';
                 <?php endif; ?>
             </div>
             <div class="main-image">
-                <img id="mainDisplayImage" src="<?= $img1 ?>" alt="<?= htmlspecialchars($usedProduct['product_name']); ?>">
+                <img id="mainDisplayImage" src="<?= $img1 ?>" alt="<?= htmlspecialchars($product['product_name']); ?>">
             </div>
         </div>
 
         <!-- Right: Info -->
         <div class="product-info-col">
-            <h1 class="product-title"><?= htmlspecialchars($usedProduct['product_name']); ?></h1>
+            <h1 class="product-title"><?= htmlspecialchars($product['product_name']); ?> (Pre-Loved)</h1>
 
             <div class="info-section-grid">
                 <!-- Item Details -->
