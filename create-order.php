@@ -79,9 +79,19 @@ try {
         // I will insert empty size/fabric if unavailable.
         // Or better: Fix cart-add.php later? No time. user asked to fix checkout button.
         
+        // Helper to fetch code
+        function getPCode($mysqli, $pid) {
+            $s = $mysqli->prepare("SELECT product_code FROM products WHERE id = ?");
+            $s->bind_param("i", $pid);
+            $s->execute();
+            $r = $s->get_result()->fetch_assoc();
+            $s->close();
+            return $r ? $r['product_code'] : '';
+        }
+
         // Revised Cart Fetch:
         $stmt = $mysqli->prepare("
-            SELECT c.product_id, c.quantity, c.price, p.product_name
+            SELECT c.product_id, c.quantity, c.price, p.product_name, p.product_code
             FROM cart c
             JOIN products p ON c.product_id = p.id
             WHERE c.user_id = ?
@@ -95,24 +105,25 @@ try {
 
         $stmtInsert = $mysqli->prepare("
             INSERT INTO orders (
-                order_id, username, product_id, product_name, 
+                order_id, username, product_id, product_code, product_name, 
                 fabric_id, fabric_type, size, quantity, 
                 unit_price, total_amount, payment_status,
                 customer_name, customer_email, customer_phone, 
                 delivery_address, city
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
         ");
 
         foreach ($cartItems as $item) {
             $p_name = $item['product_name'];
+            $p_code = $item['product_code'];
             $qty = $item['quantity'];
             $u_price = $item['price'];
             $t_amt = $qty * $u_price;
             $f_id = 0; $f_type = 'Default'; $sz = 'Standard'; // Fallback
 
             $stmtInsert->bind_param(
-                "ssissssddssssss",
-                $order_id, $username, $item['product_id'], $p_name,
+                "ssissssisddssssss",
+                $order_id, $username, $item['product_id'], $p_code, $p_name,
                 $f_id, $f_type, $sz, $qty,
                 $u_price, $t_amt,
                 $customer_name, $customer_email, $customer_phone, $delivery_address, $city
@@ -121,15 +132,6 @@ try {
             $total_amount += $t_amt;
         }
         $stmtInsert->close();
-
-        // Note: We do NOT clear the cart here anymore. 
-        // We wait for payment confirmation (payment-notify.php) or success page to clear it.
-        // This prevents cart clearing if user cancels payment.
-        
-        // $stmtClear = $mysqli->prepare("DELETE FROM cart WHERE user_id = ?");
-        // $stmtClear->bind_param("i", $user_id);
-        // $stmtClear->execute();
-        // $stmtClear->close();
 
     } else {
         // --- SINGLE ITEM CHECKOUT (Buy Now) ---
@@ -143,7 +145,7 @@ try {
         }
 
         // Get Product & Fabric
-        $stmt = $mysqli->prepare("SELECT product_name FROM products WHERE id = ?");
+        $stmt = $mysqli->prepare("SELECT product_name, product_code FROM products WHERE id = ?");
         $stmt->bind_param("i", $product_id);
         $stmt->execute();
         $product = $stmt->get_result()->fetch_assoc();
@@ -160,21 +162,25 @@ try {
         $unit_price = (float)$fabric['fabric_price'];
         $total_amount = $unit_price * $quantity;
 
+        // Insert with product_code
         $stmt = $mysqli->prepare("
             INSERT INTO orders (
-                order_id, username, product_id, product_name, 
+                order_id, username, product_id, product_code, product_name, 
                 fabric_id, fabric_type, size, quantity, 
                 unit_price, total_amount, payment_status,
                 customer_name, customer_email, customer_phone, 
                 delivery_address, city
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
         ");
         
+        $p_code = $product['product_code'];
+        
         $stmt->bind_param(
-            "ssissssddssssss",
+            "ssissssisddssssss",
             $order_id, 
             $username, 
-            $product_id, 
+            $product_id,
+            $p_code, // Added
             $product['product_name'],
             $fabric_id, 
             $fabric['fabric_type'], 

@@ -70,7 +70,7 @@ $totalPages = ceil($totalOrders / $perPage);
 
 // Fetch orders
 $sql = "SELECT 
-    id, order_id, username, product_name, fabric_type, size, quantity,
+    id, order_id, username, product_name, product_code, fabric_type, size, quantity,
     unit_price, total_amount, payment_status, payment_id, delivery_status,
     customer_name, customer_email, customer_phone, delivery_address, city,
     created_at, updated_at
@@ -126,6 +126,7 @@ body {
 .sidebar a.active { 
     background:#007bff; 
     color:#fff; 
+    display:block;
 }
 .main { 
     margin-left:240px; 
@@ -237,6 +238,7 @@ body {
         <thead class="table-dark">
           <tr>
             <th>Order ID</th>
+            <th>Product Code</th>
             <th>Customer</th>
             <th>Product</th>
             <th>Details</th>
@@ -255,6 +257,9 @@ body {
                 <?php if ($order['payment_id']): ?>
                 <br><small class="text-muted">Pay: <?php echo htmlspecialchars($order['payment_id']); ?></small>
                 <?php endif; ?>
+              </td>
+              <td>
+                <span class="badge bg-light text-dark border"><?php echo htmlspecialchars($order['product_code'] ?? 'N/A'); ?></span>
               </td>
               <td>
                 <strong><?php echo htmlspecialchars($order['customer_name']); ?></strong>

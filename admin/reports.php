@@ -94,7 +94,7 @@ $prodResult = $prodStmt->get_result();
 
 // ---- Fetch Order History ----
 $orderHistorySQL = "SELECT 
-    o.id, o.order_id, o.username, o.product_name, o.fabric_type, o.size, o.quantity,
+    o.id, o.order_id, o.username, o.product_name, o.product_code, o.fabric_type, o.size, o.quantity,
     o.unit_price, o.total_amount, o.payment_status, o.delivery_status,
     o.customer_name, o.customer_email, o.customer_phone, o.city, o.created_at as purchase_date
 FROM orders o ORDER BY o.created_at DESC";
@@ -118,7 +118,7 @@ if ($orderHistoryResult && $orderHistoryResult->num_rows > 0) {
 
 // ---- Fetch Resale History ----
 $resaleHistorySQL = "SELECT 
-    r.id, r.product_id, r.user_id, r.first_name, r.last_name, r.contact_number,
+    r.id, r.product_id, r.product_code, r.user_id, r.first_name, r.last_name, r.contact_number,
     r.email, r.address, r.notes, r.fabric_type, r.resale_price, r.original_price,
     r.status, r.created_at
 FROM reseller_products r
@@ -514,6 +514,7 @@ tr:nth-child(even) {
                     <thead>
                         <tr>
                             <th>Order ID</th>
+                            <th>Product Code</th>
                             <th>Customer</th>
                             <th>Product</th>
                             <th>Fabric</th>
@@ -536,6 +537,7 @@ tr:nth-child(even) {
                         ?>
                             <tr>
                                 <td><strong><?php echo htmlentities($order['order_id']); ?></strong></td>
+                                <td><span style="font-family:monospace;"><?php echo htmlentities($order['product_code'] ?? '-'); ?></span></td>
                                 <td>
                                     <?php echo htmlentities($order['customer_name']); ?><br>
                                     <small style="font-size:9px;color:#666;"><?php echo htmlentities($order['customer_email']); ?></small><br>
@@ -567,6 +569,7 @@ tr:nth-child(even) {
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>Product Code</th>
                             <th>Seller</th>
                             <th>Contact</th>
                             <th>Product</th>
@@ -587,6 +590,7 @@ tr:nth-child(even) {
                         ?>
                             <tr>
                                 <td><strong>#<?php echo htmlentities($resale['id']); ?></strong></td>
+                                <td><span style="font-family:monospace;"><?php echo htmlentities($resale['product_code'] ?? '-'); ?></span></td>
                                 <td><?php echo htmlentities($resale['first_name'] . ' ' . $resale['last_name']); ?></td>
                                 <td style="font-size:9px;">
                                     <?php echo htmlentities($resale['contact_number']); ?><br>

@@ -44,13 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
             // Calculate resale price (60% of original)
             $resalePrice = $originalPrice * 0.6;
             
-            // Insert into reseller_products table only (not into products table)
-            $sql = "INSERT INTO reseller_products (product_id, user_id, first_name, last_name, contact_number, email, address, notes, fabric_type, resale_price, original_price, status, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', NOW())";
+            // Insert into reseller_products table 
+            $sql = "INSERT INTO reseller_products (product_id, product_code, user_id, first_name, last_name, contact_number, email, address, notes, fabric_type, resale_price, original_price, status, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', NOW())";
             
             if ($stmt = $mysqli->prepare($sql)) {
-                $stmt->bind_param("iisssssssdd", 
+                $stmt->bind_param("isisssssssdd", 
                     $product['id'], 
+                    $product['product_code'],
                     $_SESSION['user_id'], 
                     $firstName, 
                     $lastName, 
