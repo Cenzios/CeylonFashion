@@ -153,67 +153,95 @@ function renderProductSection($options) {
     ?>
         <!-- Product Card -->
         <div class="product-card">
-          <!-- Action Icons -->
-          <div class="card-actions">
-            <?php 
-            // For reseller products, use original product_id for wishlist
-            $wishlistProductId = $isResellerProduct && isset($product['product_id']) ? (int)$product['product_id'] : $productId;
-            $inWishlist = in_array($wishlistProductId, $wishlistItems);
-            $activeClass = $inWishlist ? 'active' : '';
-            ?>
-            <button class="action-btn wishlist-btn <?php echo $activeClass; ?>" onclick="toggleWishlist(<?php echo $wishlistProductId; ?>)" title="<?php echo $inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'; ?>" aria-label="Wishlist">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-              </svg>
-            </button>
-            <!-- <button class="action-btn quickview-btn" onclick="quickView(<?php echo $productId; ?>)" title="Quick View" aria-label="Quick View">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-            </button> -->
-          </div>
-
-          <?php
-          // Determine Link - use reseller_id for reseller products
-          if ($product['category'] === 'used' || $isResellerProduct) {
+          <?php if ($product['category'] === 'used' || $isResellerProduct): ?>
+              <!-- USER REQUESTED DESIGN FOR USED ITEMS -->
+              <?php
+              // Determine Link
               $linkId = $isResellerProduct ? $resellerId : $productId;
               $productLink = "product-view-used.php?id=" . $linkId;
-              $target = 'target="_self"';
-          } else {
+              
+              // Prices
+              $resalePrice = $minPrice ?? 0;
+              $originalPrice = $product['original_price'] ?? 0; // Fetched from updated SQL
+              
+              // Status Badge (Force "Available" or "Sold Out")
+              $badgeLabel = 'Available';
+              $badgeClass = 'badge-available'; // Green
+              if (isset($product['reseller_status']) && $product['reseller_status'] === 'sold') {
+                  $badgeLabel = 'Sold Out';
+                  $badgeClass = 'badge-sold-out';
+              }
+              ?>
+              
+              <a href="<?php echo $productLink; ?>" class="card-link" target="_self">
+                <div class="product-image">
+                  <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
+                  <span class="product-badge <?php echo $badgeClass; ?>"><?php echo $badgeLabel; ?></span>
+                </div>
+                
+                <div class="used-product-info">
+                    <h3 class="used-product-name"><?php echo $pname; ?></h3>
+                    
+                    <div class="used-price-row">
+                        <span class="used-price-label">Original price:</span> 
+                        <span class="used-price-val">LKR<?php echo number_format($originalPrice, 0); ?></span>
+                    </div>
+                    
+                    <div class="used-price-row">
+                        <span class="used-price-label">Resale price:</span> 
+                        <span class="used-price-resale-val">LKR<?php echo number_format($resalePrice, 0); ?></span>
+                    </div>
+
+                    <div class="used-eye-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
+                          <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
+                          <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>
+                        </svg>
+                    </div>
+                </div>
+              </a>
+
+          <?php else: ?>
+              <!-- STANDARD PRODUCT DESIGN -->
+              
+              <!-- Action Icons -->
+              <div class="card-actions">
+                <?php 
+                $inWishlist = in_array($productId, $wishlistItems);
+                $activeClass = $inWishlist ? 'active' : '';
+                ?>
+                <button class="action-btn wishlist-btn <?php echo $activeClass; ?>" onclick="toggleWishlist(<?php echo $productId; ?>)" title="<?php echo $inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'; ?>">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <?php
               $productLink = "product-view.php?id=" . $productId;
-              $target = '';
-          }
-          ?>
+              ?>
 
-          <a href="<?php echo $productLink; ?>" class="card-link" <?php echo $target; ?>>
-            <div class="product-image">
-              <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
-              <?php if ($itemStatusLabel): ?>
-                  <span class="product-badge <?php echo $itemStatusClass; ?>"><?php echo $itemStatusLabel; ?></span>
-              <?php endif; ?>
-            </div>
-          </a>
-            
-          <div class="product-info">
-            <a href="<?php echo $productLink; ?>" class="product-link" <?php echo $target; ?>>
-              <h3 class="product-name"><?php echo $pname; ?><?php if ($isResellerProduct): ?> (Pre-Loved)<?php endif; ?></h3>
-            </a>
-            <?php if ($minPrice !== null): ?>
-              <p class="product-price">Rs <?php echo number_format($minPrice, 2); ?></p>
-            <?php else: ?>
-              <p class="product-price">Price unavailable</p>
-            <?php endif; ?>
-          </div>
+              <a href="<?php echo $productLink; ?>" class="card-link">
+                <div class="product-image">
+                  <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
+                </div>
+              </a>
+                
+              <div class="product-info">
+                <a href="<?php echo $productLink; ?>" class="product-link">
+                  <h3 class="product-name"><?php echo $pname; ?></h3>
+                </a>
+                <?php if ($minPrice !== null): ?>
+                  <p class="product-price">Rs <?php echo number_format($minPrice, 2); ?></p>
+                <?php else: ?>
+                  <p class="product-price">Price unavailable</p>
+                <?php endif; ?>
+              </div>
 
-          <!-- Button Logic -->
-          <div class="card-footer">
-            <?php if ($product['category'] === 'used' || $isResellerProduct): ?>
-                <a href="<?php echo $productLink; ?>" class="btn-view-item" style="display:block; width:100%; text-align:center; padding:14px 20px; background:#1a1a5e; color:white; border-radius:6px; font-weight:700; font-size:14px; letter-spacing:1px; text-decoration:none; text-transform:uppercase; transition: all 0.3s ease;">VIEW ITEM</a>
-            <?php else: ?>
+              <div class="card-footer">
                 <button class="btn-quick-add" onclick="quickView(<?php echo $productId; ?>)">QUICK ADD</button>
-            <?php endif; ?>
-          </div>
+              </div>
+          <?php endif; ?>
         </div>
       <?php endwhile; ?>
     <?php else: ?>
@@ -526,6 +554,52 @@ function renderProductSection($options) {
   .badge-available {
       background-color: #10b981; /* Green */
       color: white;
+  }
+
+  /* --- Used Collection Custom Styles --- */
+  .used-product-info {
+      padding: 15px 15px 25px 15px; /* Extra bottom padding for eye icon space */
+      background: #d3bce6; /* Light Lavender Background */
+      text-align: left;
+      position: relative;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+  }
+  .used-product-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #111;
+      margin: 0 0 8px 0;
+      line-height: 1.3;
+  }
+  .used-price-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 2px;
+      font-size: 13px;
+      color: #222;
+  }
+  .used-price-label {
+      font-weight: 500;
+  }
+  .used-price-val {
+      font-weight: 500;
+  }
+  .used-price-resale-val {
+      font-weight: 700;
+      color: #a51d2a; /* Dark Red / Burgundy */
+  }
+  .used-eye-icon {
+      position: absolute;
+      bottom: 12px;
+      right: 15px;
+      color: #333;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+  }
+  .used-eye-icon:hover {
+      opacity: 1;
   }
 </style>
 

@@ -37,7 +37,7 @@ include_once 'config.php';
   renderProductSection([
     'id' => 'usedCollectionSection',
     'title' => 'Used Collection',
-    'sql' => "SELECT rp.id as reseller_id, rp.id, rp.product_id, rp.resale_price as min_price, rp.status as reseller_status, rp.created_at as reseller_created,
+    'sql' => "SELECT rp.id as reseller_id, rp.id, rp.product_id, rp.resale_price as min_price, rp.original_price, rp.status as reseller_status, rp.created_at as reseller_created,
                      p.product_code, p.product_name, p.product_desc,
                      p.product_img1, p.product_img2, p.product_img3, p.product_img4,
                      'used' as category
