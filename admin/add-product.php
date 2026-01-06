@@ -143,10 +143,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
       // Start transaction for data integrity
       $pdo->beginTransaction();
 
-      // Insert product with new image columns
+      // Fetch color name for products table
+      $colorNameForProduct = '';
+      if (!empty($selected_color_id)) {
+          $cInfo = $pdo->prepare("SELECT color_name FROM colors WHERE id = ?");
+          $cInfo->execute([$selected_color_id]);
+          $cRow = $cInfo->fetch();
+          if ($cRow) {
+              $colorNameForProduct = $cRow['color_name'];
+          }
+      }
+
+      // Insert product with new image columns AND product_color
       $stmt = $pdo->prepare("
-        INSERT INTO products (product_code, product_name, product_desc, product_img1, product_img2, product_img3, product_img4, category)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (product_code, product_name, product_desc, product_img1, product_img2, product_img3, product_img4, category, product_color)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ");
       
       if ($stmt->execute([
@@ -157,7 +168,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
         $uploaded_images['product_img2'],
         $uploaded_images['product_img3'],
         $uploaded_images['product_img4'],
-        $category
+        $category,
+        $colorNameForProduct
       ])) {
         $product_id = $pdo->lastInsertId();
 
