@@ -16,10 +16,24 @@ $selectedCategories = isset($_GET['categories']) && is_array($_GET['categories']
 $sql = "SELECT p.*, MIN(pf.fabric_price) as min_price 
         FROM products p 
         LEFT JOIN product_fabrics pf ON p.id = pf.product_id 
-        WHERE p.category != 'used' AND p.created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59'";
+        LEFT JOIN product_colors pc ON p.id = pc.product_id 
+        WHERE p.created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59'";
 
 $params = [];
 $types = "";
+
+// Category Filter - if categories are selected, filter by them; otherwise exclude 'used'
+if (!empty($selectedCategories)) {
+    $placeholders = implode(',', array_fill(0, count($selectedCategories), '?'));
+    $sql .= " AND p.category IN ($placeholders)";
+    foreach ($selectedCategories as $cat) {
+        $params[] = $cat;
+        $types .= "s";
+    }
+} else {
+    // Default: exclude used collection if no category filter is applied
+    $sql .= " AND p.category != 'used'";
+}
 
 // Price Filter
 if ($minPrice !== '') {
@@ -33,27 +47,13 @@ if ($maxPrice !== '') {
     $types .= "d";
 }
 
-// Category Filter
-if (!empty($selectedCategories)) {
-    $placeholders = implode(',', array_fill(0, count($selectedCategories), '?'));
-    $sql .= " AND p.category IN ($placeholders)";
-    foreach ($selectedCategories as $cat) {
-        $params[] = $cat;
-        $types .= "s";
-    }
-}
-
-// Color Filter (Search in Name/Desc)
+// Color Filter (Filter by product_colors table)
 if (!empty($selectedColors)) {
-    $colorConditions = [];
+    $placeholders = implode(',', array_fill(0, count($selectedColors), '?'));
+    $sql .= " AND pc.color_name IN ($placeholders)";
     foreach ($selectedColors as $color) {
-        $colorConditions[] = "(p.product_name LIKE ? OR p.product_desc LIKE ?)";
-        $params[] = "%$color%";
-        $params[] = "%$color%";
-        $types .= "ss";
-    }
-    if (!empty($colorConditions)) {
-        $sql .= " AND (" . implode(' OR ', $colorConditions) . ")";
+        $params[] = $color;
+        $types .= "s";
     }
 }
 
@@ -95,6 +95,8 @@ $result = $stmt->get_result();
                 $showPriceFilter = true;
                 $selectedMinPrice = $minPrice;
                 $selectedMaxPrice = $maxPrice;
+                $selectedColors = $selectedColors;
+                $selectedCategories = $selectedCategories;
                 
                 include 'includes/filter-sidebar.php'; 
                 ?>

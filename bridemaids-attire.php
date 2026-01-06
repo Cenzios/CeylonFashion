@@ -15,6 +15,7 @@ $selectedColors = isset($_GET['colors']) && is_array($_GET['colors']) ? $_GET['c
 $sql = "SELECT p.*, MIN(pf.fabric_price) as min_price 
         FROM products p 
         LEFT JOIN product_fabrics pf ON p.id = pf.product_id 
+        LEFT JOIN product_colors pc ON p.id = pc.product_id 
         WHERE p.category = 'bridemaidAttire'";
 
 $params = [];
@@ -32,17 +33,13 @@ if ($maxPrice !== '') {
     $types .= "d";
 }
 
-// Color Filter (Search in Name/Desc)
+// Color Filter (Filter by product_colors table)
 if (!empty($selectedColors)) {
-    $colorConditions = [];
+    $placeholders = implode(',', array_fill(0, count($selectedColors), '?'));
+    $sql .= " AND pc.color_name IN ($placeholders)";
     foreach ($selectedColors as $color) {
-        $colorConditions[] = "(p.product_name LIKE ? OR p.product_desc LIKE ?)";
-        $params[] = "%$color%";
-        $params[] = "%$color%";
-        $types .= "ss";
-    }
-    if (!empty($colorConditions)) {
-        $sql .= " AND (" . implode(' OR ', $colorConditions) . ")";
+        $params[] = $color;
+        $types .= "s";
     }
 }
 
@@ -84,6 +81,7 @@ $result = $stmt->get_result();
                 $showPriceFilter = true;
                 $selectedMinPrice = $minPrice;
                 $selectedMaxPrice = $maxPrice;
+                $selectedColors = $selectedColors;
                 
                 include 'includes/filter-sidebar.php'; 
                 ?>
