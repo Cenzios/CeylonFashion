@@ -11,8 +11,6 @@ if (isset($_SESSION['user_id'])) {
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stmt->close();
-    $stmt->execute();
-    $stmt->close();
 }
 
 // Fetch product codes from order to show for resale
