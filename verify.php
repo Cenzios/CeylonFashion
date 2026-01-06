@@ -79,14 +79,12 @@ if (!$user) {
   exit;
 }
 
-// Check if password starts with $2y$ (bcrypt hash)
-if (strpos($user['password'], '$2y$') === 0) {
-  // Use password_verify for hashed passwords
-  $passwordMatch = password_verify($pwd, $user['password']);
-} else {
-  // Use direct comparison for plain text passwords (temporary - should be removed in production)
-  $passwordMatch = hash_equals((string)$user['password'], (string)$pwd);
-}
+// Check password (PLAIN TEXT as requested)
+// SECURITY WARNING: Storing passwords in plain text is not secure.
+// This was implemented based on user request to "fix it as not hashing".
+$passwordMatch = ($user['password'] === $pwd);
+// Note: We use strict comparison. hash_equals is better for timing attacks but requires strings.
+// $passwordMatch = hash_equals((string)$user['password'], (string)$pwd);
 
 if ($passwordMatch) {
   // ---- CHECK IF USER IS ADMIN ----
