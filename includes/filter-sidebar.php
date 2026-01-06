@@ -11,6 +11,7 @@
 $showCategoryFilter = $showCategoryFilter ?? false;
 $showColorFilter = $showColorFilter ?? false;
 $showPriceFilter = $showPriceFilter ?? true;
+$showStatusFilter = $showStatusFilter ?? false;
 
 $minPrice = $selectedMinPrice ?? '';
 $maxPrice = $selectedMaxPrice ?? '';
