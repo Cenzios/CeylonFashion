@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg navbar-purple" style="position: relative; z-index: 1030;">
+<nav class="navbar navbar-expand-lg navbar-purple">
   <div class="container-fluid">
     <a href="index.php" class="navbar-brand">
       <img src="logo.png" alt="Logo" width="30" height="24" class="d-inline-block align-text-top">
@@ -95,8 +95,15 @@
 <style>
 /* Fix z-index for navbar and dropdown */
 .navbar-purple {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
   z-index: 1030 !important;
+}
+
+body {
+  padding-top: 80px;
 }
 
 /* Navbar brand/logo link */
