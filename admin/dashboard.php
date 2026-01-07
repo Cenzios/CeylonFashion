@@ -147,6 +147,78 @@ body {
       </div>
     </div>
   </div>
+
+  <!-- Resale Settings Section -->
+  <div class="row mt-5">
+      <div class="col-12">
+          <div class="card">
+              <div class="card-header bg-white">
+                  <h5 class="mb-0 text-primary"><i class="bi bi-sliders"></i> Resale Configuration</h5>
+              </div>
+              <div class="card-body">
+                  <?php
+                  // Handle Settings Update
+                  if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
+                      $new_percentage = $_POST['resale_percentage'];
+                      $new_period = $_POST['resale_period'];
+                      
+                      $uStmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('resale_percentage', ?), ('resale_period', ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+                      // We need to run two queries or loop because ON DUPLICATE KEY with multiple rows is tricky with PDO parameter binding for values() in some versions, simpler to do upsert one by one or loop.
+                      // Let's do simple loop for safety/clarity.
+                      
+                      // Update percentage
+                      $pStmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('resale_percentage', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                      $pStmt->execute([$new_percentage, $new_percentage]);
+                      
+                      // Update period
+                      $mStmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('resale_period', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                      $mStmt->execute([$new_period, $new_period]);
+                      
+                      echo '<div class="alert alert-success">Settings updated successfully!</div>';
+                  }
+                  
+                  // Fetch current settings
+                  $settings = [];
+                  $sStmt = $pdo->query("SELECT setting_key, setting_value FROM settings");
+                  while ($row = $sStmt->fetch()) {
+                      $settings[$row['setting_key']] = $row['setting_value'];
+                  }
+                  
+                  $current_percentage = $settings['resale_percentage'] ?? 60;
+                  $current_period = $settings['resale_period'] ?? 3;
+                  ?>
+                  
+                  <form method="POST" class="row g-3 align-items-end">
+                      <div class="col-md-4">
+                          <label for="resale_percentage" class="form-label">Resale Value Percentage (%)</label>
+                          <div class="input-group">
+                              <input type="number" class="form-control" id="resale_percentage" name="resale_percentage" value="<?php echo htmlspecialchars($current_percentage); ?>" min="1" max="100" required>
+                              <span class="input-group-text">%</span>
+                          </div>
+                          <small class="text-muted">Percentage of original price offered to reseller.</small>
+                      </div>
+                      
+                      <div class="col-md-4">
+                          <label for="resale_period" class="form-label">Resale Eligibility Period</label>
+                          <div class="input-group">
+                              <input type="number" class="form-control" id="resale_period" name="resale_period" value="<?php echo htmlspecialchars($current_period); ?>" min="1" required>
+                              <span class="input-group-text">Months</span>
+                          </div>
+                          <small class="text-muted">Maximum time after purchase to resell.</small>
+                      </div>
+                      
+                      <div class="col-md-4">
+                          <button type="submit" name="update_settings" class="btn btn-primary w-100">
+                              <i class="bi bi-save"></i> Update Settings
+                          </button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      </div>
+  </div>
+  
+  </div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
