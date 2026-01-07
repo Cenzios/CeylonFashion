@@ -187,34 +187,36 @@ body {
                   $current_percentage = $settings['resale_percentage'] ?? 60;
                   $current_period = $settings['resale_period'] ?? 3;
                   ?>
-                  
-                  <form method="POST" class="row g-3 align-items-end">
-                      <div class="col-md-4">
-                          <label for="resale_percentage" class="form-label">Resale Value Percentage (%)</label>
-                          <div class="input-group">
-                              <input type="number" class="form-control" id="resale_percentage" name="resale_percentage" value="<?php echo htmlspecialchars($current_percentage); ?>" min="1" max="100" required>
-                              <span class="input-group-text">%</span>
-                          </div>
-                          <small class="text-muted">Percentage of original price offered to reseller.</small>
-                      </div>
-                      
-                      <div class="col-md-4">
-                          <label for="resale_period" class="form-label">Resale Eligibility Period</label>
-                          <div class="input-group">
-                              <input type="number" class="form-control" id="resale_period" name="resale_period" value="<?php echo htmlspecialchars($current_period); ?>" min="1" required>
-                              <span class="input-group-text">Months</span>
-                          </div>
-                          <small class="text-muted">Maximum time after purchase to resell.</small>
-                      </div>
-                      
-                      <div class="col-md-4">
-                          <button type="submit" name="update_settings" class="btn btn-primary w-100">
-                              <i class="bi bi-save"></i> Update Settings
-                          </button>
-                      </div>
-                  </form>
-              </div>
-          </div>
+                 <div class="card-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Resale Value Percentage (%)</label>
+                            <div class="input-group">
+                                <input type="number" name="resale_percentage" class="form-control" value="<?php echo htmlspecialchars($settings['resale_percentage'] ?? 60); ?>" min="1" max="100" required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Percentage of original price offered to reseller.</div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Resale Eligibility Period (Months)</label>
+                            <div class="input-group">
+                                <input type="number" name="resale_period" class="form-control" value="<?php echo htmlspecialchars($settings['resale_period'] ?? 3); ?>" min="1" required>
+                                <span class="input-group-text">Months</span>
+                            </div>
+                            <div class="form-text">Maximum time after purchase to resell.</div>
+                        </div>
+                        <div class="col-md-2">
+                             <label class="form-label d-block">&nbsp;</label>
+                             <div class="d-grid">
+                                <button type="submit" name="update_settings" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Update
+                                </button>
+                             </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
       </div>
   </div>
   
