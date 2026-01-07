@@ -64,7 +64,7 @@ $perPage = 20;
 $offset = ($page - 1) * $perPage;
 
 // Get total count
-$countResult = $mysqli->query("SELECT COUNT(*) as total FROM orders");
+$countResult = $mysqli->query("SELECT COUNT(*) as total FROM orders WHERE payment_status = 'paid'");
 $totalOrders = $countResult->fetch_assoc()['total'];
 $totalPages = ceil($totalOrders / $perPage);
 
@@ -75,6 +75,7 @@ $sql = "SELECT
     customer_name, customer_email, customer_phone, delivery_address, city,
     created_at, updated_at
     FROM orders 
+    WHERE payment_status = 'paid'
     ORDER BY created_at DESC
     LIMIT ? OFFSET ?";
 
@@ -196,11 +197,11 @@ body {
     // Get statistics
     $statsQuery = "SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) as paid,
-        SUM(CASE WHEN payment_status = 'pending' THEN 1 ELSE 0 END) as pending,
+        COUNT(*) as paid,
+        0 as pending,
         SUM(CASE WHEN delivery_status = 'delivered' THEN 1 ELSE 0 END) as delivered,
-        SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_revenue
-        FROM orders";
+        SUM(total_amount) as total_revenue
+        FROM orders WHERE payment_status = 'paid'";
     $statsResult = $mysqli->query($statsQuery);
     $stats = $statsResult->fetch_assoc();
     ?>

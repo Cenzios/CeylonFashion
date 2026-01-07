@@ -129,7 +129,7 @@ body {
           <i class="bi bi-bag-check display-5 text-success mb-2"></i>
           <h5 class="card-title">Orders</h5>
           <p class="display-6 fw-bold text-success">
-            <?php echo $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(); ?>
+            <?php echo $pdo->query("SELECT COUNT(*) FROM orders WHERE payment_status = 'paid'")->fetchColumn(); ?>
           </p>
         </div>
       </div>
