@@ -281,16 +281,14 @@ body {
                 <br><small class="text-muted">@ Rs. <?php echo number_format((float)$order['unit_price'], 2); ?></small>
               </td>
               <td>
-                <select class="form-select form-select-sm status-select" 
-                        onchange="updatePaymentStatus(<?php echo (int)$order['id']; ?>, this)">
                   <?php
                   $paymentStatuses = ['pending' => 'warning', 'paid' => 'success', 'failed' => 'danger', 'cancelled' => 'secondary'];
-                  foreach($paymentStatuses as $s => $color) {
-                      $selected = ($order['payment_status'] === $s) ? 'selected' : '';
-                      echo "<option value='$s' $selected>" . ucfirst($s) . "</option>";
-                  }
+                  $s = $order['payment_status'];
+                  $color = isset($paymentStatuses[$s]) ? $paymentStatuses[$s] : 'secondary';
                   ?>
-                </select>
+                  <span class="badge bg-<?php echo $color; ?> fs-6">
+                      <?php echo ucfirst($s); ?>
+                  </span>
               </td>
               <td>
                 <select class="form-select form-select-sm status-select" 
@@ -591,37 +589,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
     }
 });
 
-// Update payment status via AJAX
-function updatePaymentStatus(orderId, selectElement) {
-    const status = selectElement.value;
-    const originalValue = selectElement.getAttribute('data-original') || selectElement.value;
-    
-    fetch('orders.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'order_id=' + orderId + '&status=' + status
-    })
-    .then(resp => resp.text())
-    .then(data => {
-        if(data === 'success') {
-            selectElement.setAttribute('data-original', status);
-            // Show success feedback
-            const row = document.getElementById('orderRow' + orderId);
-            if(row) {
-                row.style.backgroundColor = '#d4edda';
-                setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
-            }
-        } else {
-            alert('Failed to update payment status');
-            selectElement.value = originalValue;
-        }
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        alert('Error: ' + err);
-        selectElement.value = originalValue;
-    });
-}
+
 
 // Update delivery status via AJAX
 function updateDeliveryStatus(orderId, selectElement) {

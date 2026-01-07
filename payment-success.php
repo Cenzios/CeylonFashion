@@ -4,6 +4,16 @@ require_once 'config.php';
 
 $order_id = isset($_GET['order_id']) ? $_GET['order_id'] : '';
 
+// WORKAROUND FOR LOCALHOST: Force update status to 'paid'
+// Since payment-notify.php cannot be reached by PayHere on localhost,
+// we update the status here when the user is redirected back.
+if ($order_id) {
+    $updateStmt = $mysqli->prepare("UPDATE orders SET payment_status = 'paid', updated_at = NOW() WHERE order_id = ?");
+    $updateStmt->bind_param("s", $order_id);
+    $updateStmt->execute();
+    $updateStmt->close();
+}
+
 // Clear cart for the logged-in user
 if (isset($_SESSION['user_id'])) {
     $user_id = (int)$_SESSION['user_id'];
