@@ -12,6 +12,15 @@ $message = '';
 $messageType = '';
 $showSuccess = false;
 
+// Fetch settings
+$settings = [];
+$sStmt = $mysqli->query("SELECT setting_key, setting_value FROM settings");
+while ($row = $sStmt->fetch_assoc()) {
+    $settings[$row['setting_key']] = $row['setting_value'];
+}
+$resale_percentage = isset($settings['resale_percentage']) ? (float)$settings['resale_percentage'] : 60;
+$resale_period = isset($settings['resale_period']) ? (int)$settings['resale_period'] : 3;
+
 // Handle product addition form
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
     $firstName = trim($_POST['first_name']);
@@ -41,8 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addProduct'])) {
         if ($fabricResult && isset($fabricResult['fabric_price'])) {
             $originalPrice = floatval($fabricResult['fabric_price']);
             
-            // Calculate resale price (60% of original)
-            $resalePrice = $originalPrice * 0.6;
+            // Calculate resale price (Dynamic % of original)
+            $resalePrice = $originalPrice * ($resale_percentage / 100);
             
             // Insert into reseller_products table 
             $sql = "INSERT INTO reseller_products (product_id, product_code, user_id, first_name, last_name, contact_number, email, address, notes, fabric_type, resale_price, original_price, status, created_at) 
@@ -165,8 +174,8 @@ if (isset($_GET['check_item']) && isset($_GET['item_code'])) {
             $purchaseDate = $orderRes['created_at'];
             $purchaseDateObj = new DateTime($purchaseDate);
             
-            // Calculate expiration date (purchase date + 3 months)
-            $expirationDate = (clone $purchaseDateObj)->modify('+3 months');
+            // Calculate expiration date (purchase date + dynamic months)
+            $expirationDate = (clone $purchaseDateObj)->modify('+' . $resale_period . ' months');
             $currentDate = new DateTime();
             
             // Check if current date is before or equal to expiration date
@@ -222,7 +231,7 @@ include_once 'includes/head.php';
     <div class="features-grid">
         <div class="feature-card">
             <h3>Quick Cash Back</h3>
-            <p>Get 60% of your purchase price back. Turn unworn or lightly used items into instant money</p>
+            <p>Get <?php echo $resale_percentage; ?>% of your purchase price back. Turn unworn or lightly used items into instant money</p>
             <div class="feature-icon">
                 <img src="images/icons/cash.png" alt="Cash" onerror="this.style.display='none'">
                 <div class="icon-placeholder">💰</div>
@@ -240,7 +249,7 @@ include_once 'includes/head.php';
 
         <div class="feature-card">
             <h3>Support Sustainability</h3>
-            <p>Reduce waste and let your outfit shine again. Resell outfit within 3 months</p>
+            <p>Reduce waste and let your outfit shine again. Resell outfit within <?php echo $resale_period; ?> months</p>
             <div class="feature-icon">
                 <img src="images/icons/sustainability.png" alt="Sustainability" onerror="this.style.display='none'">
                 <div class="icon-placeholder">💡</div>
@@ -266,7 +275,7 @@ include_once 'includes/head.php';
 
         <!-- Warning Message (hidden by default) -->
         <div id="warningMessage" class="alert-message warning-message" style="display: none;">
-            <span>⚠️ Unfortunately, this item can't be resold as it's beyond the 3-month resale period. Please check your recent purchases for items that may still qualify.</span>
+            <span>⚠️ Unfortunately, this item can't be resold as it's beyond the <?php echo $resale_period; ?>-month resale period. Please check your recent purchases for items that may still qualify.</span>
             <button class="close-alert" onclick="closeAlert('warningMessage')">✕</button>
         </div>
 
@@ -328,7 +337,7 @@ include_once 'includes/head.php';
                         <span class="info-value" id="originalPrice"></span>
                     </div>
                     <div class="info-row highlight" id="resalePriceRow" style="display: none;">
-                        <span class="info-label">Resale price (60% of original price):</span>
+                        <span class="info-label">Resale price (<?php echo $resale_percentage; ?>% of original price):</span>
                         <span class="info-value" id="resalePrice"></span>
                     </div>
                 </div>
@@ -401,6 +410,9 @@ include_once 'includes/head.php';
 
 
 <script>
+// Pass PHP variables to JS
+const resalePercentage = <?php echo $resale_percentage; ?>;
+
 // Close Alert Helper
 function closeAlert(id) {
     document.getElementById(id).style.display = 'none';
@@ -445,18 +457,66 @@ if (resellForm) {
     });
 }
 
-// Eligibility Check Validation
+// Eligibility Check Logic
+const eligibilityData = <?php echo json_encode($eligibilityData); ?>;
+
+// If data exists (meaning page loaded with check_item param), populate UI
+if (eligibilityData) {
+    // Show sections based on flags
+    if (eligibilityData.not_bought) {
+        document.getElementById('notPurchasedMessage').style.display = 'flex';
+    } else if (eligibilityData.already_resold) {
+        document.getElementById('alreadyResoldMessage').style.display = 'flex';
+    } else if (!eligibilityData.is_eligible) {
+        // Not eligible (mostly due to date)
+        document.getElementById('warningMessage').style.display = 'flex';
+    } else if (eligibilityData.is_eligible) {
+        // Success!
+        document.getElementById('successMessage').style.display = 'block'; // using block for simple msg
+        document.getElementById('productDetailsSection').style.display = 'block';
+        document.getElementById('contactFormSection').style.display = 'block';
+        
+        // Populate fields
+        document.getElementById('productImage').src = 'images/' + eligibilityData.product_img1;
+        document.getElementById('itemId').textContent = eligibilityData.product_code;
+        document.getElementById('itemCategory').textContent = eligibilityData.category_id; // Mapping ID to name would be better in backend but ID ok for now
+        document.getElementById('productName').textContent = eligibilityData.product_name;
+        document.getElementById('purchaseDate').textContent = eligibilityData.purchase_date;
+        
+        // Populate hidden form inputs
+        document.getElementById('formItemCode').value = eligibilityData.product_code;
+        document.getElementById('formFabricType').value = eligibilityData.order_fabric_type;
+
+        // Show Price if available
+        if (eligibilityData.order_fabric_price > 0) {
+             const original = parseFloat(eligibilityData.order_fabric_price);
+             const resale = original * (resalePercentage / 100);
+             
+             document.getElementById('originalPriceRow').style.display = 'flex';
+             document.getElementById('originalPrice').textContent = 'LKR ' + original.toFixed(2);
+             
+             document.getElementById('resalePriceRow').style.display = 'flex';
+             document.getElementById('resalePrice').textContent = 'LKR ' + resale.toFixed(2);
+        } else {
+             // Handle missing price case
+             document.getElementById('noFabricMessage').style.display = 'flex';
+        }
+    }
+}
+
+// Eligibility Check Validation (Button Click)
 const checkBtn = document.getElementById('checkAvailabilityBtn');
 if (checkBtn) {
     checkBtn.addEventListener('click', function(e) {
         const val = document.getElementById('itemCodeInput').value.trim();
         if (!val) {
             alert('Please enter an Item Code first.');
-            e.stopImmediatePropagation();
-            // Prevent other handlers if possible, though mostly this alerts the user
-            return false;
+            e.preventDefault();
+            return;
         }
-    }, true); 
+        // Redirect to same page with GET param to trigger PHP logic
+        window.location.href = 'start-reselling.php?check_item=1&item_code=' + encodeURIComponent(val);
+    }); 
 }
 </script>
 
