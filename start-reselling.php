@@ -364,17 +364,17 @@ include_once 'includes/head.php';
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="first_name">First Name</label>
-                        <input type="text" name="first_name" id="first_name" placeholder="First name" required>
+                        <input type="text" name="first_name" id="first_name" placeholder="First name" pattern="[A-Za-z\s]+" title="Name should only contain letters" required>
                     </div>
 
                     <div class="form-group">
                         <label for="last_name">Last Name</label>
-                        <input type="text" name="last_name" id="last_name" placeholder="Last name" required>
+                        <input type="text" name="last_name" id="last_name" placeholder="Last name" pattern="[A-Za-z\s]+" title="Name should only contain letters" required>
                     </div>
 
                     <div class="form-group">
                         <label for="contact_number">Contact Number</label>
-                        <input type="tel" name="contact_number" id="contact_number" placeholder="Contact number" required>
+                        <input type="tel" name="contact_number" id="contact_number" placeholder="Contact number" pattern="[0-9]{9,12}" title="Enter a valid phone number (9-12 digits)" required>
                     </div>
 
                     <div class="form-group">
@@ -435,8 +435,8 @@ if (resellForm) {
         }
         
         // Validate Name (No numbers)
-        if (/\d/.test(fname) || /\d/.test(lname)) {
-            alert('Name validation error: Names cannot contain numbers.');
+        if (/[^a-zA-Z\s]/.test(fname) || /[^a-zA-Z\s]/.test(lname)) {
+            alert('Name validation error: Names cannot contain numbers or symbols.');
             e.preventDefault();
             return;
         }
