@@ -373,12 +373,7 @@ body {
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          <i class="bi bi-x-circle"></i> Close
-        </button>
-        <button type="button" class="btn btn-danger" id="generatePdfBtn" onclick="generatePDF()">
-          <i class="bi bi-file-pdf"></i> Generate PDF
-        </button>
+        <!-- Buttons removed as per request -->
       </div>
     </div>
   </div>
@@ -558,17 +553,7 @@ function showOrderDetails(orderId) {
         });
 }
 
-// Generate PDF function
-function generatePDF() {
-    console.log('Generate PDF clicked. Current Order ID:', currentOrderId); // Debug log
-    
-    if (currentOrderId) {
-        // Open PDF in new tab/download
-        window.open('generate-order-pdf.php?id=' + currentOrderId, '_blank');
-    } else {
-        alert('No order selected. Please view an order first.');
-    }
-}
+
 </script>
 
 <!-- Delete Confirmation Modal -->
