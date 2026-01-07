@@ -454,6 +454,12 @@ if (resellForm) {
              e.preventDefault();
              return;
         }
+
+        // Final Confirmation
+        if (!confirm('Are you sure you want to list this item for resale? Please confirm your details.')) {
+            e.preventDefault();
+            return;
+        }
     });
 }
 
