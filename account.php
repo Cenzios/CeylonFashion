@@ -96,9 +96,9 @@ if (!$user) {
 // Get order statistics
 $stmt = $mysqli->prepare("SELECT 
     COUNT(*) as total_orders,
-    SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) as paid_orders,
-    SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_spent
-    FROM orders WHERE username = ?");
+    COUNT(*) as paid_orders,
+    COALESCE(SUM(total_amount), 0) as total_spent
+    FROM orders WHERE username = ? AND payment_status = 'paid'");
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $orderStats = $stmt->get_result()->fetch_assoc();

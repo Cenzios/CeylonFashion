@@ -20,7 +20,7 @@ $stmt = $mysqli->prepare("
         p.product_code
     FROM orders o
     LEFT JOIN products p ON o.product_id = p.id
-    WHERE o.username = ? 
+    WHERE o.username = ? AND o.payment_status = 'paid'
     ORDER BY o.created_at DESC
 ");
 $stmt->bind_param("s", $username);
@@ -302,15 +302,19 @@ $result = $stmt->get_result();
                                 <td style="color:#555;"><?php echo date('Y.m.d', strtotime($order['created_at'])); ?></td>
                                 <td>
                                     <?php 
-                                        // Map status to simpler text or keep as is
-                                        $statusText = 'Processing';
-                                        if ($order['delivery_status'] == 'delivered') $statusText = 'Delivered';
-                                        elseif ($order['delivery_status'] == 'shipped') $statusText = 'Shipped';
-                                        elseif ($order['delivery_status'] == 'cancelled') $statusText = 'Cancelled';
-                                        elseif ($order['payment_status'] == 'paid' && $order['delivery_status'] == 'pending') $statusText = 'Ready to Deliver'; 
-                                        
-                                        echo htmlspecialchars($statusText);
+                                        $dStatus = $order['delivery_status'];
+                                        $statusColors = [
+                                            'pending' => 'warning',
+                                            'processing' => 'info', 
+                                            'shipped' => 'primary',
+                                            'delivered' => 'success', 
+                                            'cancelled' => 'danger'
+                                        ];
+                                        $badgeColor = isset($statusColors[$dStatus]) ? $statusColors[$dStatus] : 'secondary';
                                     ?>
+                                    <span class="badge bg-<?php echo $badgeColor; ?>">
+                                        <?php echo ucfirst($dStatus); ?>
+                                    </span>
                                 </td>
                             </tr>
                         <?php endwhile; ?>

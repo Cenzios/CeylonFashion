@@ -12,7 +12,7 @@ $username = $_SESSION['username'];
 // Fetch user's orders
 $stmt = $mysqli->prepare("
     SELECT * FROM orders 
-    WHERE username = ? 
+    WHERE username = ? AND payment_status = 'paid'
     ORDER BY created_at DESC
 ");
 $stmt->bind_param("s", $username);
