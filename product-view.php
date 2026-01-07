@@ -394,6 +394,7 @@ include 'components/review-dialog.php';
               <label for="customerName" class="form-label">Full Name <span class="text-danger">*</span></label>
               <input type="text" class="form-control" id="customerName" 
                      value="<?= htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')); ?>" 
+                     pattern="[A-Za-z\s]+" title="Name should only contain letters"
                      required>
             </div>
             <div class="col-md-6 mb-3">
@@ -409,15 +410,16 @@ include 'components/review-dialog.php';
               <label for="customerPhone" class="form-label">Phone Number <span class="text-danger">*</span></label>
               <input type="tel" class="form-control" id="customerPhone" 
                      value="<?= htmlspecialchars($_SESSION['phone'] ?? ''); ?>" 
-                     pattern="[0-9]{10,15}" 
+                     pattern="[0-9]{9,12}" title="9-12 digits"
                      placeholder="0771234567"
                      required>
-              <small class="text-muted">10-15 digits only</small>
+              <small class="text-muted">9-12 digits only</small>
             </div>
             <div class="col-md-6 mb-3">
               <label for="customerCity" class="form-label">City <span class="text-danger">*</span></label>
               <input type="text" class="form-control" id="customerCity" 
                      value="<?= htmlspecialchars($_SESSION['city'] ?? ''); ?>" 
+                     pattern="[A-Za-z\s]+" title="City should only contain letters"
                      required>
             </div>
           </div>
