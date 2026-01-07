@@ -335,8 +335,8 @@ include_once 'includes/head.php';
             </div>
         </div>
 
-        <!-- Contact Form Section (hidden by default) -->
-        <div id="contactFormSection" class="contact-form-section" style="display: none;">
+        <!-- Contact Form Section (hidden by default unless success) -->
+        <div id="contactFormSection" class="contact-form-section" style="display: <?= $showSuccess ? 'block' : 'none'; ?>;">
             <?php if ($showSuccess): ?>
             <div class="alert-message final-success-message" style="text-align: center; flex-direction: column; gap: 20px; padding: 40px;">
                 <div style="font-size: 60px;">🎉</div>
