@@ -479,7 +479,7 @@ if (checkBtn) {
         background: #F9FAFB;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
         margin: 0;
-        padding: 0;
+        padding-top: 100px; /* Added padding to clear fixed navbar */
         color: var(--text-dark);
     }
 
