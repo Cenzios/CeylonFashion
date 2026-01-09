@@ -25,8 +25,8 @@ if (isset($_SESSION['id']) && $_SESSION['id'] === $userId) {
     exit;
 }
 
-// ---- Delete user ----
-$stmt = $mysqli->prepare("DELETE FROM users WHERE id = ?");
+// ---- Soft Delete user ----
+$stmt = $mysqli->prepare("UPDATE users SET is_deleted = 1 WHERE id = ?");
 $stmt->bind_param('i', $userId);
 
 if ($stmt->execute()) {

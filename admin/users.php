@@ -41,13 +41,15 @@ if (!empty($_GET['search'])) {
     $where[] = "(fname LIKE ? OR lname LIKE ? OR email LIKE ?)";
     $params[] = $term; // fname
     $params[] = $term; // lname
+
+    
     $params[] = $term; // email
     $types .= "sss";
 }
 
-$sql = "SELECT id, fname, lname, email, created, type FROM users";
+$sql = "SELECT id, fname, lname, email, created, type FROM users WHERE is_deleted = 0";
 if (!empty($where)) {
-    $sql .= " WHERE " . implode(" AND ", $where);
+    $sql .= " AND " . implode(" AND ", $where);
 }
 $sql .= " ORDER BY id DESC";
 
