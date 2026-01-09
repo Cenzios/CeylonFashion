@@ -30,6 +30,7 @@ if ($product) {
     // Delete all product image files if they exist
     $imageFields = ['product_img1', 'product_img2', 'product_img3', 'product_img4'];
     
+    /* 
     foreach ($imageFields as $field) {
         if (!empty($product[$field])) {
             $imgPath = '../images/products/' . $product[$field];
@@ -38,7 +39,9 @@ if ($product) {
             }
         }
     }
+    */
 
+    /*
     // Delete associated fabrics first (foreign key constraint)
     $delFabricsStmt = $mysqli->prepare("DELETE FROM product_fabrics WHERE product_id=?");
     $delFabricsStmt->bind_param("i", $pid);
@@ -56,9 +59,11 @@ if ($product) {
     $delQuestionsStmt->bind_param("i", $pid);
     $delQuestionsStmt->execute();
     $delQuestionsStmt->close();
+    */
 
     // Delete product from database
-    $delStmt = $mysqli->prepare("DELETE FROM products WHERE id=?");
+    // Soft Delete product from database
+    $delStmt = $mysqli->prepare("UPDATE products SET is_deleted = 1 WHERE id=?");
     $delStmt->bind_param("i", $pid);
     $delStmt->execute();
     $delStmt->close();

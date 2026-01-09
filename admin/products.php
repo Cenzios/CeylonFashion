@@ -13,6 +13,7 @@ if (!$isAdmin) {
 // ---- Fetch products with fabric details ----
 $sql = "SELECT p.id, p.product_name, p.product_code, p.product_desc, p.product_img1
         FROM products p
+        WHERE p.is_deleted = 0
         ORDER BY p.id DESC";
 $result = $mysqli->query($sql);
 if ($result === false) {
