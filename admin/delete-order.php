@@ -16,8 +16,8 @@ if (!isset($_GET['id'])) {
 
 $orderId = (int)$_GET['id'];
 
-// Delete the order
-$stmt = $mysqli->prepare("DELETE FROM orders WHERE id = ?");
+// Soft Delete the order
+$stmt = $mysqli->prepare("UPDATE orders SET is_deleted = 1 WHERE id = ?");
 $stmt->bind_param("i", $orderId);
 
 if ($stmt->execute()) {
