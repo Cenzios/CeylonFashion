@@ -16,7 +16,7 @@ $stmt = $mysqli->prepare("
            p.product_img1, p.product_img2, p.product_img3, p.product_img4
     FROM reseller_products rp
     INNER JOIN products p ON rp.product_id = p.id
-    WHERE rp.id = ? AND rp.status = 'approved'
+    WHERE rp.id = ? AND rp.status IN ('approved', 'available', 'sold')
 ");
 $stmt->bind_param("i", $reseller_id);
 $stmt->execute();

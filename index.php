@@ -43,7 +43,7 @@ include_once 'config.php';
                      'used' as category
               FROM reseller_products rp
               INNER JOIN products p ON rp.product_id = p.id
-              WHERE rp.status = 'approved' AND p.category != 'used'
+              WHERE rp.status IN ('approved', 'available', 'sold') AND p.category != 'used'
               ORDER BY rp.created_at DESC LIMIT 6",
     'view_all_link' => 'used-collection.php',
     'is_reseller' => true

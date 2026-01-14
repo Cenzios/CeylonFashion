@@ -32,15 +32,10 @@ $params = [];
 $types = "";
 
 if ($availableOnly) {
-    $conditions[] = "rp.status = 'approved'";
+    $conditions[] = "rp.status IN ('approved', 'available')";
 } else {
-    // Show approved and sold, but usually checking approved is default logic in some parts, but here we show sold items too unless filtered
-    // Original query had: WHERE rp.status = 'approved' for ALL items.
-    // The user said "Show Only Available Items" implies we usually show Sold items too?
-    // Wait, the original code had `WHERE rp.status = 'approved'`. So previously ONLY available items were shown?
-    // User request: "Pagination should add after available and sold-out items". This implies BOTH should be shown by default.
-    // So I should change base condition to show 'approved' OR 'sold'.
-    $conditions[] = "rp.status IN ('approved', 'sold')";
+    // Show approved, available, and sold items
+    $conditions[] = "rp.status IN ('approved', 'available', 'sold')";
 }
 
 // Price Filter
@@ -96,7 +91,7 @@ $sql = "SELECT DISTINCT rp.*,
         INNER JOIN products p ON rp.product_id = p.id
         LEFT JOIN product_colors pc ON p.id = pc.product_id 
         $whereClause
-        ORDER BY FIELD(rp.status, 'approved', 'sold'), rp.created_at DESC
+        ORDER BY rp.created_at DESC
         LIMIT ?, ?";
 
 // Add limit params
