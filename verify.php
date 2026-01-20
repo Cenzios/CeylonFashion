@@ -70,7 +70,7 @@ $user = $stmt->fetch();
 // ---- VERIFY PASSWORD ----
 // Check if user exists first
 if (!$user) {
-  $msg = 'Email or password is incorrect.';
+  $msg = 'No account found with this email.';
   if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
     json_response(false, $msg);
   }
@@ -126,7 +126,7 @@ if ($passwordMatch) {
 }
 
 // ---- FAIL: Invalid credentials ----
-$msg = 'Email or password is incorrect.';
+$msg = 'Incorrect email or password.';
 if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
   json_response(false, $msg);
 }

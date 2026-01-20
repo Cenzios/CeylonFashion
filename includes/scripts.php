@@ -201,16 +201,23 @@
         const pwd = (pwdEl.value || '');
 
         // Client-side validation
+        if (!email) {
+          showMessage('loginMessage', 'Email address is required.', 'error');
+          emailEl.focus();
+          submitBtn.disabled = false; return;
+        }
+
         const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         if (!emailOk) {
           showMessage('loginMessage', 'Please enter a valid email address.', 'error');
           emailEl.focus();
-          return;
+          submitBtn.disabled = false; return;
         }
-        if (pwd.length < 6) {
-          showMessage('loginMessage', 'Password must be at least 6 characters.', 'error');
+        
+        if (!pwd) {
+          showMessage('loginMessage', 'Password is required.', 'error');
           pwdEl.focus();
-          return;
+          submitBtn.disabled = false; return;
         }
 
         // Show loading state
