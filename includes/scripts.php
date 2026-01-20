@@ -376,7 +376,7 @@
         registerSidebar.show();
         
         if (error === 'email_exists') {
-          showMessage('registerMessage', 'Email already registered! Please login or use another email.', 'error');
+          showMessage('registerMessage', 'E-mail is already registered. Please use a different email or sign in', 'error');
         } else {
           showMessage('registerMessage', 'Registration failed. Please try again.', 'error');
         }

@@ -223,31 +223,49 @@
       };
 
       const validators = {
-          name: (value) => {
-              if (!value) return 'Name is required.';
-              if (/\d/.test(value)) return 'Please enter a valid name.'; // Matches user image text
+          fname: (value) => {
+              if (!value) return 'First Name is required';
+              if (!/^[A-Za-z]+$/.test(value)) return 'First Name must contain only letters';
+              if (value.length < 2) return 'First Name must be at least 2 characters long';
+              if (value.length > 50) return 'First Name cannot exceed 50 characters';
+              return '';
+          },
+          lname: (value) => {
+              if (!value) return 'Last Name is required';
+              if (!/^[A-Za-z]+$/.test(value)) return 'Last Name must contain only letters';
+              if (value.length < 2) return 'Last Name must be at least 2 characters long';
+              if (value.length > 50) return 'Last Name cannot exceed 50 characters';
               return '';
           },
           email: (value) => {
-              if (!value) return 'Email is required.';
-              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address.';
+              if (!value) return 'Email is required';
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
               return '';
           },
           password: (value) => {
-              if (!value) return 'Password is required.';
-              if (value.length < 6) return 'Password must be at least 6 characters.';
+              // Min 8, Upper, Lower, Number, Special
+              if (!value) return 'Password is required'; // implicit from table "When input is below 8..." but empty usually means "Password is required" or "Min 8" logic dominates. Table says "Minimum length: 8 characters... When input is below 8...". I'll use the long message for length < 8.
+              // Logic check:
+              const hasUpper = /[A-Z]/.test(value);
+              const hasLower = /[a-z]/.test(value);
+              const hasNum = /[0-9]/.test(value);
+              const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(value);
+              
+              if (value.length < 8 || !hasUpper || !hasLower || !hasNum || !hasSpecial) {
+                  return 'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character';
+              }
               return '';
           },
           confirmPassword: (value) => {
-              if (!value) return 'Please confirm your password.';
-              if (value !== pwdInput.value) return 'Passwords do not match.';
+              if (!value) return 'Confirm Password is required';
+              if (value !== pwdInput.value) return 'Passwords do not match';
               return '';
           }
       };
 
       const inputs = [
-          { input: fnameInput, validator: validators.name },
-          { input: lnameInput, validator: validators.name },
+          { input: fnameInput, validator: validators.fname },
+          { input: lnameInput, validator: validators.lname },
           { input: emailInput, validator: validators.email },
           { input: pwdInput, validator: validators.password },
           { input: pwdConfirmInput, validator: validators.confirmPassword }
