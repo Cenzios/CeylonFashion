@@ -32,9 +32,10 @@ $fallback = 'assets/no-image.png';
             // Search query
             $stmt = $mysqli->prepare("
                 SELECT * FROM products 
-                WHERE product_name LIKE ? 
+                WHERE (product_name LIKE ? 
                 OR category LIKE ?
-                OR product_desc LIKE ?
+                OR product_desc LIKE ?)
+                AND is_deleted = 0
                 ORDER BY product_name ASC
             ");
             $searchParam = "%{$searchTerm}%";

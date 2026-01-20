@@ -17,7 +17,7 @@ $sql = "SELECT p.*, MIN(pf.fabric_price) as min_price
         FROM products p 
         LEFT JOIN product_fabrics pf ON p.id = pf.product_id 
         LEFT JOIN product_colors pc ON p.id = pc.product_id 
-        WHERE p.created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59'";
+        WHERE p.created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59' AND p.is_deleted = 0";
 
 $params = [];
 $types = "";

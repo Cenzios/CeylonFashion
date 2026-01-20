@@ -27,7 +27,7 @@ if ($page < 1) $page = 1;
 $offset = ($page - 1) * $limit;
 
 // Base Conditions
-$conditions = ["p.category != 'used'"];
+$conditions = ["p.category != 'used'", "p.is_deleted = 0"];
 $params = [];
 $types = "";
 

@@ -50,7 +50,7 @@ $product_id = (int)$_GET['id'];
 // ------------------------------
 // Fetch Product
 // ------------------------------
-$stmt = $mysqli->prepare("SELECT id, product_name, product_code, product_img1, product_img2, product_img3, product_img4, product_desc, category FROM products WHERE id = ?");
+$stmt = $mysqli->prepare("SELECT id, product_name, product_code, product_img1, product_img2, product_img3, product_img4, product_desc, category FROM products WHERE id = ? AND is_deleted = 0");
 $stmt->bind_param("i", $product_id);
 $stmt->execute();
 $product = $stmt->get_result()->fetch_assoc();

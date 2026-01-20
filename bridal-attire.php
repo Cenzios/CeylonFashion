@@ -16,7 +16,7 @@ $sql = "SELECT p.*, MIN(pf.fabric_price) as min_price
         FROM products p 
         LEFT JOIN product_fabrics pf ON p.id = pf.product_id 
         LEFT JOIN product_colors pc ON p.id = pc.product_id 
-        WHERE p.category = 'bridalAttire'";
+        WHERE p.category = 'bridalAttire' AND p.is_deleted = 0";
 
 $params = [];
 $types = "";

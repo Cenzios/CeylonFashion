@@ -24,6 +24,7 @@ function renderProductSection($options) {
   $sql = $options['sql'] ?? "
     SELECT p.id, p.product_code, p.product_name, p.product_desc, p.product_img1, p.product_img2, p.product_img3, p.product_img4, p.category
     FROM products p
+    WHERE p.is_deleted = 0
     ORDER BY p.id DESC
     LIMIT 6
   ";

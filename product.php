@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 }
 
 // --- Fetch product ---
-$stmt = $mysqli->prepare("SELECT id, product_code, product_name, product_desc, price, qty, product_img_name FROM products WHERE id = ? LIMIT 1");
+$stmt = $mysqli->prepare("SELECT id, product_code, product_name, product_desc, price, qty, product_img_name FROM products WHERE id = ? AND is_deleted = 0 LIMIT 1");
 $stmt->bind_param("i", $productId);
 $stmt->execute();
 $res = $stmt->get_result();
