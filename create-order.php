@@ -77,18 +77,6 @@ try {
         
         // Let's stick to what we have. I will fetch `price` and `quantity` from cart.
         // I will insert empty size/fabric if unavailable.
-        // Or better: Fix cart-add.php later? No time. user asked to fix checkout button.
-        
-        // Helper to fetch code
-        function getPCode($mysqli, $pid) {
-            $s = $mysqli->prepare("SELECT product_code FROM products WHERE id = ?");
-            $s->bind_param("i", $pid);
-            $s->execute();
-            $r = $s->get_result()->fetch_assoc();
-            $s->close();
-            return $r ? $r['product_code'] : '';
-        }
-
         // Revised Cart Fetch:
         $stmt = $mysqli->prepare("
             SELECT c.product_id, c.quantity, c.price, c.fabric_id, c.size, 
@@ -106,16 +94,8 @@ try {
 
         if (empty($cartItems)) throw new Exception('Cart is empty');
 
-        $stmtInsert = $mysqli->prepare("
-            INSERT INTO orders (
-                order_id, username, product_id, product_code, product_name, 
-                fabric_id, fabric_type, size, quantity, 
-                unit_price, total_amount, payment_status,
-                customer_name, customer_email, customer_phone, 
-                delivery_address, city
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
-        ");
-
+        // Store in Session instead of DB
+        $orderData = [];
         foreach ($cartItems as $item) {
             $p_name = $item['product_name'];
             $p_code = $item['product_code'];
@@ -128,17 +108,29 @@ try {
             $f_type = !empty($item['fabric_type']) ? $item['fabric_type'] : 'Standard';
             $sz = !empty($item['size']) ? $item['size'] : 'Standard';
 
-            $stmtInsert->bind_param(
-                "ssississiddsssss",
-                $order_id, $username, $item['product_id'], $p_code, $p_name,
-                $f_id, $f_type, $sz, $qty,
-                $u_price, $t_amt,
-                $customer_name, $customer_email, $customer_phone, $delivery_address, $city
-            );
-            $stmtInsert->execute();
+            $orderData[] = [
+                'order_id' => $order_id,
+                'username' => $username,
+                'product_id' => $item['product_id'],
+                'product_code' => $p_code,
+                'product_name' => $p_name,
+                'fabric_id' => $f_id,
+                'fabric_type' => $f_type,
+                'size' => $sz,
+                'quantity' => $qty,
+                'unit_price' => $u_price,
+                'total_amount' => $t_amt,
+                'customer_name' => $customer_name,
+                'customer_email' => $customer_email,
+                'customer_phone' => $customer_phone,
+                'delivery_address' => $delivery_address,
+                'city' => $city
+            ];
+            
             $total_amount += $t_amt;
         }
-        $stmtInsert->close();
+        
+        $_SESSION['temp_orders'][$order_id] = $orderData;
 
     } else {
         // --- SINGLE ITEM CHECKOUT (Buy Now) ---
@@ -168,41 +160,29 @@ try {
 
         $unit_price = (float)$fabric['fabric_price'];
         $total_amount = $unit_price * $quantity;
+        
+        // Store in Session instead of DB
+        $orderData = [];
+        $orderData[] = [
+            'order_id' => $order_id,
+            'username' => $username,
+            'product_id' => $product_id,
+            'product_code' => $product['product_code'],
+            'product_name' => $product['product_name'],
+            'fabric_id' => $fabric_id,
+            'fabric_type' => $fabric['fabric_type'],
+            'size' => $size,
+            'quantity' => $quantity,
+            'unit_price' => $unit_price,
+            'total_amount' => $total_amount,
+            'customer_name' => $customer_name,
+            'customer_email' => $customer_email,
+            'customer_phone' => $customer_phone,
+            'delivery_address' => $delivery_address,
+            'city' => $city
+        ];
 
-        // Insert with product_code
-        $stmt = $mysqli->prepare("
-            INSERT INTO orders (
-                order_id, username, product_id, product_code, product_name, 
-                fabric_id, fabric_type, size, quantity, 
-                unit_price, total_amount, payment_status,
-                customer_name, customer_email, customer_phone, 
-                delivery_address, city
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
-        ");
-        
-        $p_code = $product['product_code'];
-        
-        $stmt->bind_param(
-            "ssississiddsssss",
-            $order_id, 
-            $username, 
-            $product_id,
-            $p_code, // Added
-            $product['product_name'],
-            $fabric_id, 
-            $fabric['fabric_type'], 
-            $size, 
-            $quantity,
-            $unit_price, 
-            $total_amount,
-            $customer_name, 
-            $customer_email, 
-            $customer_phone, 
-            $delivery_address, 
-            $city
-        );
-        $stmt->execute();
-        $stmt->close();
+        $_SESSION['temp_orders'][$order_id] = $orderData;
     }
 
     echo json_encode([

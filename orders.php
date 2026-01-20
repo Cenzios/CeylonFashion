@@ -301,6 +301,7 @@ $result = $stmt->get_result();
                                 <td style="color:#555;"><?php echo htmlspecialchars($order['product_name']); ?></td>
                                 <td style="color:#555;"><?php echo date('Y.m.d', strtotime($order['created_at'])); ?></td>
                                 <td>
+                                    <span class="badge bg-success">Paid</span>
                                     <?php 
                                         $dStatus = $order['delivery_status'];
                                         $statusColors = [
@@ -311,9 +312,12 @@ $result = $stmt->get_result();
                                             'cancelled' => 'danger'
                                         ];
                                         $badgeColor = isset($statusColors[$dStatus]) ? $statusColors[$dStatus] : 'secondary';
+                                        
+                                        // If pending, visually show as Processing or just Delivery: Pending
+                                        $displayStatus = ucfirst($dStatus);
                                     ?>
                                     <span class="badge bg-<?php echo $badgeColor; ?>">
-                                        <?php echo ucfirst($dStatus); ?>
+                                        Delivery: <?php echo $displayStatus; ?>
                                     </span>
                                 </td>
                             </tr>

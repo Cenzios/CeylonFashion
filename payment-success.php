@@ -4,10 +4,56 @@ require_once 'config.php';
 
 $order_id = isset($_GET['order_id']) ? $_GET['order_id'] : '';
 
-// WORKAROUND FOR LOCALHOST: Force update status to 'paid'
-// Since payment-notify.php cannot be reached by PayHere on localhost,
-// we update the status here when the user is redirected back.
-if ($order_id) {
+// WORKAROUND FOR LOCALHOST & SESSION BASED CHECKOUT
+// We retrieve order details from Session (set in create-order.php) and INSERT them now.
+
+if ($order_id && isset($_SESSION['temp_orders'][$order_id])) {
+    $orderDataItems = $_SESSION['temp_orders'][$order_id];
+    
+    $stmtInsert = $mysqli->prepare("
+        INSERT INTO orders (
+            order_id, username, product_id, product_code, product_name, 
+            fabric_id, fabric_type, size, quantity, 
+            unit_price, total_amount, payment_status,
+            customer_name, customer_email, customer_phone, 
+            delivery_address, city, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?, ?, ?, ?, NOW(), NOW())
+    ");
+    
+    if ($stmtInsert) {
+        foreach ($orderDataItems as $item) {
+             $stmtInsert->bind_param(
+                "ssississiddsssss",
+                $item['order_id'], 
+                $item['username'], 
+                $item['product_id'], 
+                $item['product_code'], 
+                $item['product_name'],
+                $item['fabric_id'], 
+                $item['fabric_type'], 
+                $item['size'], 
+                $item['quantity'],
+                $item['unit_price'], 
+                $item['total_amount'],
+                $item['customer_name'], 
+                $item['customer_email'], 
+                $item['customer_phone'], 
+                $item['delivery_address'], 
+                $item['city']
+            );
+            $stmtInsert->execute();
+        }
+        $stmtInsert->close();
+        
+        // Remove from session after saving
+        unset($_SESSION['temp_orders'][$order_id]);
+    } else {
+        error_log("Prepare failed in payment-success.php: " . $mysqli->error);
+    }
+} else if ($order_id) {
+    // Fallback: If order exists in DB (legacy/from earlier/webhook), just update status
+    // But since we removed INSERT from create-order, this only runs if somehow webhook fired first (impossible on localhost)
+    // or if this is an old order.
     $updateStmt = $mysqli->prepare("UPDATE orders SET payment_status = 'paid', updated_at = NOW() WHERE order_id = ?");
     $updateStmt->bind_param("s", $order_id);
     $updateStmt->execute();
