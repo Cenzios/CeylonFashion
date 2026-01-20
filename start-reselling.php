@@ -364,28 +364,33 @@ include_once 'includes/head.php';
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="first_name">First Name</label>
-                        <input type="text" name="first_name" id="first_name" placeholder="First name" pattern="[A-Za-z\s]+" title="Name should only contain letters" required>
+                        <input type="text" name="first_name" id="first_name" placeholder="First name" required>
+                        <div class="invalid-feedback-custom"></div>
                     </div>
 
                     <div class="form-group">
                         <label for="last_name">Last Name</label>
-                        <input type="text" name="last_name" id="last_name" placeholder="Last name" pattern="[A-Za-z\s]+" title="Name should only contain letters" required>
+                        <input type="text" name="last_name" id="last_name" placeholder="Last name" required>
+                        <div class="invalid-feedback-custom"></div>
                     </div>
 
                     <div class="form-group">
                         <label for="contact_number">Contact Number</label>
-                        <input type="tel" name="contact_number" id="contact_number" placeholder="Contact number" pattern="[0-9]{9,12}" title="Enter a valid phone number (9-12 digits)" required>
+                        <input type="tel" name="contact_number" id="contact_number" placeholder="Contact number" required>
+                        <div class="invalid-feedback-custom"></div>
                     </div>
 
                     <div class="form-group">
                         <label for="email">Email</label>
                         <input type="email" name="email" id="email" placeholder="Email address" required>
+                        <div class="invalid-feedback-custom"></div>
                     </div>
                 </div>
 
                 <div class="form-group full-width">
                     <label for="address">Address</label>
                     <input type="text" name="address" id="address" placeholder="Enter Address" required>
+                    <div class="invalid-feedback-custom"></div>
                 </div>
 
                 <div class="form-group full-width">
@@ -420,45 +425,80 @@ function closeAlert(id) {
 
 // Resale Form Validation
 const resellForm = document.getElementById('resellForm');
-if (resellForm) {
-    resellForm.addEventListener('submit', function(e) {
-        const fname = document.getElementById('first_name').value.trim();
-        const lname = document.getElementById('last_name').value.trim();
-        const contact = document.getElementById('contact_number').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const address = document.getElementById('address').value.trim();
-        
-        if (!fname || !lname || !contact || !email || !address) {
-            alert('Please fill in all required fields.');
-            e.preventDefault();
-            return;
-        }
-        
-        // Validate Name (No numbers)
-        if (/[^a-zA-Z\s]/.test(fname) || /[^a-zA-Z\s]/.test(lname)) {
-            alert('Name validation error: Names cannot contain numbers or symbols.');
-            e.preventDefault();
-            return;
-        }
-        
-        // Validate Contact Number
-        if (!/^[0-9]{9,12}$/.test(contact)) {
-             alert('Please enter a valid numeric contact number (9-12 digits).');
-             e.preventDefault();
-             return;
-        }
 
-        // Validate Email
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-             alert('Please enter a valid email address.');
-             e.preventDefault();
-             return;
+function validateResellField(input, type) {
+    const value = input.value.trim();
+    let errorMsg = '';
+    
+    const errorDiv = input.nextElementSibling.classList.contains('invalid-feedback-custom') 
+                   ? input.nextElementSibling 
+                   : null;
+
+    if (!errorDiv) return true;
+
+    if (type === 'name') {
+        if (!value) errorMsg = 'Name is required';
+        else if (!/^[A-Za-z\s]+$/.test(value)) errorMsg = 'Name must contain only letters';
+        else if (value.length < 2) errorMsg = 'Name must be at least 2 characters';
+    } else if (type === 'email') {
+        if (!value) errorMsg = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) errorMsg = 'Please enter a valid email address';
+    } else if (type === 'phone') {
+        if (!value) errorMsg = 'Contact Number is required';
+        else if (!/^[0-9]{9,12}$/.test(value)) errorMsg = 'Contact must be 9-12 digits';
+    } else if (type === 'address') {
+        if (!value) errorMsg = 'Address is required';
+    }
+
+    if (errorMsg) {
+        input.classList.add('is-invalid-custom');
+        errorDiv.textContent = errorMsg;
+        return false;
+    } else {
+        input.classList.remove('is-invalid-custom');
+        errorDiv.textContent = '';
+        return true;
+    }
+}
+
+// Setup live validation
+if (resellForm) {
+    const fields = [
+        { id: 'first_name', type: 'name' },
+        { id: 'last_name', type: 'name' },
+        { id: 'contact_number', type: 'phone' },
+        { id: 'email', type: 'email' },
+        { id: 'address', type: 'address' }
+    ];
+
+    fields.forEach(f => {
+        const input = document.getElementById(f.id);
+        if (input) {
+            input.addEventListener('input', () => validateResellField(input, f.type));
+            input.addEventListener('blur', () => validateResellField(input, f.type));
+        }
+    });
+
+    resellForm.addEventListener('submit', function(e) {
+        let isValid = true;
+        fields.forEach(f => {
+            const input = document.getElementById(f.id);
+            if (input && !validateResellField(input, f.type)) {
+                isValid = false;
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            // Scroll to first invalid
+            const firstInvalid = document.querySelector('.is-invalid-custom');
+            if (firstInvalid) firstInvalid.scrollIntoView({behavior: 'smooth', block: 'center'});
+            return;
         }
 
         // Final Confirmation
         if (!confirm('Are you sure you want to list this item for resale? Please confirm your details.')) {
             e.preventDefault();
-            return;
         }
     });
 }
@@ -999,6 +1039,29 @@ if (checkBtn) {
         .contact-form-section {
             padding: 25px 20px;
         }
+    }
+    /* Validation Styles */
+    .invalid-feedback-custom {
+        color: red !important;
+        width: 100%;
+        margin-top: 0.25rem;
+        font-size: 0.875rem;
+        display: none;
+    }
+
+    .item-input.is-invalid-custom,
+    input.is-invalid-custom {
+        border-color: #dc3545 !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right calc(0.375em + 0.1875rem) center;
+        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        padding-right: calc(1.5em + 0.75rem);
+    }
+
+    .item-input.is-invalid-custom ~ .invalid-feedback-custom,
+    input.is-invalid-custom ~ .invalid-feedback-custom {
+        display: block;
     }
 </style>
 
