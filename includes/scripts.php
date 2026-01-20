@@ -268,31 +268,7 @@
     // ============================================
     // REGISTER FORM HANDLER
     // ============================================
-    const registerForm = document.getElementById('offcanvasRegisterForm');
-    
-    if (registerForm) {
-      registerForm.addEventListener('submit', function(e) {
-        const pwd = document.getElementById('pwd').value;
-        const pwdConfirm = document.getElementById('pwdConfirm').value;
-        
-        if (pwd !== pwdConfirm) {
-          e.preventDefault();
-          showMessage('registerMessage', 'Passwords do not match!', 'error');
-          return false;
-        }
-        
-        // Show loading state
-        const submitBtn = document.getElementById('registerSubmitBtn');
-        const btnText = document.getElementById('registerBtnText');
-        const spinner = document.getElementById('registerSpinner');
-        
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          btnText.style.display = 'none';
-          spinner.style.display = 'inline-block';
-        }
-      });
-    }
+    // Register handler moved to register-sidebar.php to avoid conflicts
 
     // ============================================
     // ICON CLICK HANDLERS

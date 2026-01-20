@@ -278,6 +278,17 @@
 
               if (!isValid) {
                   e.preventDefault();
+              } else {
+                  // Show loading state only if available and valid
+                  const submitBtn = document.getElementById('registerSubmitBtn');
+                  const btnText = document.getElementById('registerBtnText');
+                  const spinner = document.getElementById('registerSpinner');
+
+                  if (submitBtn && btnText && spinner) {
+                      submitBtn.disabled = true;
+                      btnText.style.display = 'none';
+                      spinner.style.display = 'inline-block';
+                  }
               }
           });
       }
