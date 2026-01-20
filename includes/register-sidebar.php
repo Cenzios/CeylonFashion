@@ -14,14 +14,17 @@
       <div class="mb-3">
         <label for="fname" class="form-label">First Name <span class="text-danger">*</span></label>
         <input type="text" class="form-control form-control-lg" id="fname" name="fname" placeholder="First Name" required>
+        <div class="invalid-feedback-custom"></div>
       </div>
       <div class="mb-3">
         <label for="lname" class="form-label">Last Name <span class="text-danger">*</span></label>
         <input type="text" class="form-control form-control-lg" id="lname" name="lname" placeholder="Last Name" required>
+        <div class="invalid-feedback-custom"></div>
       </div>
       <div class="mb-3">
         <label for="emailReg" class="form-label">Email <span class="text-danger">*</span></label>
         <input type="email" class="form-control form-control-lg" id="emailReg" name="email" placeholder="Email" required>
+        <div class="invalid-feedback-custom"></div>
       </div>
       <div class="mb-3">
         <label for="pwd" class="form-label">Password <span class="text-danger">*</span></label>
@@ -33,6 +36,7 @@
               <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
             </svg>
           </button>
+          <div class="invalid-feedback-custom"></div>
         </div>
         <small class="text-muted">At least 6 characters</small>
       </div>
@@ -46,6 +50,7 @@
               <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
             </svg>
           </button>
+          <div class="invalid-feedback-custom"></div>
         </div>
       </div>
       <div class="d-grid">
@@ -147,6 +152,32 @@
   .btn-toggle-pass:hover {
     color: #343a40;
   }
+  
+  /* Validation Styles - Local Override */
+  .invalid-feedback-custom {
+    color: red !important; /* Explicit red color */
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    display: none;
+  }
+  
+  .form-control.is-invalid-custom {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    padding-right: calc(1.5em + 0.75rem);
+  }
+  
+  .form-control.is-invalid-custom ~ .invalid-feedback-custom {
+    display: block;
+  }
+  
+  .password-wrapper .form-control.is-invalid-custom {
+    background-position: right 2.5rem center;
+  }
 </style>
 
 <script>
@@ -160,36 +191,95 @@
   });
 
   // Client-side Registration Validation
-  document.getElementById('offcanvasRegisterForm').addEventListener('submit', function(e) {
-      const fname = document.getElementById('fname').value.trim();
-      const lname = document.getElementById('lname').value.trim();
-      const email = document.getElementById('emailReg').value.trim();
-      const pwd = document.getElementById('pwd').value;
-      const pwdConfirm = document.getElementById('pwdConfirm').value;
-      const msgDiv = document.getElementById('registerMessage');
-      
-      let error = '';
+  document.addEventListener('DOMContentLoaded', function() {
+      const registerForm = document.getElementById('offcanvasRegisterForm');
+      const fnameInput = document.getElementById('fname');
+      const lnameInput = document.getElementById('lname');
+      const emailInput = document.getElementById('emailReg');
+      const pwdInput = document.getElementById('pwd');
+      const pwdConfirmInput = document.getElementById('pwdConfirm');
 
-      if (!fname || !lname || !email || !pwd || !pwdConfirm) {
-          error = 'Please fill in all fields.';
-      } else if (/\d/.test(fname) || /\d/.test(lname)) {
-          error = 'Name validation error: Names cannot contain numbers.';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          error = 'Please enter a valid email address.';
-      } else if (pwd.length < 6) {
-          error = 'Password must be at least 6 characters.';
-      } else if (pwd !== pwdConfirm) {
-          error = 'Passwords do not match.';
+      const validateField = (input, validator) => {
+          const value = input.value.trim();
+          const errorMessage = validator(value);
+          // Find error div: try next sibling, or if in wrapper, sibling of input (this logic needs to be robust)
+          // For password wrappers, input is inside wrapper. Error div is appended to wrapper (child of wrapper, sibling of input).
+          // For normal inputs, error div is next sibling.
+          let errorDiv;
+          if (input.parentElement.classList.contains('password-wrapper')) {
+             errorDiv = input.parentElement.querySelector('.invalid-feedback-custom');
+          } else {
+             errorDiv = input.nextElementSibling;
+          }
+          
+          if (errorMessage) {
+              input.classList.add('is-invalid-custom');
+              if (errorDiv) errorDiv.textContent = errorMessage;
+              return false;
+          } else {
+              input.classList.remove('is-invalid-custom');
+              return true;
+          }
+      };
+
+      const validators = {
+          name: (value) => {
+              if (!value) return 'Name is required.';
+              if (/\d/.test(value)) return 'Please enter a valid name.'; // Matches user image text
+              return '';
+          },
+          email: (value) => {
+              if (!value) return 'Email is required.';
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address.';
+              return '';
+          },
+          password: (value) => {
+              if (!value) return 'Password is required.';
+              if (value.length < 6) return 'Password must be at least 6 characters.';
+              return '';
+          },
+          confirmPassword: (value) => {
+              if (!value) return 'Please confirm your password.';
+              if (value !== pwdInput.value) return 'Passwords do not match.';
+              return '';
+          }
+      };
+
+      const inputs = [
+          { input: fnameInput, validator: validators.name },
+          { input: lnameInput, validator: validators.name },
+          { input: emailInput, validator: validators.email },
+          { input: pwdInput, validator: validators.password },
+          { input: pwdConfirmInput, validator: validators.confirmPassword }
+      ];
+
+      inputs.forEach(({ input, validator }) => {
+          if (input) {
+              input.addEventListener('input', () => validateField(input, validator));
+              input.addEventListener('blur', () => validateField(input, validator));
+          }
+      });
+
+      // Also re-validate confirm password when main password changes
+      if (pwdInput) {
+          pwdInput.addEventListener('input', () => {
+              if (pwdConfirmInput.value) validateField(pwdConfirmInput, validators.confirmPassword);
+          });
       }
 
-      if (error) {
-          e.preventDefault();
-          msgDiv.style.display = 'block';
-          msgDiv.className = 'register-message-error';
-          msgDiv.textContent = error;
-      } else {
-          // Clear error if any
-          msgDiv.style.display = 'none';
+      if (registerForm) {
+          registerForm.addEventListener('submit', function(e) {
+              let isValid = true;
+              inputs.forEach(({ input, validator }) => {
+                  if (input && !validateField(input, validator)) {
+                      isValid = false;
+                  }
+              });
+
+              if (!isValid) {
+                  e.preventDefault();
+              }
+          });
       }
   });
 </script>

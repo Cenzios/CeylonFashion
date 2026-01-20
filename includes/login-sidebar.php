@@ -18,6 +18,7 @@
           placeholder="Email Address"
           required
         >
+        <div class="invalid-feedback-custom"></div>
       </div>
 
       <div class="mb-4">
@@ -36,6 +37,7 @@
               <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
             </svg>
           </button>
+          <div class="invalid-feedback-custom"></div>
         </div>
       </div>
 
@@ -165,4 +167,87 @@
   .btn-toggle-pass:hover {
     color: #343a40;
   }
+  
+  /* Validation Styles - Local Override */
+  .invalid-feedback-custom {
+    color: red !important; /* Explicit red color */
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    display: none;
+  }
+  
+  .form-control.is-invalid-custom {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    padding-right: calc(1.5em + 0.75rem);
+  }
+  
+  .form-control.is-invalid-custom ~ .invalid-feedback-custom {
+    display: block;
+  }
+  
+  .password-wrapper .form-control.is-invalid-custom {
+    background-position: right 2.5rem center;
+  }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('offcanvasLoginForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+
+    const validateField = (input, validator) => {
+        const value = input.value.trim();
+        const errorMessage = validator(value);
+        const errorDiv = input.parentElement.querySelector('.invalid-feedback-custom') || input.nextElementSibling;
+        
+        if (errorMessage) {
+            input.classList.add('is-invalid-custom');
+            if (errorDiv) errorDiv.textContent = errorMessage;
+            return false;
+        } else {
+            input.classList.remove('is-invalid-custom');
+            return true;
+        }
+    };
+
+    const validators = {
+        email: (value) => {
+            if (!value) return 'Email is required.';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address.';
+            return '';
+        },
+        password: (value) => {
+            if (!value) return 'Password is required.';
+            return '';
+        }
+    };
+
+    if (emailInput) {
+        emailInput.addEventListener('input', () => validateField(emailInput, validators.email));
+        emailInput.addEventListener('blur', () => validateField(emailInput, validators.email));
+    }
+
+    if (passwordInput) {
+        passwordInput.addEventListener('input', () => validateField(passwordInput, validators.password));
+        passwordInput.addEventListener('blur', () => validateField(passwordInput, validators.password));
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            let isValid = true;
+            if (emailInput && !validateField(emailInput, validators.email)) isValid = false;
+            if (passwordInput && !validateField(passwordInput, validators.password)) isValid = false;
+
+            if (!isValid) {
+                e.preventDefault();
+            }
+        });
+    }
+});
+</script>
