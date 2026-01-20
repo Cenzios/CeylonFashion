@@ -364,12 +364,14 @@ if ($isLoggedIn) {
               <input type="text" class="form-control" id="customerName" 
                      value="<?= htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')); ?>" 
                      required>
+              <div class="invalid-feedback-custom"></div>
             </div>
             <div class="col-md-6 mb-3">
               <label for="customerEmail" class="form-label">Email Address <span class="text-danger">*</span></label>
               <input type="email" class="form-control" id="customerEmail" 
                      value="<?= htmlspecialchars($_SESSION['email'] ?? ''); ?>" 
                      required>
+              <div class="invalid-feedback-custom"></div>
             </div>
           </div>
           
@@ -378,22 +380,24 @@ if ($isLoggedIn) {
               <label for="customerPhone" class="form-label">Phone Number <span class="text-danger">*</span></label>
               <input type="tel" class="form-control" id="customerPhone" 
                      value="<?= htmlspecialchars($_SESSION['phone'] ?? ''); ?>" 
-                     pattern="[0-9]{10,15}" 
                      placeholder="0771234567"
                      required>
-              <small class="text-muted">10-15 digits only</small>
+              <div class="invalid-feedback-custom"></div>
+              <small class="text-muted">9-12 digits only</small>
             </div>
             <div class="col-md-6 mb-3">
               <label for="customerCity" class="form-label">City <span class="text-danger">*</span></label>
               <input type="text" class="form-control" id="customerCity" 
                      value="<?= htmlspecialchars($_SESSION['city'] ?? ''); ?>" 
                      required>
+              <div class="invalid-feedback-custom"></div>
             </div>
           </div>
           
           <div class="mb-3">
             <label for="deliveryAddress" class="form-label">Delivery Address <span class="text-danger">*</span></label>
             <textarea class="form-control" id="deliveryAddress" rows="3" required><?= htmlspecialchars($_SESSION['address'] ?? ''); ?></textarea>
+            <div class="invalid-feedback-custom"></div>
             <small class="text-muted">Street address, house/apartment number</small>
           </div>
           
@@ -444,6 +448,28 @@ if ($isLoggedIn) {
     font-size: 1.1em;
     color: #430160;
   }
+  
+  /* Validation Styles */
+  .invalid-feedback-custom {
+    color: red !important;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    display: none;
+  }
+  
+  .form-control.is-invalid-custom {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    padding-right: calc(1.5em + 0.75rem);
+  }
+  
+  .form-control.is-invalid-custom ~ .invalid-feedback-custom {
+    display: block;
+  }
 </style>
 
 <script type="text/javascript" src="https://www.payhere.lk/lib/payhere.js"></script>
@@ -470,36 +496,87 @@ function showCustomerDetailsModal() {
     modal.show();
 }
 
+function validateCartField(input, type) {
+    const value = input.value.trim();
+    let errorMsg = '';
+    
+    const errorDiv = input.nextElementSibling.classList.contains('invalid-feedback-custom') 
+                   ? input.nextElementSibling 
+                   : null;
+
+    if (!errorDiv) return true;
+
+    if (type === 'name') {
+        if (!value) errorMsg = 'Full Name is required';
+        else if (!/^[A-Za-z\s]+$/.test(value)) errorMsg = 'Full Name must contain only letters';
+        else if (value.length < 2) errorMsg = 'Name must be at least 2 characters';
+    } else if (type === 'email') {
+        if (!value) errorMsg = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) errorMsg = 'Please enter a valid email address';
+    } else if (type === 'phone') {
+        if (!value) errorMsg = 'Phone Number is required';
+        else if (!/^[0-9]{9,12}$/.test(value)) errorMsg = 'Phone must be 9-12 digits';
+    } else if (type === 'city') {
+        if (!value) errorMsg = 'City is required';
+        else if (!/^[A-Za-z\s]+$/.test(value)) errorMsg = 'City must contain only letters';
+    } else if (type === 'address') {
+        if (!value) errorMsg = 'Address is required';
+    }
+
+    if (errorMsg) {
+        input.classList.add('is-invalid-custom');
+        errorDiv.textContent = errorMsg;
+        return false;
+    } else {
+        input.classList.remove('is-invalid-custom');
+        errorDiv.textContent = '';
+        return true;
+    }
+}
+
+// Setup live validation
+document.addEventListener('DOMContentLoaded', function() {
+    const fields = [
+        { id: 'customerName', type: 'name' },
+        { id: 'customerEmail', type: 'email' },
+        { id: 'customerPhone', type: 'phone' },
+        { id: 'customerCity', type: 'city' },
+        { id: 'deliveryAddress', type: 'address' }
+    ];
+
+    fields.forEach(f => {
+        const input = document.getElementById(f.id);
+        if (input) {
+            input.addEventListener('input', () => validateCartField(input, f.type));
+            input.addEventListener('blur', () => validateCartField(input, f.type));
+        }
+    });
+});
+
 async function processCartPayment() {
     // Get customer details from form
-    const customerName = document.getElementById('customerName').value.trim();
-    const customerEmail = document.getElementById('customerEmail').value.trim();
-    const customerPhone = document.getElementById('customerPhone').value.trim();
-    const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
-    const customerCity = document.getElementById('customerCity').value.trim();
+    const nameInput = document.getElementById('customerName');
+    const emailInput = document.getElementById('customerEmail');
+    const phoneInput = document.getElementById('customerPhone');
+    const cityInput = document.getElementById('customerCity');
+    const addrInput = document.getElementById('deliveryAddress');
     
-    // Validation
-    if (!customerName || !customerEmail || !customerPhone || !deliveryAddress || !customerCity) {
-        alert('Please fill in all required fields');
-        return;
-    }
+    // Validate all
+    const v1 = validateCartField(nameInput, 'name');
+    const v2 = validateCartField(emailInput, 'email');
+    const v3 = validateCartField(phoneInput, 'phone');
+    const v4 = validateCartField(cityInput, 'city');
+    const v5 = validateCartField(addrInput, 'address');
     
-    // Name Validation
-    if (/\d/.test(customerName)) {
-        alert('Name validation error: Name cannot contain numbers.');
-        return;
+    if (!v1 || !v2 || !v3 || !v4 || !v5) {
+        return; 
     }
-    
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-        alert('Please enter a valid email address');
-        return;
-    }
-    
-    // Updated Phone Regex to match 9-12 digits more flexibly
-    if (!/^[0-9]{9,15}$/.test(customerPhone)) {
-        alert('Please enter a valid phone number (digits only, 9-15 char)');
-        return;
-    }
+
+    const customerName = nameInput.value.trim();
+    const customerEmail = emailInput.value.trim();
+    const customerPhone = phoneInput.value.trim();
+    const deliveryAddress = addrInput.value.trim();
+    const customerCity = cityInput.value.trim();
     
     // Show loading
     const submitBtn = document.getElementById('confirmOrderBtn');
