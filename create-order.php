@@ -91,9 +91,12 @@ try {
 
         // Revised Cart Fetch:
         $stmt = $mysqli->prepare("
-            SELECT c.product_id, c.quantity, c.price, p.product_name, p.product_code
+            SELECT c.product_id, c.quantity, c.price, c.fabric_id, c.size, 
+                   p.product_name, p.product_code, 
+                   pf.fabric_type
             FROM cart c
             JOIN products p ON c.product_id = p.id
+            LEFT JOIN product_fabrics pf ON c.fabric_id = pf.id
             WHERE c.user_id = ?
         ");
         $stmt->bind_param("i", $user_id);
@@ -119,7 +122,11 @@ try {
             $qty = $item['quantity'];
             $u_price = $item['price'];
             $t_amt = $qty * $u_price;
-            $f_id = 0; $f_type = 'Default'; $sz = 'Standard'; // Fallback
+            
+            // Use values from cart, fallback if missing
+            $f_id = !empty($item['fabric_id']) ? $item['fabric_id'] : 0;
+            $f_type = !empty($item['fabric_type']) ? $item['fabric_type'] : 'Standard';
+            $sz = !empty($item['size']) ? $item['size'] : 'Standard';
 
             $stmtInsert->bind_param(
                 "ssississiddsssss",
