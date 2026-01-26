@@ -113,9 +113,11 @@ while ($row = $sizeResult->fetch_assoc()) {
 $stmt->close();
 
 // Fallback for legacy products (if no sizes defined, show all)
-if (empty($availableSizes)) {
-  $availableSizes = ['XS','S','M','L','XL'];
-}
+// Fallback for legacy products (if no sizes defined, show all)
+// REMOVED: We now want to support products with NO sizes.
+// if (empty($availableSizes)) {
+//   $availableSizes = ['XS','S','M','L','XL'];
+// }
 // Sort sizes logically
 // Sort sizes logically
 $sizeOrder = ['XS' => 1, 'S' => 2, 'M' => 3, 'L' => 4, 'XL' => 5, 'XXL' => 6];
@@ -228,6 +230,7 @@ if ($isLoggedIn) {
       </div>
 
       <!-- Size Guide Button -->
+      <?php if (!empty($availableSizes)): ?>
       <button type="button" class="size-guide-btn" data-bs-toggle="modal" data-bs-target="#sizeGuideModal">
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
           <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
@@ -235,8 +238,10 @@ if ($isLoggedIn) {
         </svg>
         Size Guide
       </button>
+      <?php endif; ?>
 
       <!-- Size Selection -->
+      <?php if (!empty($availableSizes)): ?>
       <div class="option-section">
         <label class="section-label">
           Size: <span class="selected-value" id="selectedSizeDisplay"><?= e($defaultSize); ?></span>
@@ -251,6 +256,7 @@ if ($isLoggedIn) {
           <?php endforeach; ?>
         </div>
       </div>
+      <?php endif; ?>
 
       <!-- Fabric Selection -->
       <?php if (!empty($fabrics)): ?>
@@ -1560,7 +1566,9 @@ include 'components/review-dialog.php';
       alert('Please select a fabric type.');
       return false;
     }
-    if (!form.size.value) {
+    // Check if size options are available
+    const sizeBtnsAvailable = document.querySelectorAll('.size-btn').length > 0;
+    if (sizeBtnsAvailable && !form.size.value) {
       alert('Please select a size.');
       return false;
     }
@@ -1833,7 +1841,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Please select a fabric type.');
                 return;
             }
-            if (!size) {
+            const sizeBtnsAvailable = document.querySelectorAll('.size-btn').length > 0;
+            if (sizeBtnsAvailable && !size) {
                 alert('Please select a size.');
                 return;
             }

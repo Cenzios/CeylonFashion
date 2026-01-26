@@ -43,9 +43,11 @@ while ($row = $sizeResult->fetch_assoc()) {
 $stmt->close();
 
 // Fallback logic
-if (empty($availableSizes)) {
-  $availableSizes = ['XS','S','M','L','XL'];
-}
+// Fallback logic
+// REMOVED: Support no-size products
+// if (empty($availableSizes)) {
+//   $availableSizes = ['XS','S','M','L','XL'];
+// }
 // Sort sizes
 $sizeOrder = ['XS' => 1, 'S' => 2, 'M' => 3, 'L' => 4, 'XL' => 5, 'XXL' => 6];
 usort($availableSizes, function($a, $b) use ($sizeOrder) {
@@ -126,6 +128,7 @@ $payzyInstallment = $minPrice / 4;
                 <input type="hidden" name="size" id="mpSize" value="">
 
                 <!-- Size Selector -->
+                <?php if (!empty($availableSizes)): ?>
                 <div class="mp-option-row">
                     <label>Size: <span id="mpSelectedSizeLabel"></span></label>
                     <div class="mp-size-list">
@@ -134,6 +137,7 @@ $payzyInstallment = $minPrice / 4;
                         <?php endforeach; ?>
                     </div>
                 </div>
+                <?php endif; ?>
 
                 <!-- Quantity & Buttons -->
                 <div class="mp-actions-row">
@@ -398,7 +402,9 @@ $payzyInstallment = $minPrice / 4;
     // --- Add to Cart Validation ---
     function handleQuickAdd(form) {
         const size = document.getElementById('mpSize').value;
-        if (!size) {
+        const sizeBtnsAvailable = document.querySelectorAll('.mp-size-btn').length > 0;
+        
+        if (sizeBtnsAvailable && !size) {
             alert('Please select a size');
             return false;
         }
