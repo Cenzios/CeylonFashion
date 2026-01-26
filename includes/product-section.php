@@ -71,13 +71,14 @@ function renderProductSection($options) {
         if ($isResellerProduct && isset($product['min_price'])) {
             $minPrice = $product['min_price'];
         } else {
-            $fabricSql = "SELECT MIN(fabric_price) as min_price FROM product_fabrics WHERE product_id = ? AND fabric_qty > 0";
+            $fabricSql = "SELECT MIN(fabric_price) as min_price, SUM(fabric_qty) as total_qty FROM product_fabrics WHERE product_id = ? AND fabric_qty > 0";
             $fabricStmt = $mysqli->prepare($fabricSql);
             $fabricStmt->bind_param("i", $productId);
             $fabricStmt->execute();
             $fabricResult = $fabricStmt->get_result();
             $fabricData = $fabricResult->fetch_assoc();
             $minPrice = $fabricData['min_price'] ?? null;
+            $totalQty = isset($fabricData['total_qty']) ? (int)$fabricData['total_qty'] : 0;
             $fabricStmt->close();
         }
 
@@ -220,11 +221,15 @@ function renderProductSection($options) {
 
               <?php
               $productLink = "product-view.php?id=" . $productId;
+              // Badge Logic for standard products
+              $badgeLabel = $totalQty > 0 ? 'AVAILABLE' : 'SOLD OUT';
+              $badgeClass = $totalQty > 0 ? 'badge-available' : 'badge-sold-out';
               ?>
 
               <a href="<?php echo $productLink; ?>" class="card-link">
                 <div class="product-image">
                   <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
+                  <span class="product-badge <?php echo $badgeClass; ?>"><?php echo $badgeLabel; ?></span>
                 </div>
               </a>
                 
