@@ -12,7 +12,7 @@ $maxPrice = isset($_GET['max_price']) && is_numeric($_GET['max_price']) ? (float
 $selectedColors = isset($_GET['colors']) && is_array($_GET['colors']) ? $_GET['colors'] : [];
 
 // Base Query
-$sql = "SELECT p.*, MIN(pf.fabric_price) as min_price 
+$sql = "SELECT p.*, MIN(pf.fabric_price) as min_price, SUM(pf.fabric_qty) as total_qty
         FROM products p 
         LEFT JOIN product_fabrics pf ON p.id = pf.product_id 
         LEFT JOIN product_colors pc ON p.id = pc.product_id 
@@ -115,27 +115,28 @@ $result = $stmt->get_result();
                             }
 
                             $minPriceDisplay = $product['min_price'] ?? null;
+                            
+                            // Badge Logic
+                            $totalQty = isset($product['total_qty']) ? (int)$product['total_qty'] : 0;
+                            $badgeLabel = $totalQty > 0 ? 'AVAILABLE' : 'SOLD OUT';
+                            $badgeClass = $totalQty > 0 ? 'badge-available' : 'badge-sold-out';
                         ?>
                             <div class="product-card">
                                 <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
                                     <div class="product-image">
                                         <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
+                                        <span class="product-badge <?php echo $badgeClass; ?>"><?php echo $badgeLabel; ?></span>
+                                    </div>
+                                    
+                                    <div class="product-info">
+                                        <h3 class="product-name"><?php echo $pname; ?></h3>
+                                        <?php if ($minPriceDisplay !== null): ?>
+                                            <p class="product-price">Rs : <?php echo number_format($minPriceDisplay, 2); ?></p>
+                                        <?php else: ?>
+                                            <p class="product-price">Price unavailable</p>
+                                        <?php endif; ?>
                                     </div>
                                 </a>
-                                    
-                                <div class="product-info">
-                                    <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
-                                        <h3 class="product-name"><?php echo $pname; ?></h3>
-                                    </a>
-                                    <?php if ($minPriceDisplay !== null): ?>
-                                        <p class="product-price">Rs : <?php echo number_format($minPriceDisplay, 2); ?></p>
-                                    <?php else: ?>
-                                        <p class="product-price">Price unavailable</p>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="card-footer" style="padding: 0 20px 20px 20px;">
-                                    <button class="btn-quick-add" onclick="quickView(<?php echo $productId; ?>)">QUICK ADD</button>
-                                </div>
                             </div>
                         <?php endwhile; ?>
                     </div>
@@ -182,7 +183,7 @@ $result = $stmt->get_result();
     .product-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; }
     .product-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); }
     .card-link { text-decoration: none; color: inherit; display: block; }
-    .product-image { width: 100%; height: 300px; overflow: hidden; background: #f5f5f5; }
+    .product-image { width: 100%; height: 300px; overflow: hidden; background: #f5f5f5; position: relative; }
     .product-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
     .product-card:hover .product-image img { transform: scale(1.05); }
     .product-info { padding: 20px; background: linear-gradient(135deg, #d8b4e2 0%, #c9a8d8 100%); text-align: left; }
@@ -207,6 +208,23 @@ $result = $stmt->get_result();
     @media (max-width: 640px) {
         .products-grid { grid-template-columns: 1fr; }
     }
+    
+    /* Badge Styles */
+    .product-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        z-index: 10;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .badge-available { background-color: #10b981; color: white; }
+    .badge-sold-out { background-color: #ef4444; color: white; }
 
     .btn-quick-add {
         width: 100%;

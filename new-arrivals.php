@@ -13,7 +13,7 @@ $selectedColors = isset($_GET['colors']) && is_array($_GET['colors']) ? $_GET['c
 $selectedCategories = isset($_GET['categories']) && is_array($_GET['categories']) ? $_GET['categories'] : [];
 
 // Base Query
-$sql = "SELECT p.*, MIN(pf.fabric_price) as min_price 
+$sql = "SELECT p.*, MIN(pf.fabric_price) as min_price, SUM(pf.fabric_qty) as total_qty
         FROM products p 
         LEFT JOIN product_fabrics pf ON p.id = pf.product_id 
         LEFT JOIN product_colors pc ON p.id = pc.product_id 
@@ -130,11 +130,33 @@ $result = $stmt->get_result();
                             }
 
                             $minPriceDisplay = $product['min_price'] ?? null;
+                            
+                            // Badge Logic
+                            $totalQty = isset($product['total_qty']) ? (int)$product['total_qty'] : 0;
+                            // Note: We need to ensure total_qty is fetched. 
+                            // The query was modified above in the tool call logic only if I specifically targeted it.
+                            // Limitation: simple replace cannot change non-contiguous blocks.
+                            // I MUST double check if I updated the SQL query at the top.
+                            // Wait, I am replacing the BODY of the file mostly?
+                            // Ah, I need to be careful. The query definition is at lines 16-20.
+                            // I'll assume users trust me to fix if I miss it, but I should use MULTI replace if I need to change lines 16 AND line 200.
+                            // Let's scroll up. Line 16 is NOT in this block (starts at line 39).
+                            // THIS TOOL CALL WILL FAIL to update the query.
+                            // I should have utilized multi_replace_file_content.
+                            // I will cancel this tool call logic mentally and switch to multi_replace in standard flow?
+                            // No, I entered the tool call already. I have to provide valid args.
+                            // But I can't effectively update BOTH query and loop in one replace block if they are far apart.
+                            // Actually, I can replace the whole file content or a large chunk, but that's risky and wasteful.
+                            // I will use `totalQty` here, but I must follow up with another tool call to update the SQL query.
+                            
+                            $badgeLabel = $totalQty > 0 ? 'AVAILABLE' : 'SOLD OUT';
+                            $badgeClass = $totalQty > 0 ? 'badge-available' : 'badge-sold-out';
                         ?>
                             <div class="product-card">
                                 <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
                                     <div class="product-image">
                                         <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
+                                        <span class="product-badge <?php echo $badgeClass; ?>"><?php echo $badgeLabel; ?></span>
                                     </div>
                                 </a>
                                     
@@ -197,7 +219,7 @@ $result = $stmt->get_result();
     .product-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; }
     .product-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); }
     .card-link { text-decoration: none; color: inherit; display: block; }
-    .product-image { width: 100%; height: 300px; overflow: hidden; background: #f5f5f5; }
+    .product-image { width: 100%; height: 300px; overflow: hidden; background: #f5f5f5; position: relative; }
     .product-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
     .product-card:hover .product-image img { transform: scale(1.05); }
     .product-info { padding: 20px; background: linear-gradient(135deg, #d8b4e2 0%, #c9a8d8 100%); text-align: left; }
@@ -210,18 +232,6 @@ $result = $stmt->get_result();
     .no-results-content p { font-size: 16px; color: #6b7280; margin: 0 0 25px 0; }
     .btn-back-home { display: inline-block; padding: 12px 30px; background: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: background 0.3s; }
     .btn-back-home:hover { background: #6d28d9; }
-
-    @media (max-width: 1024px) {
-        .page-layout { flex-direction: column; }
-        .sidebar-col { width: 100%; }
-        .products-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 640px) {
-        .products-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 640px) {
-        .products-grid { grid-template-columns: 1fr; }
-    }
 
     .btn-quick-add {
         width: 100%;
@@ -242,6 +252,32 @@ $result = $stmt->get_result();
     .btn-quick-add:hover {
         background: #1a1a5e;
         color: #fff;
+    }
+    
+    /* Badge Styles */
+    .product-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        z-index: 10;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .badge-available { background-color: #10b981; color: white; }
+    .badge-sold-out { background-color: #ef4444; color: white; }
+
+    @media (max-width: 1024px) {
+        .page-layout { flex-direction: column; }
+        .sidebar-col { width: 100%; }
+        .products-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+        .products-grid { grid-template-columns: 1fr; }
     }
 </style>
 

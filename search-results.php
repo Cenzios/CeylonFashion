@@ -65,20 +65,26 @@ $fallback = 'assets/no-image.png';
                         }
 
                         // Fetch lowest fabric price for this product
-                        $fabricSql = "SELECT MIN(fabric_price) as min_price FROM product_fabrics WHERE product_id = ? AND fabric_qty > 0";
+                        $fabricSql = "SELECT MIN(fabric_price) as min_price, SUM(fabric_qty) as total_qty FROM product_fabrics WHERE product_id = ? AND fabric_qty > 0";
                         $fabricStmt = $mysqli->prepare($fabricSql);
                         $fabricStmt->bind_param("i", $productId);
                         $fabricStmt->execute();
                         $fabricResult = $fabricStmt->get_result();
                         $fabricData = $fabricResult->fetch_assoc();
                         $minPrice = $fabricData['min_price'] ?? null;
+                        $totalQty = isset($fabricData['total_qty']) ? (int)$fabricData['total_qty'] : 0;
                         $fabricStmt->close();
+
+                        // Badge Logic
+                        $badgeLabel = $totalQty > 0 ? 'AVAILABLE' : 'SOLD OUT';
+                        $badgeClass = $totalQty > 0 ? 'badge-available' : 'badge-sold-out';
                     ?>
                         <!-- Product Card -->
                         <div class="product-card">
                             <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
                                 <div class="product-image">
                                     <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
+                                    <span class="product-badge <?php echo $badgeClass; ?>"><?php echo $badgeLabel; ?></span>
                                 </div>
                                 
                                 <div class="product-info">
@@ -219,6 +225,7 @@ $fallback = 'assets/no-image.png';
         height: 400px;
         overflow: hidden;
         background: #f5f5f5;
+        position: relative;
     }
 
     .product-image img {
@@ -303,6 +310,23 @@ $fallback = 'assets/no-image.png';
         border-radius: 8px;
         color: #92400e;
     }
+    
+    /* Badge Styles */
+    .product-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        z-index: 10;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .badge-available { background-color: #10b981; color: white; }
+    .badge-sold-out { background-color: #ef4444; color: white; }
 
     /* Responsive Design */
     @media (max-width: 1024px) {
