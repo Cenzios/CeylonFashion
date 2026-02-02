@@ -120,11 +120,26 @@ $payzyInstallment = $minPrice / 4;
 
             <form id="quickAddForm" action="cart-add.php" method="GET" onsubmit="return handleQuickAdd(this);">
                 <input type="hidden" name="id" value="<?php echo $product_id; ?>">
-                <!-- If fabrics exist, select first by default (or user selects) -->
+                <!-- Fabric Selector -->
                 <?php if (!empty($fabrics)): ?>
-                    <input type="hidden" name="fabric_id" id="mpFabricId" value="<?php echo $fabrics[0]['id']; ?>">
-                    <input type="hidden" name="price" id="mpPrice" value="<?php echo $fabrics[0]['fabric_price']; ?>">
+                <div class="mp-option-row">
+                    <label>Fabric: <span id="mpSelectedFabricLabel"><?php echo htmlspecialchars($fabrics[0]['fabric_type']); ?></span></label>
+                    <div class="mp-size-list">
+                        <!-- Hidden inputs for fabric/price inside the form -->
+                        <input type="hidden" name="fabric_id" id="mpFabricId" value="<?php echo $fabrics[0]['id']; ?>">
+                        <input type="hidden" name="price" id="mpPrice" value="<?php echo $fabrics[0]['fabric_price']; ?>">
+
+                        <?php foreach($fabrics as $idx => $f): ?>
+                            <button type="button" 
+                                    class="mp-fabric-btn <?php echo $idx === 0 ? 'selected' : ''; ?>" 
+                                    onclick="mpSelectFabric(<?php echo $f['id']; ?>, '<?php echo htmlspecialchars($f['fabric_type']); ?>', <?php echo $f['fabric_price']; ?>, this)">
+                                <?php echo htmlspecialchars($f['fabric_type']); ?>
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
                 <?php endif; ?>
+
                 <input type="hidden" name="size" id="mpSize" value="">
 
                 <!-- Size Selector -->
@@ -279,7 +294,7 @@ $payzyInstallment = $minPrice / 4;
         gap: 8px; 
         flex-wrap: wrap; /* Allow wrapping */
     }
-    .mp-size-btn {
+    .mp-size-btn, .mp-fabric-btn {
         min-width: 40px;
         height: 40px;
         border: 1px solid #ddd;
@@ -293,8 +308,12 @@ $payzyInstallment = $minPrice / 4;
         padding: 0 10px;
         transition: all 0.2s;
     }
-    .mp-size-btn:hover { border-color: #1a1a5e; }
-    .mp-size-btn.selected {
+    .mp-fabric-btn {
+        min-width: auto;
+        padding: 0 15px;
+    }
+    .mp-size-btn:hover, .mp-fabric-btn:hover { border-color: #1a1a5e; }
+    .mp-size-btn.selected, .mp-fabric-btn.selected {
         border-color: #1a1a5e;
         background: #fff; 
         color: #1a1a5e; 
@@ -374,9 +393,27 @@ $payzyInstallment = $minPrice / 4;
     const totalSlides = slides.length;
 
     function mpChangeSlide(dir) {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (currentSlide + dir + totalSlides) % totalSlides;
-        slides[currentSlide].classList.add('active');
+        if(totalSlides > 0) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + dir + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+        }
+    }
+
+    // --- Fabric Selection ---
+    function mpSelectFabric(id, name, price, btn) {
+        // Deselect all
+        document.querySelectorAll('.mp-fabric-btn').forEach(b => b.classList.remove('selected'));
+        // Select clicked
+        btn.classList.add('selected');
+        
+        // Update hidden inputs
+        document.getElementById('mpFabricId').value = id;
+        document.getElementById('mpPrice').value = price;
+        document.getElementById('mpSelectedFabricLabel').textContent = name;
+        
+        // Update displayed price
+        document.querySelector('.mp-price').textContent = 'Rs ' + parseFloat(price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
     // --- Size Selection ---
@@ -409,20 +446,22 @@ $payzyInstallment = $minPrice / 4;
             return false;
         }
         
-        // Use the existing global logic if needed, or just submit
-        // However, generic product-view logic required Size AND Fabric. 
-        // If this product has fabrics, we set the first one by default in PHP above.
-        // If client requires user to explicitly select attributes, we might need more UI.
-        // For "Quick Add", standard behavior is simplest flow.
+        // Fabric validation
+        const fabricId = document.getElementById('mpFabricId') ? document.getElementById('mpFabricId').value : null;
+        const fabricBtnsAvailable = document.querySelectorAll('.mp-fabric-btn').length > 0;
         
-        // We can do AJAX submission to avoid reload
+        if (fabricBtnsAvailable && !fabricId) {
+             alert('Please select a fabric');
+             return false;
+        }
+        
+        // AJAX submission
         const formData = new FormData(form);
         const params = new URLSearchParams(formData).toString();
         
         // Close modal
         $('.reveal-modal').foundation('reveal', 'close');
         
-        // Use the existing quickAddToCart logic style but with our data
         fetch('cart-add.php?' + params + '&ajax=1')
           .then(res => res.json())
           .then(data => {
