@@ -1796,32 +1796,7 @@ payhere.onError = function(error) {
           }
       });
       
-      // Buy Now Logic
-      const buyNowBtns = document.querySelectorAll('.buy-now-btn');
-      buyNowBtns.forEach(btn => {
-          btn.addEventListener('click', function() {
-              const pid = this.getAttribute('data-product-id');
-              const pname = this.getAttribute('data-product-name');
-              
-              // We need to submit form to Add to Cart first then redirect? 
-              // Usually Buy Now = Add to Cart + Redirect to Checkout.
-              // We can simulate Add to Cart form submit with a flag? or just change action?
-              // Let's use hidden input or query param.
-              
-              const form = document.getElementById('addToCartForm');
-              const prevAction = form.action;
-              // Append redirect=checkout
-              const input = document.createElement('input');
-              input.type = 'hidden';
-              input.name = 'redirect';
-              input.value = 'checkout';
-              form.appendChild(input);
-              
-              if (prepareCartForm(form)) {
-                  form.submit();
-              }
-          });
-      });
+
   });
 
   function prepareCartForm(form) {
