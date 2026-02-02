@@ -139,7 +139,7 @@ try {
         $size = isset($_POST['size']) ? trim($_POST['size']) : '';
         $quantity = isset($_POST['quantity']) ? max(1, (int)$_POST['quantity']) : 1;
         
-        if (!$product_id || !$fabric_id || !$size || !$order_id) {
+        if (!$product_id || !$fabric_id || !$order_id) {
             throw new Exception('Missing required product fields');
         }
 
@@ -150,6 +150,17 @@ try {
         $product = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         if (!$product) throw new Exception('Product not found');
+
+        // Check if sizes exist for this product
+        $stmt = $mysqli->prepare("SELECT 1 FROM product_sizes WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param("i", $product_id);
+        $stmt->execute();
+        $hasSizes = $stmt->get_result()->num_rows > 0;
+        $stmt->close();
+
+        if ($hasSizes && empty($size)) {
+             throw new Exception('Please select a size');
+        }
 
         $stmt = $mysqli->prepare("SELECT fabric_type, fabric_price FROM product_fabrics WHERE id = ? AND product_id = ?");
         $stmt->bind_param("ii", $fabric_id, $product_id);
