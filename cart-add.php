@@ -147,6 +147,16 @@ if ($isLoggedIn) {
     
     $guestCart = getGuestCart();
     
+    // Check existing quantity in guest cart
+    $existingItemsQty = 0;
+    if (isset($guestCart[$itemKey])) {
+        $existingItemsQty = (int)$guestCart[$itemKey]['quantity'];
+    }
+    
+    if (($existingItemsQty + $quantity) > $total_available) {
+        respond(false, 'Cannot add more. You already have ' . $existingItemsQty . ' in cart. Total available: ' . $total_available);
+    }
+    
     // Check if key exists (or check logic inside lib)
     // Since our lib uses product_id as key, we need to UPDATE THE LIB or handle it here.
     // Since we are updating lib/guest-cart.php next, let's assume we use addToGuestCart with extra params

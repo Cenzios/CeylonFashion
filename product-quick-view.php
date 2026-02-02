@@ -132,7 +132,7 @@ $payzyInstallment = $minPrice / 4;
                         <?php foreach($fabrics as $idx => $f): ?>
                             <button type="button" 
                                     class="mp-fabric-btn <?php echo $idx === 0 ? 'selected' : ''; ?>" 
-                                    onclick="mpSelectFabric(<?php echo $f['id']; ?>, '<?php echo htmlspecialchars($f['fabric_type']); ?>', <?php echo $f['fabric_price']; ?>, this)">
+                                    onclick="mpSelectFabric(<?php echo $f['id']; ?>, '<?php echo htmlspecialchars($f['fabric_type']); ?>', <?php echo $f['fabric_price']; ?>, <?php echo (int)$f['fabric_qty']; ?>, this)">
                                 <?php echo htmlspecialchars($f['fabric_type']); ?>
                             </button>
                         <?php endforeach; ?>
@@ -400,8 +400,43 @@ $payzyInstallment = $minPrice / 4;
         }
     }
 
+    // --- Validation Helpers ---
+    // Initialize maxQty based on PHP output available in script scope logic
+    // We need to know initial available quantity. 
+    // Since this is loaded via AJAX, we can rely on data attributes or inline JS variables if set.
+    // Ideally, we pass it in mpSelectFabric.
+    
+    let mpMaxQty = 999; 
+    
+    function mpUpdateMaxQty(newMax) {
+        mpMaxQty = parseInt(newMax);
+        const input = document.getElementById('mpQty');
+        input.max = mpMaxQty;
+        
+        const btn = document.querySelector('.mp-btn-add');
+        
+        if (mpMaxQty <= 0) {
+            input.value = 0;
+            // Disable Add to Cart
+            if(btn) {
+                btn.disabled = true;
+                btn.textContent = 'Out of Stock';
+            }
+        } else {
+             // Enable
+            if(btn) {
+                btn.disabled = false;
+                btn.textContent = 'ADD TO CART';
+            }
+             
+            let val = parseInt(input.value) || 1;
+            if (val > mpMaxQty) input.value = mpMaxQty;
+            if (val < 1) input.value = 1;
+        }
+    }
+
     // --- Fabric Selection ---
-    function mpSelectFabric(id, name, price, btn) {
+    function mpSelectFabric(id, name, price, qty, btn) {
         // Deselect all
         document.querySelectorAll('.mp-fabric-btn').forEach(b => b.classList.remove('selected'));
         // Select clicked
@@ -414,6 +449,9 @@ $payzyInstallment = $minPrice / 4;
         
         // Update displayed price
         document.querySelector('.mp-price').textContent = 'Rs ' + parseFloat(price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Update Max Qty
+        mpUpdateMaxQty(qty);
     }
 
     // --- Size Selection ---
@@ -432,7 +470,14 @@ $payzyInstallment = $minPrice / 4;
         const input = document.getElementById('mpQty');
         let val = parseInt(input.value) || 1;
         val += change;
-        if (val < 1) val = 1;
+        
+        if (val > mpMaxQty) {
+             alert('Cannot add more. Max available: ' + mpMaxQty);
+             val = mpMaxQty;
+        }
+        if (val < 1 && mpMaxQty > 0) val = 1;
+        if (mpMaxQty <= 0) val = 0;
+        
         input.value = val;
     }
 
@@ -453,6 +498,13 @@ $payzyInstallment = $minPrice / 4;
         if (fabricBtnsAvailable && !fabricId) {
              alert('Please select a fabric');
              return false;
+        }
+        
+        // Stock Check
+        const qty = parseInt(document.getElementById('mpQty').value);
+        if (qty > mpMaxQty) {
+            alert('Cannot add more. Max available: ' + mpMaxQty);
+            return false;
         }
         
         // AJAX submission
@@ -483,4 +535,12 @@ $payzyInstallment = $minPrice / 4;
 
         return false; // Prevent real form submit
     }
+    
+    // Initial Run to set max qty for default selection
+    <?php if (!empty($fabrics)): ?>
+        // Initialize with first fabric's quantity
+        mpUpdateMaxQty(<?php echo (int)$fabrics[0]['fabric_qty']; ?>);
+    <?php endif; ?>
+
+
 </script>

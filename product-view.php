@@ -1475,132 +1475,7 @@ include 'components/review-dialog.php';
   }
 </style>
 
-<script>
-  // Thumbnail click handler
-  const thumbItems = document.querySelectorAll('.thumb-item');
-  const mainImg = document.getElementById('mainProductImage');
 
-  thumbItems.forEach(t => {
-    t.addEventListener('click', function(){
-      const img = this.getAttribute('data-img');
-      if (img) mainImg.src = 'images/products/' + img;
-
-      document.querySelectorAll('.thumb-item').forEach(x => x.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
-
-  // Update prices function
-  function updatePrices() {
-    const selectedFabric = document.querySelector('.fabric-btn.selected');
-    const qtyField = document.getElementById('qtyField');
-    const subtotalDisplay = document.getElementById('subtotalPrice');
-
-    if (selectedFabric) {
-      const basePrice = parseFloat(selectedFabric.dataset.price) || 0;
-      const qty = parseInt(qtyField.value) || 1;
-      const total = basePrice * qty;
-
-      if (subtotalDisplay) {
-        subtotalDisplay.textContent = 'Rs ' + total.toFixed(2);
-      }
-    }
-  }
-
-  // Fabric selection
-  const fabricBtns = document.querySelectorAll('.fabric-btn');
-  const formFabricId = document.getElementById('formFabricId');
-
-  fabricBtns.forEach(b => {
-    b.addEventListener('click', function(){
-      fabricBtns.forEach(x => x.classList.remove('selected'));
-      this.classList.add('selected');
-      formFabricId.value = this.dataset.fabricId || '';
-      updatePrices();
-    });
-  });
-
-  // Auto-select first fabric
-  if (fabricBtns.length > 0) {
-    fabricBtns[0].click();
-  }
-
-  // Size selection
-  const sizeBtns = document.querySelectorAll('.size-btn');
-  const selectedSizeDisplay = document.getElementById('selectedSizeDisplay');
-  
-  sizeBtns.forEach(s => s.addEventListener('click', function(){
-    sizeBtns.forEach(x => x.classList.remove('selected'));
-    this.classList.add('selected');
-    const sizeValue = this.dataset.size || '';
-    document.getElementById('formSize').value = sizeValue;
-    if (selectedSizeDisplay) {
-      selectedSizeDisplay.textContent = sizeValue;
-    }
-  }));
-
-  // Quantity handlers
-  const qtyMinus = document.getElementById('qtyMinus');
-  const qtyPlus = document.getElementById('qtyPlus');
-  const qtyField = document.getElementById('qtyField');
-
-  if (qtyMinus) {
-    qtyMinus.addEventListener('click', () => {
-      const cur = Math.max(1, parseInt(qtyField.value || 1) - 1);
-      qtyField.value = cur;
-      updatePrices();
-    });
-  }
-
-  if (qtyPlus) {
-    qtyPlus.addEventListener('click', () => {
-      const cur = Math.max(1, parseInt(qtyField.value || 1) + 1);
-      qtyField.value = cur;
-      updatePrices();
-    });
-  }
-
-  // Form validation & AJAX Add to Cart
-  function prepareCartForm(form) {
-    if (!form.fabric_id.value) {
-      alert('Please select a fabric type.');
-      return false;
-    }
-    // Check if size options are available
-    const sizeBtnsAvailable = document.querySelectorAll('.size-btn').length > 0;
-    if (sizeBtnsAvailable && !form.size.value) {
-      alert('Please select a size.');
-      return false;
-    }
-    if (!form.color.value) {
-      form.color.value = 'default';
-    }
-    const qtyInput = document.getElementById('qtyField');
-    if (parseInt(qtyInput.value) < 1) qtyInput.value = 1;
-
-    // AJAX Submission
-    const formData = new FormData(form);
-    const params = new URLSearchParams(formData).toString();
-
-    fetch('cart-add.php?' + params + '&ajax=1')
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'ok') {
-          if (typeof updateBadge === 'function' && data.cartCount !== undefined) {
-             updateBadge('cartBadge', data.cartCount);
-          }
-          alert(data.message || 'Product added to cart successfully!');
-        } else {
-          alert(data.message || 'Failed to add to cart.');
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        alert('Network error. Please try again.');
-      });
-
-    return false;
-  }
 
   // Wishlist toggle
   function toggleWishlist(productId) {
@@ -1794,6 +1669,187 @@ payhere.onError = function(error) {
     console.log("Error:" + error);
     alert("Payment error: " + error);
 };
+
+// Interaction Scripts
+  document.addEventListener('DOMContentLoaded', () => {
+      const mainImage = document.getElementById('mainProductImage');
+      const thumbs = document.querySelectorAll('.thumb-item');
+      
+      // Image Gallery
+      thumbs.forEach(thumb => {
+          thumb.addEventListener('click', () => {
+              // Remove active class
+              thumbs.forEach(t => t.classList.remove('active'));
+              thumb.classList.add('active');
+              
+              // Update main image
+              const src = thumb.getAttribute('data-img');
+              mainImage.src = 'images/products/' + src;
+          });
+      });
+      
+      // Select Options with Logic
+      const sizeBtns = document.querySelectorAll('.size-btn');
+      const fabricBtns = document.querySelectorAll('.fabric-btn');
+      const qtyInput = document.getElementById('qtyField');
+      const qtyMinus = document.getElementById('qtyMinus');
+      const qtyPlus = document.getElementById('qtyPlus');
+      const formFabricId = document.getElementById('formFabricId');
+      const formSize = document.getElementById('formSize');
+      const subtotalEl = document.getElementById('subtotalPrice');
+      const addToCartBtn = document.querySelector('.btn-add-cart');
+
+      let currentPrice = <?php echo !empty($fabrics) ? $fabrics[0]['fabric_price'] : 0; ?>;
+      let maxQty = <?php echo !empty($fabrics) ? $fabrics[0]['fabric_qty'] : $totalAvailableQty; ?>;
+      
+      function updateSubtotal() {
+         const qty = parseInt(qtyInput.value) || 1;
+         const sub = qty * currentPrice;
+         subtotalEl.textContent = 'Rs ' + sub.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+
+      function updateMaxQty(newMax) {
+          maxQty = newMax;
+          qtyInput.max = maxQty;
+          
+          let currentVal = parseInt(qtyInput.value) || 1;
+          
+          if (maxQty <= 0) {
+              // Out of Stock
+               qtyInput.value = 0;
+               qtyInput.disabled = true;
+               if(addToCartBtn) {
+                   addToCartBtn.disabled = true;
+                   addToCartBtn.textContent = 'Out of Stock';
+               }
+          } else {
+              qtyInput.disabled = false;
+              if(addToCartBtn) {
+                   addToCartBtn.disabled = false;
+                   addToCartBtn.textContent = 'ADD TO CART';
+              }
+              if (currentVal > maxQty) {
+                  qtyInput.value = maxQty;
+              }
+              if (currentVal < 1) {
+                  qtyInput.value = 1;
+              }
+          }
+          updateSubtotal();
+      }
+
+      // Initial Setup if fabrics exist
+      <?php if (!empty($fabrics)): ?>
+          // Select default (first) fabric
+          if (fabricBtns.length > 0) {
+              const firstBtn = fabricBtns[0];
+              firstBtn.classList.add('selected');
+              formFabricId.value = firstBtn.getAttribute('data-fabric-id');
+              currentPrice = parseFloat(firstBtn.getAttribute('data-price'));
+              updateMaxQty(parseInt(firstBtn.getAttribute('data-qty')));
+          }
+      <?php else: ?>
+           // No fabrics, use product level availability (implicit)
+           updateMaxQty(<?php echo $totalAvailableQty; ?>);
+      <?php endif; ?>
+      updateSubtotal();
+
+      sizeBtns.forEach(btn => {
+          btn.addEventListener('click', () => {
+              sizeBtns.forEach(b => b.classList.remove('selected'));
+              btn.classList.add('selected');
+              document.getElementById('selectedSizeDisplay').textContent = btn.getAttribute('data-size');
+              formSize.value = btn.getAttribute('data-size');
+          });
+      });
+
+      fabricBtns.forEach(btn => {
+          btn.addEventListener('click', () => {
+              fabricBtns.forEach(b => b.classList.remove('selected'));
+              btn.classList.add('selected');
+              
+              formFabricId.value = btn.getAttribute('data-fabric-id');
+              currentPrice = parseFloat(btn.getAttribute('data-price'));
+              
+              // Validate Max Qty
+              const stock = parseInt(btn.getAttribute('data-qty'));
+              updateMaxQty(stock);
+          });
+      });
+
+      // Quantity Logic
+      qtyMinus.addEventListener('click', () => {
+          let val = parseInt(qtyInput.value) || 1;
+          if (val > 1) {
+              qtyInput.value = val - 1;
+              updateSubtotal();
+          }
+      });
+
+      qtyPlus.addEventListener('click', () => {
+          let val = parseInt(qtyInput.value) || 1;
+          if (val < maxQty) {
+              qtyInput.value = val + 1;
+              updateSubtotal();
+          } else {
+              alert('Cannot add more. Max available: ' + maxQty);
+          }
+      });
+      
+      // Buy Now Logic
+      const buyNowBtns = document.querySelectorAll('.buy-now-btn');
+      buyNowBtns.forEach(btn => {
+          btn.addEventListener('click', function() {
+              const pid = this.getAttribute('data-product-id');
+              const pname = this.getAttribute('data-product-name');
+              
+              // We need to submit form to Add to Cart first then redirect? 
+              // Usually Buy Now = Add to Cart + Redirect to Checkout.
+              // We can simulate Add to Cart form submit with a flag? or just change action?
+              // Let's use hidden input or query param.
+              
+              const form = document.getElementById('addToCartForm');
+              const prevAction = form.action;
+              // Append redirect=checkout
+              const input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = 'redirect';
+              input.value = 'checkout';
+              form.appendChild(input);
+              
+              if (prepareCartForm(form)) {
+                  form.submit();
+              }
+          });
+      });
+  });
+
+  function prepareCartForm(form) {
+      // Validate
+      const sizeVal = document.getElementById('formSize').value;
+      const sizeList = document.getElementById('sizeList');
+      if (sizeList && !sizeVal) {
+          alert("Please select a size.");
+          return false;
+      }
+      
+      const fabricVal = document.getElementById('formFabricId').value;
+      const fabricList = document.getElementById('fabricList');
+      if (fabricList && !fabricVal) {
+          alert("Please select a fabric.");
+          return false;
+      }
+      
+      // Stock Check
+      const qty = parseInt(document.getElementById('qtyField').value);
+      const max = parseInt(document.getElementById('qtyField').max) || 999;
+      if (qty > max) {
+          alert('Cannot add more. Max available: ' + max);
+          return false;
+      }
+
+      return true;
+  }
 
 // Buy Now button handler
 document.addEventListener('DOMContentLoaded', function() {
