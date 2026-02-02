@@ -283,50 +283,108 @@ $result = $stmt->get_result();
         <!-- Section 1: Order History -->
         <h2 style="font-weight:700; color:#333; margin-bottom:20px;">Order History</h2>
         
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle" style="background:#fff;">
-                <thead style="background:#f8f9fa;">
-                    <tr>
-                        <th style="width:15%; color:#555; font-weight:600;">Product Code</th>
-                        <th style="width:40%; color:#555; font-weight:600;">Item Name</th>
-                        <th style="width:20%; color:#555; font-weight:600;">Purchase Date</th>
-                        <th style="width:25%; color:#555; font-weight:600;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if ($result->num_rows > 0): ?>
-                        <?php while($order = $result->fetch_assoc()): ?>
-                            <tr>
-                                <td style="color:#555;"><?php echo htmlspecialchars($order['product_code']); ?></td>
-                                <td style="color:#555;"><?php echo htmlspecialchars($order['product_name']); ?></td>
-                                <td style="color:#555;"><?php echo date('Y.m.d', strtotime($order['created_at'])); ?></td>
-                                <td>
-                                    <span class="badge bg-success">Paid</span>
-                                    <?php 
-                                        $dStatus = $order['delivery_status'];
-                                        $statusColors = [
-                                            'pending' => 'warning',
-                                            'processing' => 'info', 
-                                            'shipped' => 'primary',
-                                            'delivered' => 'success', 
-                                            'cancelled' => 'danger'
-                                        ];
-                                        $badgeColor = isset($statusColors[$dStatus]) ? $statusColors[$dStatus] : 'secondary';
-                                        
-                                        // If pending, visually show as Processing or just Delivery: Pending
-                                        $displayStatus = ucfirst($dStatus);
-                                    ?>
-                                    <span class="badge bg-<?php echo $badgeColor; ?>">
-                                        Delivery: <?php echo $displayStatus; ?>
-                                    </span>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr><td colspan="4" class="text-center text-muted">No orders found.</td></tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+        <?php
+        // 1. Group results by Order ID
+        $groupedOrders = [];
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $oid = $row['order_id'];
+                if (!isset($groupedOrders[$oid])) {
+                    $groupedOrders[$oid] = [
+                        'meta' => $row, // basic order details (date, status, payment_id etc)
+                        'items' => []
+                    ];
+                }
+                $groupedOrders[$oid]['items'][] = $row;
+            }
+        }
+        ?>
+
+        <div class="orders-list">
+            <?php if (empty($groupedOrders)): ?>
+                <div class="text-center p-5 bg-white rounded shadow-sm">
+                    <h4 class="text-muted">No orders found.</h4>
+                    <a href="index.php" class="btn btn-primary mt-3">Start Shopping</a>
+                </div>
+            <?php else: ?>
+                <?php foreach($groupedOrders as $oid => $orderData): 
+                    $meta = $orderData['meta'];
+                    $items = $orderData['items'];
+                    $totalItems = count($items);
+                    
+                    // Recalculate total from items just in case, or use meta's total (which is per row? wait, DB schema?)
+                    // In payment-success, we insert 'total_amount' per item? No.
+                    // create-order puts 'total_amount' per item. 
+                    // So Order Total = Sum of Item Totals.
+                    $orderTotal = 0;
+                    foreach($items as $i) $orderTotal += $i['total_amount'];
+                ?>
+                    <div class="order-card p-4 mb-4 bg-white border rounded shadow-sm">
+                        <!-- Order Header -->
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3 flex-wrap gap-2">
+                            <div>
+                                <h5 class="mb-1" style="color:#430160; font-weight:700;">Order #<?php echo htmlspecialchars($oid); ?></h5>
+                                <small class="text-muted">
+                                    Placed on <?php echo date('M d, Y', strtotime($meta['created_at'])); ?> 
+                                    <?php if($meta['payment_id']): ?> | Pay ID: <?php echo htmlspecialchars($meta['payment_id']); ?><?php endif; ?>
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <h5 class="mb-1 text-success fw-bold">Rs. <?php echo number_format($orderTotal, 2); ?></h5>
+                                <?php 
+                                    $pStatus = $meta['payment_status'];
+                                    $dStatus = $meta['delivery_status'];
+                                    
+                                    $pBadge = match($pStatus) { 'paid' => 'success', 'pending' => 'warning', 'failed' => 'danger', default => 'secondary' };
+                                    $dBadge = match($dStatus) { 'delivered' => 'success', 'shipped' => 'primary', 'processing' => 'info', 'cancelled' => 'danger', default => 'secondary' };
+                                ?>
+                                <span class="badge bg-<?php echo $pBadge; ?> mb-1"><?php echo ucfirst($pStatus); ?></span>
+                                <span class="badge bg-<?php echo $dBadge; ?> mb-1"><?php echo ucfirst($dStatus); ?></span>
+                            </div>
+                        </div>
+
+                        <!-- Order Items Table -->
+                        <div class="table-responsive">
+                            <table class="table table-sm table-borderless mb-0">
+                                <thead class="text-muted" style="font-size:0.85rem; border-bottom:1px solid #eee;">
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Details</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-end">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach($items as $item): ?>
+                                    <tr>
+                                        <td class="align-middle py-3" style="width: 40%;">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <!-- If you have images, showing them would be nice. Assuming placeholder for now. -->
+                                                <!-- <div style="width:50px; height:50px; background:#eee; border-radius:4px;"></div> -->
+                                                <div>
+                                                    <div class="fw-bold text-dark"><?php echo htmlspecialchars($item['product_name']); ?></div>
+                                                    <small class="text-muted"><?php echo htmlspecialchars($item['product_code'] ?? ''); ?></small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="align-middle py-3">
+                                            <small class="d-block text-muted">Fabric: <span class="text-dark fw-medium"><?php echo htmlspecialchars($item['fabric_type']); ?></span></small>
+                                            <small class="d-block text-muted">Size: <span class="text-dark fw-medium"><?php echo htmlspecialchars($item['size'] ?: 'N/A'); ?></span></small>
+                                        </td>
+                                        <td class="align-middle text-center py-3">
+                                            x<?php echo (int)$item['quantity']; ?>
+                                        </td>
+                                        <td class="align-middle text-end py-3 fw-bold text-dark">
+                                            Rs. <?php echo number_format($item['total_amount'], 2); ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
 
         <div style="border-top: 3px solid #ff0000; margin: 40px 0 20px 0;"></div>

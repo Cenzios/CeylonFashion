@@ -251,40 +251,71 @@ body {
           </tr>
         </thead>
         <tbody>
-          <?php while($order = $result->fetch_assoc()): ?>
-            <tr id="orderRow<?php echo (int)$order['id']; ?>">
+          <?php 
+          // Group orders logic
+          $groupedAdminOrders = [];
+          while($row = $result->fetch_assoc()) {
+              $oid = $row['order_id'];
+              if (!isset($groupedAdminOrders[$oid])) {
+                  $groupedAdminOrders[$oid] = [
+                      'meta' => $row,
+                      'items' => []
+                  ];
+              }
+              $groupedAdminOrders[$oid]['items'][] = $row;
+          }
+          
+          if (empty($groupedAdminOrders)): 
+          ?>
+            <tr><td colspan="10" class="text-center text-muted">No orders found.</td></tr>
+          <?php else: ?>
+            <?php foreach($groupedAdminOrders as $oid => $orderData):
+                $meta = $orderData['meta'];
+                $items = $orderData['items'];
+                
+                // Recalculate total for display
+                $totalAmount = 0;
+                foreach($items as $i) $totalAmount += $i['total_amount'];
+            ?>
+            <tr id="orderRow<?php echo (int)$meta['id']; ?>">
               <td class="order-id-col">
-                <strong><?php echo htmlspecialchars($order['order_id']); ?></strong>
-                <?php if ($order['payment_id']): ?>
-                <br><small class="text-muted">Pay: <?php echo htmlspecialchars($order['payment_id']); ?></small>
+                <strong><?php echo htmlspecialchars($meta['order_id']); ?></strong>
+                <?php if ($meta['payment_id']): ?>
+                <br><small class="text-muted">Pay: <?php echo htmlspecialchars($meta['payment_id']); ?></small>
                 <?php endif; ?>
               </td>
               <td>
-                <span class="badge bg-light text-dark border"><?php echo htmlspecialchars($order['product_code'] ?? 'N/A'); ?></span>
+                <?php foreach($items as $item): ?>
+                    <span class="badge bg-light text-dark border mb-1 d-block"><?php echo htmlspecialchars($item['product_code'] ?? 'N/A'); ?></span>
+                <?php endforeach; ?>
               </td>
               <td>
-                <strong><?php echo htmlspecialchars($order['customer_name']); ?></strong>
-                <br><small class="text-muted"><?php echo htmlspecialchars($order['username']); ?></small>
-                <br><small class="text-muted"><?php echo htmlspecialchars($order['customer_phone']); ?></small>
+                <strong><?php echo htmlspecialchars($meta['customer_name']); ?></strong>
+                <br><small class="text-muted"><?php echo htmlspecialchars($meta['username']); ?></small>
+                <br><small class="text-muted"><?php echo htmlspecialchars($meta['customer_phone']); ?></small>
               </td>
               <td>
-                <strong><?php echo htmlspecialchars($order['product_name']); ?></strong>
+                <?php foreach($items as $item): ?>
+                    <div class="mb-1"><strong><?php echo htmlspecialchars($item['product_name']); ?></strong></div>
+                <?php endforeach; ?>
               </td>
               <td>
-                <small>
-                  <strong>Fabric:</strong> <?php echo htmlspecialchars($order['fabric_type']); ?><br>
-                  <strong>Size:</strong> <?php echo htmlspecialchars($order['size']); ?><br>
-                  <strong>Qty:</strong> <?php echo (int)$order['quantity']; ?>
-                </small>
+                <?php foreach($items as $item): ?>
+                <div class="mb-2 border-bottom pb-1">
+                  <small>
+                    <strong>Size:</strong> <?php echo htmlspecialchars($item['size']); ?> | 
+                    <strong>Qty:</strong> <?php echo (int)$item['quantity']; ?>
+                  </small>
+                </div>
+                <?php endforeach; ?>
               </td>
               <td>
-                <strong>Rs. <?php echo number_format((float)$order['total_amount'], 2); ?></strong>
-                <br><small class="text-muted">@ Rs. <?php echo number_format((float)$order['unit_price'], 2); ?></small>
+                <strong>Rs. <?php echo number_format($totalAmount, 2); ?></strong>
               </td>
               <td>
                   <?php
                   $paymentStatuses = ['pending' => 'warning', 'paid' => 'success', 'failed' => 'danger', 'cancelled' => 'secondary'];
-                  $s = $order['payment_status'];
+                  $s = $meta['payment_status'];
                   $color = isset($paymentStatuses[$s]) ? $paymentStatuses[$s] : 'secondary';
                   ?>
                   <span class="badge bg-<?php echo $color; ?> fs-6">
@@ -293,34 +324,35 @@ body {
               </td>
               <td>
                 <select class="form-select form-select-sm status-select" 
-                        onchange="updateDeliveryStatus(<?php echo (int)$order['id']; ?>, this)">
+                        onchange="updateDeliveryStatus(<?php echo (int)$meta['id']; ?>, this)">
                   <?php
                   $deliveryStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
                   foreach($deliveryStatuses as $s) {
-                      $selected = ($order['delivery_status'] === $s) ? 'selected' : '';
+                      $selected = ($meta['delivery_status'] === $s) ? 'selected' : '';
                       echo "<option value='$s' $selected>" . ucfirst($s) . "</option>";
                   }
                   ?>
                 </select>
               </td>
               <td>
-                <small><?php echo date('Y-m-d', strtotime($order['created_at'])); ?></small>
-                <br><small class="text-muted"><?php echo date('H:i', strtotime($order['created_at'])); ?></small>
+                <small><?php echo date('Y-m-d', strtotime($meta['created_at'])); ?></small>
+                <br><small class="text-muted"><?php echo date('H:i', strtotime($meta['created_at'])); ?></small>
               </td>
               <td>
                 <button class="btn btn-sm btn-info order-detail-btn" 
-                        onclick="showOrderDetails(<?php echo (int)$order['id']; ?>)" 
+                        onclick="showOrderDetails('<?php echo htmlspecialchars($meta['order_id']); ?>')" 
                         title="View Details">
                   <i class="bi bi-eye"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" 
-                        onclick="showDeleteModal(<?php echo (int)$order['id']; ?>)" 
+                        onclick="showDeleteModal(<?php echo (int)$meta['id']; ?>)" 
                         title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
               </td>
             </tr>
-          <?php endwhile; ?>
+            <?php endforeach; ?>
+          <?php endif; ?>
         </tbody>
       </table>
     </div>
@@ -407,9 +439,9 @@ let currentOrderId = null;
 let deleteOrderId = null;
 
 // Show order details in modal
-function showOrderDetails(orderId) {
-    console.log('Opening order details for ID:', orderId); // Debug log
-    currentOrderId = orderId; // Store the current order ID
+function showOrderDetails(orderIdStr) {
+    console.log('Opening order details for Order ID:', orderIdStr);
+    currentOrderId = orderIdStr;
     
     const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
     const content = document.getElementById('orderDetailsContent');
@@ -418,12 +450,41 @@ function showOrderDetails(orderId) {
     content.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
     modal.show();
     
-    // Fetch order details
-    fetch('get-order-details.php?id=' + orderId)
+    // Fetch order details via order_id (string)
+    fetch('get-order-details.php?order_id=' + encodeURIComponent(orderIdStr))
         .then(resp => resp.json())
         .then(data => {
             if (data.success) {
-                const order = data.order;
+                const meta = data.order; // Main order details
+                const items = data.items; // Array of items
+                
+                // Construct items HTML
+                let itemsHtml = '';
+                items.forEach(item => {
+                    itemsHtml += `
+                        <tr class="align-middle">
+                            <td>
+                                <strong>${item.product_name}</strong>
+                                <br><small class="text-muted">${item.product_code || 'N/A'}</small>
+                            </td>
+                            <td>
+                                <small>
+                                    Fabric: ${item.fabric_type}<br>
+                                    Size: ${item.size}
+                                </small>
+                            </td>
+                            <td class="text-center">${item.quantity}</td>
+                            <td class="text-end">Rs. ${parseFloat(item.total_amount).toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+
+                // Calculate total from items sum if needed, or use meta totals?
+                // Meta total might be just the first row's total if we didn't aggregate in backend.
+                // Best to aggregate in backend. Assuming backend returns total of order in meta, OR we sum it.
+                // Let's sum it here for safety.
+                let grandTotal = items.reduce((sum, i) => sum + parseFloat(i.total_amount), 0);
+                
                 content.innerHTML = `
                     <div class="row">
                         <div class="col-md-6">
@@ -433,19 +494,19 @@ function showOrderDetails(orderId) {
                             <table class="table table-sm table-bordered">
                                 <tr>
                                     <th width="40%">Order ID:</th>
-                                    <td><strong>${order.order_id}</strong></td>
+                                    <td><strong>${meta.order_id}</strong></td>
                                 </tr>
                                 <tr>
                                     <th>Payment ID:</th>
-                                    <td>${order.payment_id || 'N/A'}</td>
+                                    <td>${meta.payment_id || 'N/A'}</td>
                                 </tr>
                                 <tr>
                                     <th>Username:</th>
-                                    <td>${order.username}</td>
+                                    <td>${meta.username}</td>
                                 </tr>
                                 <tr>
                                     <th>Date:</th>
-                                    <td>${order.created_at}</td>
+                                    <td>${meta.created_at}</td>
                                 </tr>
                             </table>
                         </div>
@@ -456,89 +517,80 @@ function showOrderDetails(orderId) {
                             <table class="table table-sm table-bordered">
                                 <tr>
                                     <th width="40%">Name:</th>
-                                    <td>${order.customer_name}</td>
+                                    <td>${meta.customer_name}</td>
                                 </tr>
                                 <tr>
                                     <th>Email:</th>
-                                    <td>${order.customer_email}</td>
+                                    <td>${meta.customer_email}</td>
                                 </tr>
                                 <tr>
                                     <th>Phone:</th>
-                                    <td>${order.customer_phone}</td>
+                                    <td>${meta.customer_phone}</td>
                                 </tr>
                                 <tr>
                                     <th>City:</th>
-                                    <td>${order.city}</td>
+                                    <td>${meta.city}</td>
                                 </tr>
                             </table>
                         </div>
                     </div>
                     <hr>
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-12">
                             <h6 class="text-muted mb-3">
-                                <i class="bi bi-box-seam"></i> Product Details
+                                <i class="bi bi-box-seam"></i> Purchased Items
                             </h6>
-                            <table class="table table-sm table-bordered">
-                                <tr>
-                                    <th width="40%">Product:</th>
-                                    <td><strong>${order.product_name}</strong></td>
-                                </tr>
-                                <tr>
-                                    <th>Fabric:</th>
-                                    <td>${order.fabric_type}</td>
-                                </tr>
-                                <tr>
-                                    <th>Size:</th>
-                                    <td>${order.size}</td>
-                                </tr>
-                                <tr>
-                                    <th>Quantity:</th>
-                                    <td>${order.quantity}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">
-                                <i class="bi bi-geo-alt"></i> Delivery Address
-                            </h6>
-                            <div class="border rounded p-2 mb-3" style="background: #f8f9fa;">
-                                ${order.delivery_address}<br>
-                                ${order.city}
-                                ${order.postal_code ? '<br>Postal Code: ' + order.postal_code : ''}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Spec</th>
+                                            <th class="text-center">Qty</th>
+                                            <th class="text-end">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${itemsHtml}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <th colspan="3" class="text-end">Total Amount:</th>
+                                            <th class="text-end text-primary fw-bold">Rs. ${grandTotal.toFixed(2)}</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
                             </div>
-                            <h6 class="text-muted mb-2">
-                                <i class="bi bi-currency-dollar"></i> Amount
-                            </h6>
-                            <table class="table table-sm table-bordered">
-                                <tr>
-                                    <th width="50%">Unit Price:</th>
-                                    <td>Rs. ${parseFloat(order.unit_price).toFixed(2)}</td>
-                                </tr>
-                                <tr class="table-primary">
-                                    <th><strong>Total Amount:</strong></th>
-                                    <td><strong>Rs. ${parseFloat(order.total_amount).toFixed(2)}</strong></td>
-                                </tr>
-                            </table>
                         </div>
                     </div>
                     <hr>
                     <div class="row">
                         <div class="col-md-12">
                             <h6 class="text-muted mb-3">
-                                <i class="bi bi-flag"></i> Status
+                                <i class="bi bi-geo-alt"></i> Delivery Details
                             </h6>
-                            <p>
-                                <strong>Payment Status:</strong> 
-                                <span class="badge bg-${order.payment_status === 'paid' ? 'success' : order.payment_status === 'pending' ? 'warning' : order.payment_status === 'failed' ? 'danger' : 'secondary'} fs-6">
-                                    ${order.payment_status.toUpperCase()}
-                                </span>
-                                <br><br>
-                                <strong>Delivery Status:</strong> 
-                                <span class="badge bg-info fs-6">
-                                    ${order.delivery_status.toUpperCase()}
-                                </span>
-                            </p>
+                             <div class="d-flex justify-content-between align-items-start border rounded p-3 bg-light">
+                                <div>
+                                    <strong>Address:</strong><br>
+                                    ${meta.delivery_address}<br>
+                                    ${meta.city}
+                                    ${meta.postal_code ? '<br>Postal Code: ' + meta.postal_code : ''}
+                                </div>
+                                <div class="text-end">
+                                     <div class="mb-2">
+                                        Payment:
+                                        <span class="badge bg-${meta.payment_status === 'paid' ? 'success' : 'warning'}">
+                                            ${meta.payment_status.toUpperCase()}
+                                        </span>
+                                     </div>
+                                     <div>
+                                        Delivery:
+                                        <span class="badge bg-info">
+                                            ${meta.delivery_status.toUpperCase()}
+                                        </span>
+                                     </div>
+                                </div>
+                             </div>
                         </div>
                     </div>
                 `;
