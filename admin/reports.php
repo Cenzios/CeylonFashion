@@ -374,7 +374,7 @@ tr:nth-child(even) {
         <div class="header">
             <h1>Ceylon Fashion - Complete Business Report</h1>
             <div class="subtitle">Orders & Resale History</div>
-            <div class="subtitle">Generated on: <?php echo date('F d, Y \a\t h:i A'); ?></div>
+
         </div>
 
         <!-- Overall Statistics -->

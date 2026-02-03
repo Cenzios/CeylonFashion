@@ -72,7 +72,6 @@ class PDF_Report extends FPDF {
         $this->Cell(0,10,'Ceylon Fashion - Complete Business Report',0,1,'C');
         $this->SetFont('Arial','',10);
         $this->SetTextColor(100);
-        $this->Cell(0,6,'Generated on: '.date('F d, Y \a\t h:i A'),0,1,'C');
         $this->SetDrawColor(67,1,96);
         $this->SetLineWidth(0.5);
         $this->Line(10, $this->GetY()+2, 200, $this->GetY()+2);
