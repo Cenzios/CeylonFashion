@@ -39,6 +39,22 @@
           if (!isset($mysqli)) {
               require_once __DIR__ . '/../config.php';
           }
+          
+          // Check if user is deleted (Active Session Invalidation)
+          $checkUserStmt = $mysqli->prepare("SELECT is_deleted FROM users WHERE id = ?");
+          $checkUserStmt->bind_param("i", $_SESSION['user_id']);
+          $checkUserStmt->execute();
+          $checkUserRes = $checkUserStmt->get_result();
+          if ($checkUserRow = $checkUserRes->fetch_assoc()) {
+              if ($checkUserRow['is_deleted'] == 1) {
+                  // User is deleted, destroy session and redirect
+                  // Use JS redirect since headers are likely sent
+                  echo "<script>alert('Your account is no longer active.'); window.location.href='logout.php';</script>";
+                  exit;
+              }
+          }
+          $checkUserStmt->close();
+
           $user_id = (int)$_SESSION['user_id'];
           $wishlistCount = getUserWishlistCount($mysqli, $user_id);
           $cartCount = getUserCartCount($mysqli, $user_id);

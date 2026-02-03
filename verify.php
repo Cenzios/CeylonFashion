@@ -63,7 +63,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $pwd === '') {
 }
 
 // ---- LOOKUP USER ----
-$stmt = $pdo->prepare('SELECT id, email, password, fname, lname, type FROM users WHERE email = ? LIMIT 1');
+$stmt = $pdo->prepare('SELECT id, email, password, fname, lname, type, is_deleted FROM users WHERE email = ? LIMIT 1');
 $stmt->execute([$email]);
 $user = $stmt->fetch();
 
@@ -71,6 +71,17 @@ $user = $stmt->fetch();
 // Check if user exists first
 if (!$user) {
   $msg = 'No account found with this email.';
+  if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+    json_response(false, $msg);
+  }
+  $_SESSION['login_error'] = $msg;
+  header('Location: index.php');
+  exit;
+}
+
+// Check if account is active
+if ($user['is_deleted'] == 1) {
+  $msg = 'Your account is no longer active.';
   if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
     json_response(false, $msg);
   }
