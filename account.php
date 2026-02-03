@@ -171,11 +171,13 @@ $stmt->close();
                                 <label for="fname" class="form-label">First Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="fname" name="fname" 
                                        value="<?php echo htmlspecialchars($user['fname']); ?>" required>
+                                <div class="invalid-feedback-custom"></div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="lname" class="form-label">Last Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="lname" name="lname" 
                                        value="<?php echo htmlspecialchars($user['lname']); ?>" required>
+                                <div class="invalid-feedback-custom"></div>
                             </div>
                         </div>
 
@@ -183,6 +185,7 @@ $stmt->close();
                             <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
                             <input type="email" class="form-control" id="email" name="email" 
                                    value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                            <div class="invalid-feedback-custom"></div>
                         </div>
 
                         <hr class="my-4">
@@ -202,6 +205,7 @@ $stmt->close();
                                         </svg>
                                     </button>
                                 </div>
+                                <div class="invalid-feedback-custom"></div>
                                 <small class="text-muted">At least 6 characters</small>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -215,6 +219,7 @@ $stmt->close();
                                         </svg>
                                     </button>
                                 </div>
+                                <div class="invalid-feedback-custom"></div>
                             </div>
                         </div>
 
@@ -533,18 +538,150 @@ body {
 .btn-toggle-pass:hover {
     color: #343a40;
 }
+
+/* Validation Styles - Local Override */
+.invalid-feedback-custom {
+    color: red !important; /* Explicit red color */
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    display: none;
+}
+
+.form-control.is-invalid-custom {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    padding-right: calc(1.5em + 0.75rem);
+}
+
+.form-control.is-invalid-custom ~ .invalid-feedback-custom {
+    display: block;
+}
+
+.password-wrapper .form-control.is-invalid-custom {
+    background-position: right 2.5rem center;
+}
 </style>
 
 <script>
-// Password confirmation validation
-document.querySelector('.profile-form').addEventListener('submit', function(e) {
-    const pwd = document.getElementById('pwd').value;
-    const pwdConfirm = document.getElementById('pwd_confirm').value;
-    
-    if (pwd && pwd !== pwdConfirm) {
-        e.preventDefault();
-        alert('Passwords do not match!');
-        return false;
+// Client-side Profile Validation
+document.addEventListener('DOMContentLoaded', function() {
+    const profileForm = document.querySelector('.profile-form');
+    // Using simple selectors since IDs are unique
+    const fnameInput = document.getElementById('fname');
+    const lnameInput = document.getElementById('lname');
+    const emailInput = document.getElementById('email');
+    const pwdInput = document.getElementById('pwd');
+    const pwdConfirmInput = document.getElementById('pwd_confirm');
+
+    const validateField = (input, validator) => {
+        const value = input.value.trim();
+        const errorMessage = validator(value);
+        let errorDiv;
+        
+        // Logic to find error div (outside wrapper if applicable)
+        if (input.parentElement.classList.contains('password-wrapper')) {
+           errorDiv = input.parentElement.nextElementSibling;
+        } else {
+           errorDiv = input.nextElementSibling;
+        }
+        
+        if (errorMessage) {
+            input.classList.add('is-invalid-custom');
+            if (errorDiv) {
+                errorDiv.textContent = errorMessage;
+                errorDiv.style.display = 'block';
+            }
+            return false;
+        } else {
+            input.classList.remove('is-invalid-custom');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
+            return true;
+        }
+    };
+
+    const validators = {
+        fname: (value) => {
+            if (!value) return 'First Name is required';
+            if (!/^[A-Za-z]+$/.test(value)) return 'First Name must contain only letters';
+            if (value.length < 2) return 'First Name must be at least 2 characters long';
+            if (value.length > 50) return 'First Name cannot exceed 50 characters';
+            return '';
+        },
+        lname: (value) => {
+            if (!value) return 'Last Name is required';
+            if (!/^[A-Za-z]+$/.test(value)) return 'Last Name must contain only letters';
+            if (value.length < 2) return 'Last Name must be at least 2 characters long';
+            if (value.length > 50) return 'Last Name cannot exceed 50 characters';
+            return '';
+        },
+        email: (value) => {
+            if (!value) return 'Email is required';
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
+            return '';
+        },
+        password: (value) => {
+            // Password is optional in this form, so only validate if not empty
+            if (!value) return ''; 
+            
+            const hasUpper = /[A-Z]/.test(value);
+            const hasLower = /[a-z]/.test(value);
+            const hasNum = /[0-9]/.test(value);
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(value);
+            
+            if (value.length < 8 || !hasUpper || !hasLower || !hasNum || !hasSpecial) {
+                return 'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character';
+            }
+            return '';
+        },
+        confirmPassword: (value) => {
+            // Only validate if password field has value
+            if (pwdInput && pwdInput.value && !value) return 'Confirm Password is required';
+            if (pwdInput && pwdInput.value && value !== pwdInput.value) return 'Passwords do not match';
+            return '';
+        }
+    };
+
+    const inputs = [
+        { input: fnameInput, validator: validators.fname },
+        { input: lnameInput, validator: validators.lname },
+        { input: emailInput, validator: validators.email },
+        { input: pwdInput, validator: validators.password },
+        { input: pwdConfirmInput, validator: validators.confirmPassword }
+    ];
+
+    inputs.forEach(({ input, validator }) => {
+        if (input) {
+            input.addEventListener('input', () => validateField(input, validator));
+            input.addEventListener('blur', () => validateField(input, validator));
+        }
+    });
+
+    // Also re-validate confirm password when main password changes
+    if (pwdInput) {
+        pwdInput.addEventListener('input', () => {
+            if (pwdConfirmInput) validateField(pwdConfirmInput, validators.confirmPassword);
+        });
+    }
+
+    if (profileForm) {
+        profileForm.addEventListener('submit', function(e) {
+            let isValid = true;
+            inputs.forEach(({ input, validator }) => {
+                if (input && !validateField(input, validator)) {
+                    isValid = false;
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+            }
+        });
     }
 });
 </script>
