@@ -72,7 +72,7 @@ $cols = $mysqli->query("SELECT DISTINCT color_name FROM product_colors ORDER BY 
 // Query
 $prodHistorySQL = "SELECT 
     p.id, p.product_code, p.product_name, p.category, 
-    p.created_at, p.updated_at,
+    p.created_at, p.updated_at, p.is_deleted,
     pc.color_name,
     GROUP_CONCAT(DISTINCT ps.size ORDER BY ps.id SEPARATOR ', ') as size_list,
     COALESCE(SUM(pf.fabric_qty), 0) as total_stock
@@ -95,7 +95,7 @@ $prodResult = $prodStmt->get_result();
 // ---- Fetch Order History ----
 $orderHistorySQL = "SELECT 
     o.id, o.order_id, o.username, o.product_name, o.product_code, o.fabric_type, o.size, o.quantity,
-    o.unit_price, o.total_amount, o.payment_status, o.delivery_status,
+    o.unit_price, o.total_amount, o.payment_status, o.delivery_status, o.is_deleted,
     o.customer_name, o.customer_email, o.customer_phone, o.city, o.created_at as purchase_date
 FROM orders o ORDER BY o.created_at DESC";
 $orderHistoryResult = $mysqli->query($orderHistorySQL);
@@ -479,6 +479,7 @@ tr:nth-child(even) {
                             <th>Color</th>
                             <th>Sizes</th>
                             <th>Stock Status</th>
+                            <th>Admin Action</th>
                             <th>Created</th>
                             <th>Updated</th>
                         </tr>
@@ -486,8 +487,12 @@ tr:nth-child(even) {
                     <tbody>
                         <?php while($prod = $prodResult->fetch_assoc()): 
                             $inStock = $prod['total_stock'] > 0;
+                            // Stock Status logic (reverted to original)
                             $stockClass = $inStock ? 'status-paid' : 'status-failed'; 
                             $stockText = $inStock ? 'Available' : 'Not Available';
+                            
+                            // Admin Action logic
+                            $adminActionRaw = $prod['is_deleted'] == 1 ? '<span class="status status-failed">Admin Deleted</span>' : '-';
                         ?>
                             <tr>
                                 <td><strong><?php echo htmlentities($prod['product_code']); ?></strong></td>
@@ -496,6 +501,7 @@ tr:nth-child(even) {
                                 <td><?php echo htmlentities($prod['color_name'] ?: 'N/A'); ?></td>
                                 <td><?php echo htmlentities($prod['size_list'] ?: 'N/A'); ?></td>
                                 <td><span class="status <?php echo $stockClass; ?>"><?php echo $stockText; ?></span></td>
+                                <td><?php echo $adminActionRaw; ?></td>
                                 <td><?php echo $prod['created_at'] ? date('Y-m-d', strtotime($prod['created_at'])) : '-'; ?></td>
                                 <td><?php echo $prod['updated_at'] ? date('Y-m-d', strtotime($prod['updated_at'])) : '-'; ?></td>
                             </tr>
@@ -524,6 +530,7 @@ tr:nth-child(even) {
                             <th>Total</th>
                             <th>Payment</th>
                             <th>Delivery</th>
+                            <th>Admin Action</th>
                             <th>Date</th>
                         </tr>
                     </thead>
@@ -534,6 +541,8 @@ tr:nth-child(even) {
                             $deliveryClass = $order['delivery_status'] === 'delivered' ? 'status-delivered' : 
                                             ($order['delivery_status'] === 'shipped' ? 'status-shipped' : 
                                             ($order['delivery_status'] === 'processing' ? 'status-processing' : 'status-pending'));
+                                            
+                            $adminActionRaw = $order['is_deleted'] == 1 ? '<span class="status status-failed">Deleted</span>' : '-';
                         ?>
                             <tr>
                                 <td><strong><?php echo htmlentities($order['order_id']); ?></strong></td>
@@ -551,6 +560,7 @@ tr:nth-child(even) {
                                 <td><strong>Rs. <?php echo number_format($order['total_amount'], 2); ?></strong></td>
                                 <td><span class="status <?php echo $paymentClass; ?>"><?php echo ucfirst($order['payment_status']); ?></span></td>
                                 <td><span class="status <?php echo $deliveryClass; ?>"><?php echo ucfirst($order['delivery_status']); ?></span></td>
+                                <td><?php echo $adminActionRaw; ?></td>
                                 <td><?php echo date('Y.m.d', strtotime($order['purchase_date'])); ?></td>
                             </tr>
                         <?php endwhile; ?>
