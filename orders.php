@@ -20,7 +20,7 @@ $stmt = $mysqli->prepare("
         p.product_code
     FROM orders o
     LEFT JOIN products p ON o.product_id = p.id
-    WHERE o.username = ? AND o.payment_status = 'paid'
+    WHERE o.username = ? AND o.payment_status = 'paid' AND o.is_deleted = 0
     ORDER BY o.created_at DESC
 ");
 $stmt->bind_param("s", $username);
