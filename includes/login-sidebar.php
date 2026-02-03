@@ -37,8 +37,8 @@
               <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
             </svg>
           </button>
-          <div class="invalid-feedback-custom"></div>
         </div>
+        <div class="invalid-feedback-custom"></div>
       </div>
 
       <button type="submit" class="btn btn-dark-blue w-100 py-3 fw-bold mb-3" id="loginSubmitBtn">
@@ -204,14 +204,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const validateField = (input, validator) => {
         const value = input.value.trim();
         const errorMessage = validator(value);
-        const errorDiv = input.parentElement.querySelector('.invalid-feedback-custom') || input.nextElementSibling;
+        let errorDiv;
+        if (input.parentElement.classList.contains('password-wrapper')) {
+           errorDiv = input.parentElement.nextElementSibling;
+        } else {
+           errorDiv = input.parentElement.querySelector('.invalid-feedback-custom') || input.nextElementSibling;
+        }
         
         if (errorMessage) {
             input.classList.add('is-invalid-custom');
-            if (errorDiv) errorDiv.textContent = errorMessage;
+            if (errorDiv) {
+                errorDiv.textContent = errorMessage;
+                errorDiv.style.display = 'block';
+            }
             return false;
         } else {
             input.classList.remove('is-invalid-custom');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
             return true;
         }
     };

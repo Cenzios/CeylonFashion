@@ -36,8 +36,8 @@
               <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
             </svg>
           </button>
-          <div class="invalid-feedback-custom"></div>
         </div>
+        <div class="invalid-feedback-custom"></div>
         <small class="text-muted">At least 6 characters</small>
       </div>
       <div class="mb-3">
@@ -50,8 +50,8 @@
               <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
             </svg>
           </button>
-          <div class="invalid-feedback-custom"></div>
         </div>
+        <div class="invalid-feedback-custom"></div>
       </div>
       <div class="d-grid">
         <button type="submit" class="btn btn-dark-blue w-100 py-3 fw-bold" id="registerSubmitBtn">
@@ -207,17 +207,24 @@
           // For normal inputs, error div is next sibling.
           let errorDiv;
           if (input.parentElement.classList.contains('password-wrapper')) {
-             errorDiv = input.parentElement.querySelector('.invalid-feedback-custom');
+             // Wrapper is parent. Error div is next sibling of Wrapper.
+             errorDiv = input.parentElement.nextElementSibling;
           } else {
              errorDiv = input.nextElementSibling;
           }
           
           if (errorMessage) {
               input.classList.add('is-invalid-custom');
-              if (errorDiv) errorDiv.textContent = errorMessage;
+              if (errorDiv) {
+                  errorDiv.textContent = errorMessage;
+                  errorDiv.style.display = 'block';
+              }
               return false;
           } else {
               input.classList.remove('is-invalid-custom');
+              if (errorDiv) {
+                  errorDiv.style.display = 'none';
+              }
               return true;
           }
       };
