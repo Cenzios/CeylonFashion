@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $result->fetch_assoc();
         
         // Check password
-        if ($password === $user['password'] || password_verify($password, $user['password'])) {
+        if ($password === $user['password']) {
             
             // Check if user is admin
             if ($user['type'] === 'admin') {

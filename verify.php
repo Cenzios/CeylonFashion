@@ -90,12 +90,9 @@ if ($user['is_deleted'] == 1) {
   exit;
 }
 
-// Check password (PLAIN TEXT as requested)
-// SECURITY WARNING: Storing passwords in plain text is not secure.
-// This was implemented based on user request to "fix it as not hashing".
+// Check password
+// Plain text check ONLY (as requested)
 $passwordMatch = ($user['password'] === $pwd);
-// Note: We use strict comparison. hash_equals is better for timing attacks but requires strings.
-// $passwordMatch = hash_equals((string)$user['password'], (string)$pwd);
 
 if ($passwordMatch) {
   // ---- CHECK IF USER IS ADMIN ----
