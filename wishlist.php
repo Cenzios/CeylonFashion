@@ -163,11 +163,7 @@ if ($isLoggedIn) {
         }
         $sizeStmt->close();
         
-        // Default sizes if none defined
-        if (empty($sizes)) {
-            $sizes = ['XS','S','M','L','XL'];
-        }
-        // Specific sort order
+        // Sort sizes logically (do NOT add default sizes anymore)
         $sizeOrder = ['XS' => 1, 'S' => 2, 'M' => 3, 'L' => 4, 'XL' => 5, 'XXL' => 6];
         usort($sizes, function($a, $b) use ($sizeOrder) {
             return ($sizeOrder[$a] ?? 99) <=> ($sizeOrder[$b] ?? 99);
@@ -236,6 +232,7 @@ if ($isLoggedIn) {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php if (!empty($item['sizes'])): ?>
                     <div class="col-sm-6">
                         <label class="form-label small fw-bold mb-1">Size</label>
                         <select class="form-select form-select-sm" 
@@ -247,6 +244,7 @@ if ($isLoggedIn) {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php endif; ?>
                  </div>
               </div>
 
@@ -389,9 +387,13 @@ if ($isLoggedIn) {
         const sizeSelect = document.getElementById('size_' + uniqueId);
         const addBtn = document.getElementById('btn_add_' + uniqueId);
         
-        if (fabricSelect && sizeSelect && addBtn) {
-            // Check if both have values
-            if (fabricSelect.value !== "" && sizeSelect.value !== "") {
+        if (fabricSelect && addBtn) {
+            // If size selector exists, both must have values
+            // If size selector doesn't exist (no sizes for product), only fabric matters
+            const fabricValid = fabricSelect.value !== "";
+            const sizeValid = sizeSelect ? sizeSelect.value !== "" : true;
+            
+            if (fabricValid && sizeValid) {
                 addBtn.disabled = false;
             } else {
                 addBtn.disabled = true;
@@ -406,9 +408,13 @@ if ($isLoggedIn) {
         const fabricId = fabricSelect ? fabricSelect.value : '';
         const size = sizeSelect ? sizeSelect.value : '';
 
-        // Validation (double check)
-        if (!fabricId || !size) {
-            alert("Please select both Fabric and Size.");
+        // Validation: fabric is required, size only if selector exists
+        if (!fabricId) {
+            alert("Please select a Fabric.");
+            return;
+        }
+        if (sizeSelect && !size) {
+            alert("Please select a Size.");
             return;
         }
 
