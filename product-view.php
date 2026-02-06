@@ -1475,8 +1475,7 @@ include 'components/review-dialog.php';
   }
 </style>
 
-
-
+<script>
   // Wishlist toggle
   function toggleWishlist(productId) {
     const btn = document.getElementById('wishlistBtn');
@@ -1608,7 +1607,7 @@ include 'components/review-dialog.php';
   });
 
   // Initialize prices on load
-  updatePrices();
+  // updatePrices(); // REMOVED: Function not defined. Initialization happens in DOMContentLoaded below.
 </script>
 
 <script>
