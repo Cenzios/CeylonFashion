@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'], $_POST['s
 
 // Handle delivery status update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'], $_POST['delivery_status'])) {
-    $orderId = (int)$_POST['order_id'];
+    $orderId = $_POST['order_id']; // This is the order_id STRING, not the row id
     $deliveryStatus = $_POST['delivery_status'];
     
     // Validate delivery status
@@ -46,8 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_id'], $_POST['d
         exit;
     }
     
-    $stmt = $mysqli->prepare("UPDATE orders SET delivery_status = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->bind_param("si", $deliveryStatus, $orderId);
+    // Update ALL items with the same order_id
+    $stmt = $mysqli->prepare("UPDATE orders SET delivery_status = ?, updated_at = NOW() WHERE order_id = ?");
+    $stmt->bind_param("ss", $deliveryStatus, $orderId);
     
     if ($stmt->execute()) {
         echo "success";
@@ -324,7 +325,7 @@ body {
               </td>
               <td>
                 <select class="form-select form-select-sm status-select" 
-                        onchange="updateDeliveryStatus(<?php echo (int)$meta['id']; ?>, this)">
+                        onchange="updateDeliveryStatus('<?php echo htmlspecialchars($meta['order_id']); ?>', this)">
                   <?php
                   $deliveryStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
                   foreach($deliveryStatuses as $s) {
@@ -457,7 +458,7 @@ function updateDeliveryStatus(orderId, selectElement) {
     fetch('orders.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'order_id=' + orderId + '&delivery_status=' + status
+        body: 'order_id=' + encodeURIComponent(orderId) + '&delivery_status=' + status
     })
     .then(resp => resp.text())
     .then(data => {
