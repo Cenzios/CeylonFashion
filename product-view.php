@@ -194,7 +194,7 @@ if ($isLoggedIn) {
         
         <!-- Thumbnails on right side -->
         <div class="thumbs-col">
-          <?php foreach (array_slice($images, 0, 3) as $idx => $img): ?>
+          <?php foreach ($images as $idx => $img): ?>
             <div class="thumb-item <?= $idx === 0 ? 'active' : ''; ?>" data-img="<?= e($img); ?>">
               <img src="images/products/<?= e($img); ?>" alt="<?= e($product['product_name']); ?>">
             </div>
@@ -634,7 +634,7 @@ include 'components/review-dialog.php';
   
   .thumb-item { 
     width: 120px; 
-    height: 200px; 
+    height: 150px; 
     border-radius: 8px; 
     overflow: hidden; 
     border: 2px solid #eee; 
