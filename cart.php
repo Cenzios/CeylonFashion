@@ -38,7 +38,8 @@ if ($isLoggedIn) {
             p.product_img3,
             p.product_img4,
             p.category,
-            pf.fabric_type
+            pf.fabric_type,
+            pf.fabric_price AS current_fabric_price
         FROM cart c
         JOIN products p ON c.product_id = p.id
         LEFT JOIN product_fabrics pf ON c.fabric_id = pf.id
@@ -54,6 +55,18 @@ if ($isLoggedIn) {
 
     $items = $result->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
+
+    // Sync cart prices with current fabric prices (in case admin changed them)
+    $updatePriceStmt = $mysqli->prepare("UPDATE cart SET price = ? WHERE id = ?");
+    foreach ($items as &$item) {
+        if (!empty($item['current_fabric_price']) && (float)$item['price'] !== (float)$item['current_fabric_price']) {
+            $item['price'] = $item['current_fabric_price'];
+            $updatePriceStmt->bind_param("di", $item['current_fabric_price'], $item['cart_id']);
+            $updatePriceStmt->execute();
+        }
+    }
+    unset($item);
+    $updatePriceStmt->close();
 
     // For each cart item, fetch current fabric availability and get first image
     foreach ($items as &$item) {

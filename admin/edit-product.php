@@ -149,20 +149,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
         $update_stmt = $pdo->prepare("UPDATE products SET product_code=?, product_name=?, product_desc=?, product_img1=?, product_img2=?, product_img3=?, product_img4=?, category=? WHERE id=?");
         $update_stmt->execute([$product_code, $product_name, $product_desc, $img1, $img2, $img3, $img4, $category, $pid]);
 
-        // Delete and re-insert fabric details
-        $deleteFabric = $pdo->prepare("DELETE FROM product_fabrics WHERE product_id = ?");
-        $deleteFabric->execute([$pid]);
-
+        // Update fabric details (UPSERT to preserve fabric IDs for cart references)
+        $submittedFabrics = [];
         if (isset($_POST['fabric_type'])) {
             foreach ($_POST['fabric_type'] as $i => $type) {
                 $fabric_qty = isset($_POST['fabric_qty'][$i]) ? (int)$_POST['fabric_qty'][$i] : 0;
                 $fabric_price = isset($_POST['fabric_price'][$i]) ? (float)$_POST['fabric_price'][$i] : 0;
 
                 if (!empty($type) && $fabric_qty > 0) {
-                    $stmtFabric = $pdo->prepare("INSERT INTO product_fabrics (product_id, fabric_type, fabric_qty, fabric_price) VALUES (?, ?, ?, ?)");
-                    $stmtFabric->execute([$pid, $type, $fabric_qty, $fabric_price]);
+                    $submittedFabrics[] = $type;
+
+                    // Check if this fabric type already exists for this product
+                    $checkFabric = $pdo->prepare("SELECT id FROM product_fabrics WHERE product_id = ? AND fabric_type = ?");
+                    $checkFabric->execute([$pid, $type]);
+                    $existingRow = $checkFabric->fetch();
+
+                    if ($existingRow) {
+                        // UPDATE existing row (preserves the id)
+                        $updateFabric = $pdo->prepare("UPDATE product_fabrics SET fabric_qty = ?, fabric_price = ? WHERE id = ?");
+                        $updateFabric->execute([$fabric_qty, $fabric_price, $existingRow['id']]);
+                    } else {
+                        // INSERT new fabric type
+                        $insertFabric = $pdo->prepare("INSERT INTO product_fabrics (product_id, fabric_type, fabric_qty, fabric_price) VALUES (?, ?, ?, ?)");
+                        $insertFabric->execute([$pid, $type, $fabric_qty, $fabric_price]);
+                    }
                 }
             }
+        }
+
+        // Delete only fabric types that were removed by admin (not in submitted list)
+        if (!empty($submittedFabrics)) {
+            $placeholders = implode(',', array_fill(0, count($submittedFabrics), '?'));
+            $deleteOld = $pdo->prepare("DELETE FROM product_fabrics WHERE product_id = ? AND fabric_type NOT IN ($placeholders)");
+            $deleteOld->execute(array_merge([$pid], $submittedFabrics));
+        } else {
+            // If no fabrics submitted, delete all
+            $deleteAll = $pdo->prepare("DELETE FROM product_fabrics WHERE product_id = ?");
+            $deleteAll->execute([$pid]);
         }
 
         // Delete and re-insert color (ONLY ONE)
