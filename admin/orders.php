@@ -199,32 +199,25 @@ body {
     $statsQuery = "SELECT 
         COUNT(*) as total,
         COUNT(*) as paid,
-        0 as pending,
         SUM(CASE WHEN delivery_status = 'delivered' THEN 1 ELSE 0 END) as delivered,
         SUM(total_amount) as total_revenue
         FROM orders WHERE payment_status = 'paid' AND is_deleted = 0";
     $statsResult = $mysqli->query($statsQuery);
     $stats = $statsResult->fetch_assoc();
     ?>
-    <div class="col-md-3">
+    <div class="col-md-4">
       <div class="stats-card">
         <h6 class="text-muted mb-2">Total Orders</h6>
         <h3 class="mb-0"><?php echo (int)$stats['total']; ?></h3>
       </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
       <div class="stats-card">
         <h6 class="text-muted mb-2">Paid Orders</h6>
         <h3 class="mb-0 text-success"><?php echo (int)$stats['paid']; ?></h3>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="stats-card">
-        <h6 class="text-muted mb-2">Pending Orders</h6>
-        <h3 class="mb-0 text-warning"><?php echo (int)$stats['pending']; ?></h3>
-      </div>
-    </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
       <div class="stats-card">
         <h6 class="text-muted mb-2">Total Revenue</h6>
         <h3 class="mb-0 text-primary">Rs. <?php echo number_format((float)$stats['total_revenue'], 2); ?></h3>
