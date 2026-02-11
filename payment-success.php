@@ -45,6 +45,20 @@ if ($order_id && isset($_SESSION['temp_orders'][$order_id])) {
         }
         $stmtInsert->close();
         
+        // --- Reduce stock (fabric_qty) for each purchased item ---
+        $stockStmt = $mysqli->prepare("UPDATE product_fabrics SET fabric_qty = GREATEST(fabric_qty - ?, 0) WHERE id = ?");
+        if ($stockStmt) {
+            foreach ($orderDataItems as $item) {
+                $purchasedQty = (int)$item['quantity'];
+                $fabricId = (int)$item['fabric_id'];
+                if ($fabricId > 0 && $purchasedQty > 0) {
+                    $stockStmt->bind_param("ii", $purchasedQty, $fabricId);
+                    $stockStmt->execute();
+                }
+            }
+            $stockStmt->close();
+        }
+        
         // Remove from session after saving
         unset($_SESSION['temp_orders'][$order_id]);
     } else {

@@ -56,6 +56,27 @@ if ($local_md5sig === $md5sig) {
     if ($stmt->execute()) {
         file_put_contents($log_file, "Order updated successfully\n", FILE_APPEND);
         
+        // --- Reduce stock (fabric_qty) for purchased items when payment is successful ---
+        if ($status_code == 2) {
+            $itemStmt = $mysqli->prepare("SELECT fabric_id, quantity FROM orders WHERE order_id = ?");
+            $itemStmt->bind_param("s", $order_id);
+            $itemStmt->execute();
+            $itemsResult = $itemStmt->get_result();
+            
+            $stockStmt = $mysqli->prepare("UPDATE product_fabrics SET fabric_qty = GREATEST(fabric_qty - ?, 0) WHERE id = ?");
+            while ($orderItem = $itemsResult->fetch_assoc()) {
+                $fabricId = (int)$orderItem['fabric_id'];
+                $purchasedQty = (int)$orderItem['quantity'];
+                if ($fabricId > 0 && $purchasedQty > 0) {
+                    $stockStmt->bind_param("ii", $purchasedQty, $fabricId);
+                    $stockStmt->execute();
+                }
+            }
+            $stockStmt->close();
+            $itemStmt->close();
+            file_put_contents($log_file, "Stock reduced for order: $order_id\n", FILE_APPEND);
+        }
+        
         // --- Clear Cart Logic ---
         // 1. Get username from order
         $uStmt = $mysqli->prepare("SELECT username FROM orders WHERE order_id = ? LIMIT 1");
