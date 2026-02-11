@@ -405,7 +405,7 @@ if ($isLoggedIn) {
             <h6>Cart Summary</h6>
             <div class="summary-row">
                 <span>Total Items:</span>
-                <span><?php echo count($items); ?></span>
+                <span id="summary-total-items"><?php echo array_sum(array_column($items, 'quantity')); ?></span>
             </div>
             <div class="summary-row">
                 <span>Total Amount:</span>
@@ -689,6 +689,12 @@ function updateQty(cartId, action) {
             
             // Update Grand Total Display
             document.getElementById(`grand-total`).innerText = 'Rs. ' + data.grand_total;
+            
+            // Update Cart Summary Total Items
+            const summaryItems = document.getElementById('summary-total-items');
+            if (summaryItems && data.total_qty_sum !== undefined) {
+                summaryItems.innerText = data.total_qty_sum;
+            }
             
             // Update Navbar Cart Badge
             const badge = document.getElementById('cartBadge');

@@ -26,6 +26,7 @@ $current_qty = 0;
 $price = 0.0;
 $error_msg = "";
 $items_count = 0;
+$total_qty_sum = 0;
 $grand_total = 0.0;
 $new_subtotal = 0.0;
 
@@ -110,6 +111,14 @@ if ($is_logged_in) {
     $gStmt->close();
     
     $items_count = getUserCartCount($mysqli, $user_id);
+    
+    // Get total quantity sum for cart summary
+    $qStmt = $mysqli->prepare("SELECT SUM(quantity) as total_qty FROM cart WHERE user_id = ?");
+    $qStmt->bind_param("i", $user_id);
+    $qStmt->execute();
+    $qRes = $qStmt->get_result()->fetch_assoc();
+    $total_qty_sum = $qRes ? (int)$qRes['total_qty'] : 0;
+    $qStmt->close();
 
 } else {
     // GUEST USER LOGIC
@@ -174,6 +183,12 @@ if ($is_logged_in) {
     }
     
     $items_count = getGuestCartCount();
+    
+    // Get total quantity sum for cart summary
+    $total_qty_sum = 0;
+    foreach ($guestCart as $itm2) {
+        $total_qty_sum += (int)$itm2['quantity'];
+    }
 }
 
 
@@ -187,7 +202,8 @@ if ($is_ajax) {
             'new_qty' => $new_qty, 
             'new_subtotal' => number_format($new_subtotal, 2),
             'grand_total' => number_format($grand_total, 2),
-            'cart_count' => $items_count
+            'cart_count' => $items_count,
+            'total_qty_sum' => $total_qty_sum
         ]);
     }
 } else {
