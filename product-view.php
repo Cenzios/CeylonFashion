@@ -229,6 +229,13 @@ if ($isLoggedIn) {
         </div>
       </div>
 
+      <!-- Product Description -->
+      <?php if (!empty($product['product_desc'])): ?>
+      <div class="product-description">
+        <p class="description-text"><?= nl2br(e($product['product_desc'])); ?></p>
+      </div>
+      <?php endif; ?>
+
       <!-- Size Guide Button -->
       <?php if (!empty($availableSizes)): ?>
       <button type="button" class="size-guide-btn" data-bs-toggle="modal" data-bs-target="#sizeGuideModal">
@@ -735,6 +742,20 @@ include 'components/review-dialog.php';
 
   .size-guide-btn:hover {
     background: #e5e7eb;
+  }
+
+  /* Product Description */
+  .product-description {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .product-description .description-text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #555;
+    margin: 0;
   }
 
   /* Option Sections */
