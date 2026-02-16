@@ -94,6 +94,40 @@ try {
 
         if (empty($cartItems)) throw new Exception('Cart is empty');
 
+        // Validate stock availability for each cart item before processing
+        $stock_issues = [];
+        foreach ($cartItems as &$item) {
+            $f_id = !empty($item['fabric_id']) ? (int)$item['fabric_id'] : 0;
+            $available_qty = 0;
+            
+            if ($f_id > 0) {
+                $fStmt = $mysqli->prepare("SELECT fabric_qty FROM product_fabrics WHERE id = ?");
+                $fStmt->bind_param("i", $f_id);
+                $fStmt->execute();
+                $fRes = $fStmt->get_result()->fetch_assoc();
+                $available_qty = $fRes ? (int)$fRes['fabric_qty'] : 0;
+                $fStmt->close();
+            } else {
+                $fStmt = $mysqli->prepare("SELECT SUM(fabric_qty) as total FROM product_fabrics WHERE product_id = ?");
+                $fStmt->bind_param("i", $item['product_id']);
+                $fStmt->execute();
+                $fRes = $fStmt->get_result()->fetch_assoc();
+                $available_qty = $fRes ? (int)$fRes['total'] : 0;
+                $fStmt->close();
+            }
+            
+            if ($available_qty <= 0) {
+                $stock_issues[] = $item['product_name'] . ' is out of stock';
+            } elseif ((int)$item['quantity'] > $available_qty) {
+                $stock_issues[] = $item['product_name'] . ' only has ' . $available_qty . ' available (you requested ' . $item['quantity'] . ')';
+            }
+        }
+        unset($item);
+        
+        if (!empty($stock_issues)) {
+            throw new Exception('Stock issues found: ' . implode('; ', $stock_issues) . '. Please refresh your cart.');
+        }
+
         // Store in Session instead of DB
         $orderData = [];
         foreach ($cartItems as $item) {

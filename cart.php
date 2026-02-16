@@ -6,6 +6,8 @@ require_once 'lib/guest-cart.php';
 
 $isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
 $items = [];
+$removed_items = []; // Track auto-removed out-of-stock items
+$adjusted_items = []; // Track items whose qty was reduced to match stock
 
 if ($isLoggedIn) {
     // Logged in user - fetch from database
@@ -104,6 +106,31 @@ if ($isLoggedIn) {
         }
     }
     unset($item);
+
+    // Auto-remove items with zero stock and auto-adjust quantities exceeding stock
+    $delStmt = $mysqli->prepare("DELETE FROM cart WHERE id = ? AND user_id = ?");
+    $updateQtyStmt = $mysqli->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?");
+    foreach ($items as $key => &$item) {
+        $avail = (int)$item['available_qty'];
+        $cartQty = (int)$item['quantity'];
+        if ($avail === 0) {
+            // Stock is zero — remove entirely
+            $removed_items[] = $item['product_name'];
+            $delStmt->bind_param("ii", $item['cart_id'], $user_id);
+            $delStmt->execute();
+            unset($items[$key]);
+        } elseif ($cartQty > $avail) {
+            // Cart qty exceeds stock — reduce to available
+            $adjusted_items[] = $item['product_name'] . ' (was ' . $cartQty . ', now ' . $avail . ')';
+            $item['quantity'] = $avail;
+            $updateQtyStmt->bind_param("ii", $avail, $item['cart_id']);
+            $updateQtyStmt->execute();
+        }
+    }
+    unset($item);
+    $delStmt->close();
+    $updateQtyStmt->close();
+    $items = array_values($items); // Re-index
 } else {
     // Guest user - fetch from session
     $guestCart = getGuestCart();
@@ -186,6 +213,21 @@ if ($isLoggedIn) {
                     $fStmt->close();
                 }
                 
+                // Auto-remove items with zero stock from guest cart
+                if ($availableQty === 0) {
+                    $removed_items[] = $product['product_name'];
+                    removeFromGuestCart($key);
+                    continue; // Skip adding to $items
+                }
+                
+                // Auto-adjust qty if it exceeds available stock
+                $cartItemQty = (int)$cartItem['quantity'];
+                if ($cartItemQty > $availableQty) {
+                    $adjusted_items[] = $product['product_name'] . ' (was ' . $cartItemQty . ', now ' . $availableQty . ')';
+                    $cartItem['quantity'] = $availableQty;
+                    updateGuestCartQty($key, $availableQty);
+                }
+                
                 $items[] = [
                     'cart_id' => $key, // This IS the session key (string)
                     'product_id' => $product_id,
@@ -215,6 +257,24 @@ if ($isLoggedIn) {
 <div class="container cart-container">
     <h3 class="mb-4 text-center">🛒 My Shopping Cart</h3>
 
+    <?php if (!empty($removed_items)): ?>
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-x-circle"></i>
+            <strong><?php echo count($removed_items); ?> item(s) removed</strong> from your cart because they are no longer in stock:
+            <em><?php echo htmlspecialchars(implode(', ', $removed_items)); ?></em>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($adjusted_items)): ?>
+        <div class="alert alert-warning alert-dismissible fade show">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong><?php echo count($adjusted_items); ?> item(s) quantity reduced</strong> to match available stock:
+            <em><?php echo htmlspecialchars(implode(', ', $adjusted_items)); ?></em>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
     <?php if (isset($_SESSION['cart_success'])): ?>
         <div class="alert alert-success alert-dismissible fade show">
             <?php echo htmlspecialchars($_SESSION['cart_success']); unset($_SESSION['cart_success']); ?>
@@ -230,7 +290,10 @@ if ($isLoggedIn) {
     <?php endif; ?>
 
     <?php if (!empty($items)): ?>
-      <?php $grand = 0; ?>
+      <?php 
+        $grand = 0; 
+        $all_have_stock_issues = true; // Track if ALL items have stock problems
+      ?>
       <?php foreach ($items as $row): ?>
         <?php
           $subtotal = $row['price'] * $row['quantity'];
@@ -242,6 +305,9 @@ if ($isLoggedIn) {
           
           // Check if item quantity exceeds available stock
           $stock_warning = ($row['quantity'] > $row['available_qty']);
+          if (!$stock_warning) {
+              $all_have_stock_issues = false; // At least one item is valid
+          }
         ?>
         <div class="cart-item <?php echo $stock_warning ? 'stock-warning' : ''; ?>">
           <div class="d-flex align-items-center flex-grow-1">
@@ -341,7 +407,14 @@ if ($isLoggedIn) {
         <div class="text-muted small mb-3">Shipping and taxes calculated at checkout</div>
         <div class="d-flex gap-2">
           <a href="index.php" class="btn btn-outline-secondary">Continue Shopping</a>
-          <?php if ($isLoggedIn): ?>
+          <?php if ($all_have_stock_issues): ?>
+            <button type="button" class="btn btn-secondary flex-grow-1" disabled>
+              <i class="bi bi-exclamation-circle"></i> Cannot Checkout — Stock Issues
+            </button>
+            <div class="text-danger small mt-2 text-center">
+              <i class="bi bi-info-circle"></i> Please update quantities or remove items with insufficient stock before checking out.
+            </div>
+          <?php elseif ($isLoggedIn): ?>
             <button type="button" class="btn btn-success flex-grow-1" onclick="showCustomerDetailsModal()">Proceed to Checkout</button>
           <?php else: ?>
             <button type="button" class="btn btn-success flex-grow-1" onclick="document.getElementById('loginRedirectUrl').value = 'cart.php'; showLoginModal()">Login to Checkout</button>
