@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Simulation: Display the link directly since we can't send email
             $resetLink = "http://localhost/CeylonFashion/reset-password.php?token=" . $token . "&email=" . urlencode($email);
             
-            $_SESSION['reset_msg'] = "Password reset link sent! <br><a href='$resetLink'>Click here to reset (Simulation)</a>";
+            $_SESSION['reset_msg'] = "Password reset link sent! <br><a href='$resetLink'>Click here to reset</a>";
         } else {
             $_SESSION['reset_msg'] = "Error generating token.";
         }
