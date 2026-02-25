@@ -5,7 +5,7 @@ if (session_id() == '' || !isset($_SESSION)) {
 if (empty($_SESSION['csrf_token'])) {
   $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
-include_once 'config.php';
+include_once 'config/config.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -28,7 +28,7 @@ include_once 'config.php';
     'id' => 'newArrivalsSection',
     'title' => 'New Arrivals',
     'sql' => "SELECT * FROM products WHERE category != 'used' AND is_deleted = 0 AND created BETWEEN '" . date('Y-m-d', strtotime('-1 month')) . " 00:00:00' AND '" . date('Y-m-d') . " 23:59:59' ORDER BY created DESC LIMIT 6",
-    'view_all_link' => 'new-arrivals.php'
+    'view_all_link' => 'pages/categories/new-arrivals.php'
   ]);
   ?>
   
@@ -45,7 +45,7 @@ include_once 'config.php';
               INNER JOIN products p ON rp.product_id = p.id
               WHERE rp.status IN ('approved', 'available', 'sold') AND p.category != 'used' AND p.is_deleted = 0
               ORDER BY rp.created_at DESC LIMIT 6",
-    'view_all_link' => 'used-collection.php',
+    'view_all_link' => 'pages/categories/used-collection.php',
     'is_reseller' => true
   ]);
   ?>
@@ -56,7 +56,7 @@ include_once 'config.php';
     'id' => 'bridalAttireSection',
     'title' => 'Bridal Attire',
     'sql' => "SELECT * FROM products WHERE category = 'bridalAttire' AND is_deleted = 0 ORDER BY id DESC LIMIT 6",
-    'view_all_link' => 'bridal-attire.php'
+    'view_all_link' => 'pages/categories/bridal-attire.php'
   ]);
   ?>
   
@@ -66,7 +66,7 @@ include_once 'config.php';
     'id' => 'brideMaidsSection',
     'title' => "Bridemaid's Attire",
     'sql' => "SELECT * FROM products WHERE category = 'bridemaidAttire' AND is_deleted = 0 ORDER BY id DESC LIMIT 6",
-    'view_all_link' => 'bridemaids-attire.php'
+    'view_all_link' => 'pages/categories/bridemaids-attire.php'
   ]);
   ?>
   
@@ -76,7 +76,7 @@ include_once 'config.php';
     'id' => 'partyWearSection',
     'title' => 'Party Wear',
     'sql' => "SELECT * FROM products WHERE category = 'partyWear' AND is_deleted = 0 ORDER BY id DESC LIMIT 6",
-    'view_all_link' => 'party-wear.php'
+    'view_all_link' => 'pages/categories/party-wear.php'
   ]);
   ?>
   

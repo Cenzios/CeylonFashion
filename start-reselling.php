@@ -1,6 +1,6 @@
 <?php
 session_start();
-include_once 'config.php';
+include_once 'config/config.php';
 
 // Check if the user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -233,7 +233,7 @@ include_once 'includes/head.php';
             <h3>Quick Cash Back</h3>
             <p>Get <?php echo $resale_percentage; ?>% of your purchase price back. Turn unworn or lightly used items into instant money</p>
             <div class="feature-icon">
-                <img src="images/icons/cash.png" alt="Cash" onerror="this.style.display='none'">
+                <img src="assets/images/icons/cash.png" alt="Cash" onerror="this.style.display='none'">
                 <div class="icon-placeholder">💰</div>
             </div>
         </div>
@@ -242,7 +242,7 @@ include_once 'includes/head.php';
             <h3>Hassle-Free Listing</h3>
             <p>We auto-build your resale post using your order details and images.</p>
             <div class="feature-icon">
-                <img src="images/icons/listing.png" alt="Listing" onerror="this.style.display='none'">
+                <img src="assets/images/icons/listing.png" alt="Listing" onerror="this.style.display='none'">
                 <div class="icon-placeholder">📋</div>
             </div>
         </div>
@@ -251,7 +251,7 @@ include_once 'includes/head.php';
             <h3>Support Sustainability</h3>
             <p>Reduce waste and let your outfit shine again. Resell outfit within <?php echo $resale_period; ?> months</p>
             <div class="feature-icon">
-                <img src="images/icons/sustainability.png" alt="Sustainability" onerror="this.style.display='none'">
+                <img src="assets/images/icons/sustainability.png" alt="Sustainability" onerror="this.style.display='none'">
                 <div class="icon-placeholder">💡</div>
             </div>
         </div>
@@ -352,7 +352,7 @@ include_once 'includes/head.php';
                 <h3 style="color: #065F46; margin: 0;">Submission Successful!</h3>
                 <span style="font-size: 16px;"><?= htmlspecialchars($message); ?></span>
                 <p>Your item has been submitted and will appear in our Used Collection once approved.</p>
-                <a href="used-collection.php" class="check-btn" style="text-decoration: none; line-height: 50px; display: inline-block;">View Used Collection</a>
+                <a href="pages/categories/used-collection.php" class="check-btn" style="text-decoration: none; line-height: 50px; display: inline-block;">View Used Collection</a>
             </div>
             <?php else: ?>
             <p class="form-intro">Almost there! Just complete the details below to publish your outfit in our Used Collection. Your contact information will help interested buyers reach you directly.</p>
@@ -523,7 +523,7 @@ if (eligibilityData) {
         document.getElementById('contactFormSection').style.display = 'block';
         
         // Populate fields
-        document.getElementById('productImage').src = 'images/' + eligibilityData.product_img1;
+        document.getElementById('productImage').src = 'assets/images/' + eligibilityData.product_img1;
         document.getElementById('itemId').textContent = eligibilityData.product_code;
         document.getElementById('itemCategory').textContent = eligibilityData.category_id; // Mapping ID to name would be better in backend but ID ok for now
         document.getElementById('productName').textContent = eligibilityData.product_name;
@@ -1097,7 +1097,7 @@ document.getElementById('checkAvailabilityBtn').addEventListener('click', functi
             const firstImage = imgName.split(',')[0].trim();
 
             // Populate product details
-            document.getElementById('productImage').src = 'images/products/' + firstImage;
+            document.getElementById('productImage').src = 'assets/images/products/' + firstImage;
             document.getElementById('itemId').textContent = '<?= htmlspecialchars($eligibilityData['product_code']); ?>';
             document.getElementById('itemCategory').textContent = '<?= htmlspecialchars($eligibilityData['category'] ?? 'N/A'); ?>';
             document.getElementById('productName').textContent = '<?= htmlspecialchars($eligibilityData['product_name']); ?>';

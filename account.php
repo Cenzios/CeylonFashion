@@ -11,7 +11,7 @@ if (isset($_SESSION["type"]) && $_SESSION["type"] === "admin") {
     exit;
 }
 
-include 'config.php';
+include 'config/config.php';
 
 $username = $_SESSION['username'];
 $message = '';
@@ -129,7 +129,7 @@ $stmt->close();
                 </span> -->
             </div>
             <!-- <div class="profile-actions">
-                <a href="logout.php" class="btn btn-outline-danger">
+                <a href="handlers/auth/logout.php" class="btn btn-outline-danger">
                     <i class="bi bi-box-arrow-right"></i> Logout
                 </a>
             </div> -->

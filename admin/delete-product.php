@@ -1,7 +1,7 @@
 <?php
 session_name('ADMIN_SESSION');
 session_start();
-include_once '../config.php'; // mysqli connection
+include_once '../config/config.php'; // mysqli connection
 
 // ---- Admin check ----
 $isAdmin = isset($_SESSION['type']) && $_SESSION['type'] === 'admin';
@@ -33,7 +33,7 @@ if ($product) {
     /* 
     foreach ($imageFields as $field) {
         if (!empty($product[$field])) {
-            $imgPath = '../images/products/' . $product[$field];
+            $imgPath = '../assets/images/products/' . $product[$field];
             if (file_exists($imgPath)) {
                 unlink($imgPath);
             }

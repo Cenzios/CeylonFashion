@@ -1,7 +1,7 @@
 <?php
 // admin/products.php
 if (session_id() == '' || !isset($_SESSION)) { session_name('ADMIN_SESSION'); session_start(); }
-include_once '../config.php'; // ensure this defines $mysqli
+include_once '../config/config.php'; // ensure this defines $mysqli
 
 // ---- Auth / admin check ----
 $isAdmin = isset($_SESSION['type']) && $_SESSION['type'] === 'admin';
@@ -92,7 +92,7 @@ $fallback = '../assets/no-image.png';
             $pcode = htmlentities($p['product_code'], ENT_QUOTES, 'UTF-8');
             $pdesc = htmlentities($p['product_desc'], ENT_QUOTES, 'UTF-8');
             $pimg  = htmlentities($p['product_img1'], ENT_QUOTES, 'UTF-8');
-            $imgPath = '../images/products/' . $pimg;
+            $imgPath = '../assets/images/products/' . $pimg;
             if (empty($pimg) || !file_exists($imgPath)) {
               $imgPath = $fallback;
             }

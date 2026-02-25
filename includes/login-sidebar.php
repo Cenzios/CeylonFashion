@@ -47,7 +47,7 @@
       </button>
 
       <div class="text-center mb-3">
-        <a href="forgot-password.php" class="text-decoration-underline text-dark">Forgot your password?</a>
+        <a href="<?= $baseUrl ?>pages/auth/forgot-password.php" class="text-decoration-underline text-dark">Forgot your password?</a>
       </div>
 
       <button 

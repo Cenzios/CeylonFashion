@@ -4,7 +4,7 @@
   <div style="flex: 1; overflow: hidden; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
     <div style="height: 100%; width: 100%;">
       <img
-        src="Images/Banner image -01.png"
+        src="<?= $baseUrl ?>Images/Banner image -01.png"
         alt="Resell Outfit"
         style="width: 100%; height: 300px; object-fit: cover;"
       />
@@ -21,7 +21,7 @@
           <li>Give luxury outfits a second life & earn cash</li>
         </ul>
         <a
-          href="start-reselling.php"
+          href="<?= $baseUrl ?>start-reselling.php"
           id="promoResellingBtn"
           style="display: inline-block; background-color: #7e22ce; color: white; padding: 10px 30px; border-radius: 25px; font-weight: 600; text-decoration: none;"
         >
@@ -35,7 +35,7 @@
   <div style="flex: 1; overflow: hidden; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
     <div style="height: 100%; width: 100%;">
       <img
-        src="Images/Banner image -2.png"
+        src="<?= $baseUrl ?>Images/Banner image -2.png"
         alt="Design Outfit"
         style="width: 100%; height: 300px; object-fit: cover;"
       />

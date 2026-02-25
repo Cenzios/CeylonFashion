@@ -7,7 +7,7 @@
     <!-- Error/Success Messages -->
     <div id="registerMessage" style="display:none; padding:10px; border-radius:6px; margin-bottom:15px;"></div>
     
-    <form method="POST" action="insert.php" id="offcanvasRegisterForm">
+    <form method="POST" action="<?= $baseUrl ?>handlers/auth/insert.php" id="offcanvasRegisterForm">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
       <input type="hidden" name="redirect_url" id="registerRedirectUrl" value="">
       

@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
     $image_fields = ['product_img1', 'product_img2', 'product_img3', 'product_img4'];
     $uploaded_images = [];
 
-    $target_dir = "../images/products/";
+    $target_dir = "../assets/images/products/";
     if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
 
     foreach ($image_fields as $field) {

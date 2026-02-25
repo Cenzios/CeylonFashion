@@ -2,7 +2,7 @@
 // admin/edit-product.php
 session_name('ADMIN_SESSION');
 session_start();
-include_once '../config.php';
+include_once '../config/config.php';
 
 // ---- Auth / admin check ----
 $isAdmin = isset($_SESSION['type']) && $_SESSION['type'] === 'admin';
@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
     $img3 = $product['product_img3'];
     $img4 = $product['product_img4'];
 
-    $target_dir = '../images/products/';
+    $target_dir = '../assets/images/products/';
 
     if (!empty($_FILES['product_img1']['name'])) {
         $img1 = basename($_FILES['product_img1']['name']);
@@ -251,10 +251,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_add_color'])) {
 
 // fallback image
 $fallback = '../assets/no-image.png';
-$imgPath1 = !empty($product['product_img1']) ? '../images/products/' . $product['product_img1'] : $fallback;
-$imgPath2 = !empty($product['product_img2']) ? '../images/products/' . $product['product_img2'] : '';
-$imgPath3 = !empty($product['product_img3']) ? '../images/products/' . $product['product_img3'] : '';
-$imgPath4 = !empty($product['product_img4']) ? '../images/products/' . $product['product_img4'] : '';
+$imgPath1 = !empty($product['product_img1']) ? '../assets/images/products/' . $product['product_img1'] : $fallback;
+$imgPath2 = !empty($product['product_img2']) ? '../assets/images/products/' . $product['product_img2'] : '';
+$imgPath3 = !empty($product['product_img3']) ? '../assets/images/products/' . $product['product_img3'] : '';
+$imgPath4 = !empty($product['product_img4']) ? '../assets/images/products/' . $product['product_img4'] : '';
 
 if (!file_exists($imgPath1)) {
     $imgPath1 = $fallback;

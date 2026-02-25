@@ -5,7 +5,7 @@
 // =======================================
 
 session_start();
-require_once 'config.php'; // must define $mysqli
+require_once 'config/config.php'; // must define $mysqli
 require_once 'lib/guest-cart.php';
 
 $isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
@@ -187,7 +187,7 @@ if ($isLoggedIn) {
       <?php foreach ($wishlist_items as $item): ?>
         <?php
           $uniqueId = $item['wishlist_id']; // Use wishlist ID (or valid unique id) for unique element IDs
-          $imgPath = 'images/products/' . ($item['product_img_name'] ?: 'no-image.png');
+          $imgPath = 'assets/images/products/' . ($item['product_img_name'] ?: 'no-image.png');
           if (!file_exists($imgPath)) {
               $imgPath = 'assets/no-image.png';
           }
@@ -197,7 +197,7 @@ if ($isLoggedIn) {
             <img src="<?php echo htmlspecialchars($imgPath); ?>" alt="<?php echo htmlspecialchars($item['product_name']); ?>">
             <div class="meta flex-grow-1">
               <h5 class="mb-1">
-                <a href="product-view.php?id=<?php echo (int)$item['product_id']; ?>" class="text-decoration-none text-dark">
+                <a href="pages/products/product-view.php?id=<?php echo (int)$item['product_id']; ?>" class="text-decoration-none text-dark">
                   <?php echo htmlspecialchars($item['product_name']); ?>
                 </a>
               </h5>
@@ -265,7 +265,7 @@ if ($isLoggedIn) {
 
           <div class="text-end d-flex flex-column align-items-end gap-2 actions-col">
             <!-- View Details button -->
-            <a href="product-view.php?id=<?php echo (int)$item['product_id']; ?>" class="btn btn-outline-primary btn-sm w-100">
+            <a href="pages/products/product-view.php?id=<?php echo (int)$item['product_id']; ?>" class="btn btn-outline-primary btn-sm w-100">
               <i class="bi bi-eye"></i> View
             </a>
 
@@ -282,14 +282,14 @@ if ($isLoggedIn) {
 
             <!-- Remove form -->
             <?php if ($isLoggedIn): ?>
-              <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0 w-100">
+              <form action="handlers/wishlist/wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0 w-100">
                 <input type="hidden" name="wishlist_id" value="<?php echo (int)$item['wishlist_id']; ?>">
                 <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Remove">
                   <i class="bi bi-trash"></i> Remove
                 </button>
               </form>
             <?php else: ?>
-              <form action="wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0 w-100">
+              <form action="handlers/wishlist/wishlist-remove.php" method="post" onsubmit="return confirm('Remove this item from wishlist?');" class="mb-0 w-100">
                 <input type="hidden" name="product_id" value="<?php echo (int)$item['product_id']; ?>">
                 <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Remove">
                   <i class="bi bi-trash"></i> Remove
@@ -421,7 +421,7 @@ if ($isLoggedIn) {
         // Add to cart with Ajax
         // Note: The cart-add.php might need updates to handle fabric_id and size parameters if it doesn't already.
         // For now, we pass them as GET parameters.
-        const url = `cart-add.php?id=${productId}&qty=1&ajax=1&fabric_id=${fabricId}&size=${encodeURIComponent(size)}`;
+        const url = `handlers/cart/cart-add.php?id=${productId}&qty=1&ajax=1&fabric_id=${fabricId}&size=${encodeURIComponent(size)}`;
 
         fetch(url)
           .then(response => response.json())

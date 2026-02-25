@@ -2,7 +2,7 @@
 // admin/view-product.php
 session_name('ADMIN_SESSION');
 session_start();
-include_once '../config.php';
+include_once '../config/config.php';
 
 // ---- Auth / admin check ----
 $isAdmin = isset($_SESSION['type']) && $_SESSION['type'] === 'admin';
@@ -71,7 +71,7 @@ $images = [];
 for ($i = 1; $i <= 4; $i++) {
     $imgField = 'product_img' . $i;
     $imgName = $product[$imgField];
-    $imgPath = '../images/products/' . $imgName;
+    $imgPath = '../assets/images/products/' . $imgName;
     if (!empty($imgName) && file_exists($imgPath)) {
         $images[] = $imgPath;
     }

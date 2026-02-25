@@ -1,9 +1,10 @@
 <!-- Scripts -->
-<script src="js/vendor/jquery.js"></script>
-<script src="js/foundation.min.js"></script>
+<script src="<?= $baseUrl ?>assets/js/vendor/jquery.js"></script>
+<script src="<?= $baseUrl ?>assets/js/foundation.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
 
 <script>
+  var baseUrl = '<?= $baseUrl ?>';
   $(document).foundation();
 
   // ============================================
@@ -88,7 +89,7 @@
     const btn = event.currentTarget || document.getElementById('wishlistBtn');
     if (!btn) return;
     
-    fetch('wishlist-toggle.php?id=' + productId)
+    fetch(baseUrl + 'handlers/wishlist/wishlist-toggle.php?id=' + productId)
       .then(response => response.json())
       .then(data => {
         if (data.status === 'ok') {
@@ -119,7 +120,7 @@
     $('#quickViewModal').foundation('reveal', 'open');
     $('#quickViewContent').html('<div class="text-center" style="padding:50px;">Loading...</div>');
     
-    $.get('product-quick-view.php?id=' + productId)
+    $.get(baseUrl + 'pages/products/product-quick-view.php?id=' + productId)
       .done(function(data) {
         if (!data || data.trim() === '') {
            $('#quickViewContent').html('<div class="alert-box alert">Error: Empty response from server. Please check logs.</div>');
@@ -134,7 +135,7 @@
   }
 
   function quickAddToCart(productId) {
-    fetch('cart-add.php?id=' + productId + '&qty=1&ajax=1')
+    fetch(baseUrl + 'handlers/cart/cart-add.php?id=' + productId + '&qty=1&ajax=1')
       .then(response => response.json())
       .then(data => {
         if (data.status === 'ok') {
@@ -236,7 +237,7 @@
         }
 
         try {
-          const res = await fetch('verify.php', {
+          const res = await fetch(baseUrl + 'handlers/auth/verify.php', {
             method: 'POST',
             headers: {
               'Accept': 'application/json',
@@ -254,7 +255,7 @@
           if (data.ok) {
             showMessage('loginMessage', 'Login successful! Redirecting...', 'success');
             setTimeout(() => {
-              window.location.href = data.redirect || 'index.php';
+              window.location.href = data.redirect || (baseUrl + 'index.php');
             }, 1000);
           } else {
             showMessage('loginMessage', data.message || 'Invalid email or password.', 'error');
@@ -289,7 +290,7 @@
           e.preventDefault();
           const redirectInput = document.getElementById('loginRedirectUrl');
           if (redirectInput) {
-            redirectInput.value = 'start-reselling.php';
+            redirectInput.value = baseUrl + 'start-reselling.php';
           }
           if (loginOffcanvas) loginOffcanvas.show();
         <?php else: ?>
@@ -313,7 +314,7 @@
         <?php if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])): ?>
           if (loginOffcanvas) loginOffcanvas.show();
         <?php else: ?>
-          window.location.href = 'wishlist.php';
+          window.location.href = baseUrl + 'wishlist.php';
         <?php endif; ?>
       });
     }
@@ -325,7 +326,7 @@
         <?php if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])): ?>
           if (loginOffcanvas) loginOffcanvas.show();
         <?php else: ?>
-          window.location.href = 'cart.php';
+          window.location.href = baseUrl + 'cart.php';
         <?php endif; ?>
       });
     }

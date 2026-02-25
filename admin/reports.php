@@ -1,7 +1,7 @@
 <?php
 // admin/download-all-reports.php
 if (session_id() == '' || !isset($_SESSION)) { session_name('ADMIN_SESSION'); session_start(); }
-include_once '../config.php';
+include_once '../config/config.php';
 
 $isAdmin = isset($_SESSION['type']) && $_SESSION['type'] === 'admin';
 if (!$isAdmin) {

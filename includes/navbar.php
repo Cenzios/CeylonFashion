@@ -1,22 +1,22 @@
 <nav class="navbar navbar-expand-lg navbar-purple">
   <div class="container-fluid">
-    <a href="index.php" class="navbar-brand">
-      <img src="logo.png" alt="Logo" width="30" height="24" class="d-inline-block align-text-top">
+    <a href="<?= $baseUrl ?>index.php" class="navbar-brand">
+      <img src="<?= $baseUrl ?>logo.png" alt="Logo" width="30" height="24" class="d-inline-block align-text-top">
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
       <div class="navbar-nav">
-        <a class="nav-link" href="index.php#newArrivalsSection">New Arrivals</a>
-        <a class="nav-link" href="index.php#bridalAttireSection">Bridal Attire</a>
-        <a class="nav-link" href="index.php#brideMaidsSection">Bridemaids Attire</a>
-        <a class="nav-link" href="index.php#partyWearSection">Party Wear</a>
-        <a class="nav-link" href="index.php#usedCollectionSection">Used Collection</a>
+        <a class="nav-link" href="<?= $baseUrl ?>index.php#newArrivalsSection">New Arrivals</a>
+        <a class="nav-link" href="<?= $baseUrl ?>index.php#bridalAttireSection">Bridal Attire</a>
+        <a class="nav-link" href="<?= $baseUrl ?>index.php#brideMaidsSection">Bridemaids Attire</a>
+        <a class="nav-link" href="<?= $baseUrl ?>index.php#partyWearSection">Party Wear</a>
+        <a class="nav-link" href="<?= $baseUrl ?>index.php#usedCollectionSection">Used Collection</a>
         
         <!-- Start Reselling Button - Visible to all -->
         <div class="text-center">
-          <a href="start-reselling.php" class="btn btn-primary" id="startResellingBtn">Start Reselling</a>
+          <a href="<?= $baseUrl ?>start-reselling.php" class="btn btn-primary" id="startResellingBtn">Start Reselling</a>
         </div>
       </div>
       <div class="icons" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); display: flex; gap: 15px; align-items: center; font-size: 32px; color: white; z-index: 1040;">
@@ -26,10 +26,10 @@
           <div class="dropdown" style="position: relative;">
             <i class="bi bi-person-circle" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;"></i>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown" style="position: absolute; z-index: 1050;">
-              <li><a class="dropdown-item" href="account.php"><i class="bi bi-person"></i> Profile</a></li>
-              <li><a class="dropdown-item" href="orders.php"><i class="bi bi-box-seam"></i> My Orders</a></li>
+              <li><a class="dropdown-item" href="<?= $baseUrl ?>account.php"><i class="bi bi-person"></i> Profile</a></li>
+              <li><a class="dropdown-item" href="<?= $baseUrl ?>orders.php"><i class="bi bi-box-seam"></i> My Orders</a></li>
               <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="logout.php" onclick="return confirm('Are you sure you want to logout?');"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+              <li><a class="dropdown-item" href="<?= $baseUrl ?>handlers/auth/logout.php" onclick="return confirm('Are you sure you want to logout?');"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
             </ul>
           </div>
           
@@ -37,7 +37,7 @@
           <?php
           require_once __DIR__ . '/../lib/guest-cart.php';
           if (!isset($mysqli)) {
-              require_once __DIR__ . '/../config.php';
+              require_once __DIR__ . '/../config/config.php';
           }
           
           // Check if user is deleted (Active Session Invalidation)
@@ -49,7 +49,7 @@
               if ($checkUserRow['is_deleted'] == 1) {
                   // User is deleted, destroy session and redirect
                   // Use JS redirect since headers are likely sent
-                  echo "<script>alert('Your account is no longer active.'); window.location.href='logout.php';</script>";
+                  echo "<script>alert('Your account is no longer active.'); window.location.href='" . $baseUrl . "handlers/auth/logout.php';</script>";
                   exit;
               }
           }
@@ -59,13 +59,13 @@
           $wishlistCount = getUserWishlistCount($mysqli, $user_id);
           $cartCount = getUserCartCount($mysqli, $user_id);
           ?>
-          <a href="wishlist.php" style="text-decoration: none; color: white; position: relative;">
+          <a href="<?= $baseUrl ?>wishlist.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-heart" id="wishlistIcon" style="cursor: pointer;"></i>
             <?php if ($wishlistCount > 0): ?>
               <span id="wishlistBadge" class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $wishlistCount; ?></span>
             <?php endif; ?>
           </a>
-          <a href="cart.php" style="text-decoration: none; color: white; position: relative;">
+          <a href="<?= $baseUrl ?>cart.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-cart2" id="cartIcon" style="cursor: pointer;"></i>
             <?php if ($cartCount > 0): ?>
               <span id="cartBadge" class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $cartCount; ?></span>
@@ -85,7 +85,7 @@
           </button>
           
           <!-- Wishlist and Cart icons (guest users can access) -->
-          <a href="wishlist.php" style="text-decoration: none; color: white; position: relative;">
+          <a href="<?= $baseUrl ?>wishlist.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-heart" id="wishlistIcon" style="cursor: pointer;"></i>
             <?php 
             require_once __DIR__ . '/../lib/guest-cart.php';
@@ -94,7 +94,7 @@
               <span id="wishlistBadge" class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; font-size: 10px; padding: 2px 5px;"><?php echo $wishlistCount; ?></span>
             <?php endif; ?>
           </a>
-          <a href="cart.php" style="text-decoration: none; color: white; position: relative;">
+          <a href="<?= $baseUrl ?>cart.php" style="text-decoration: none; color: white; position: relative;">
             <i class="bi bi-cart2" id="cartIcon" style="cursor: pointer;"></i>
             <?php 
             $cartCount = getGuestCartCount();

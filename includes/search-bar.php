@@ -1,7 +1,7 @@
 <div class="container-fluid pt-3">
   <div class="row">
     <div class="col-12 col-md-6 col-lg-4">
-      <form id="mainSearchForm" class="d-flex" role="search" method="GET" action="search-results.php">
+      <form id="mainSearchForm" class="d-flex" role="search" method="GET" action="<?= $baseUrl ?>search-results.php">
         <input 
           class="form-control me-2 search-input" 
           type="search" 

@@ -32,11 +32,11 @@
       <div class="footer-column">
         <h5 class="footer-heading">INFORMATION</h5>
         <ul class="footer-links">
-          <li><a href="shipping-policy.php" target="_blank">Shipping Policy</a></li>
-          <li><a href="returns-exchanges.php" target="_blank">Returns & Exchanges</a></li>
-          <li><a href="terms-conditions.php" target="_blank">Terms & Conditions</a></li>
-          <li><a href="privacy-policy.php" target="_blank">Privacy Policy</a></li>
-          <li><a href="faq.php" target="_blank">FAQ</a></li>
+          <li><a href="<?= $baseUrl ?>pages/policies/shipping-policy.php" target="_blank">Shipping Policy</a></li>
+          <li><a href="<?= $baseUrl ?>pages/policies/returns-exchanges.php" target="_blank">Returns & Exchanges</a></li>
+          <li><a href="<?= $baseUrl ?>pages/policies/terms-conditions.php" target="_blank">Terms & Conditions</a></li>
+          <li><a href="<?= $baseUrl ?>pages/policies/privacy-policy.php" target="_blank">Privacy Policy</a></li>
+          <li><a href="<?= $baseUrl ?>pages/policies/faq.php" target="_blank">FAQ</a></li>
         </ul>
       </div>
 
@@ -44,10 +44,10 @@
       <div class="footer-column">
         <h5 class="footer-heading">PRODUCTS</h5>
         <ul class="footer-links">
-          <li><a href="index.php#bridalAttireSection">Bridal Attire</a></li>
-          <li><a href="index.php#brideMaidsSection">Bridemaid's Attire</a></li>
-          <li><a href="index.php#partyWearSection">Party Wear</a></li>
-          <li><a href="index.php#usedCollectionSection">Used Collection</a></li>
+          <li><a href="<?= $baseUrl ?>index.php#bridalAttireSection">Bridal Attire</a></li>
+          <li><a href="<?= $baseUrl ?>index.php#brideMaidsSection">Bridemaid's Attire</a></li>
+          <li><a href="<?= $baseUrl ?>index.php#partyWearSection">Party Wear</a></li>
+          <li><a href="<?= $baseUrl ?>index.php#usedCollectionSection">Used Collection</a></li>
         </ul>
       </div>
 

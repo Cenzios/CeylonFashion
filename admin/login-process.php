@@ -2,7 +2,7 @@
 session_name('ADMIN_SESSION');
 session_start();
 // Include config from parent directory
-require_once '../config.php';
+require_once '../config/config.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $mysqli->real_escape_string($_POST['email']);

@@ -1,6 +1,6 @@
 <?php
 function renderProductSection($options) {
-  global $mysqli;
+  global $mysqli, $baseUrl;
 
   // Pre-fetch wishlist items
   $wishlistItems = [];
@@ -30,7 +30,7 @@ function renderProductSection($options) {
   ";
   $viewAllLink = $options['view_all_link'] ?? '#';
   $requireLogin = $options['require_login'] ?? false;
-  $fallback = 'assets/no-image.png';
+  $fallback = $baseUrl . 'assets/no-image.png';
   
   $result = $mysqli->query($sql);
 ?>
@@ -58,8 +58,9 @@ function renderProductSection($options) {
           }
         }
         
-        $imgPath = 'images/products/' . $firstImage;
-        if (empty($firstImage) || !file_exists($imgPath)) {
+        $imgFilePath = 'assets/images/products/' . $firstImage; // filesystem path for file_exists
+        $imgPath = $baseUrl . $imgFilePath; // URL path for img src
+        if (empty($firstImage) || !file_exists(__DIR__ . '/../' . $imgFilePath)) {
           $imgPath = $fallback;
         }
 
@@ -160,7 +161,7 @@ function renderProductSection($options) {
               <?php
               // Determine Link
               $linkId = $isResellerProduct ? $resellerId : $productId;
-              $productLink = "product-view-used.php?id=" . $linkId;
+              $productLink = $baseUrl . "pages/products/product-view-used.php?id=" . $linkId;
               
               // Prices
               $resalePrice = $minPrice ?? 0;
@@ -220,7 +221,7 @@ function renderProductSection($options) {
               </div>
 
               <?php
-              $productLink = "product-view.php?id=" . $productId;
+              $productLink = $baseUrl . "pages/products/product-view.php?id=" . $productId;
               // Badge Logic for standard products
               $badgeLabel = $totalQty > 0 ? 'AVAILABLE' : 'SOLD OUT';
               $badgeClass = $totalQty > 0 ? 'badge-available' : 'badge-sold-out';

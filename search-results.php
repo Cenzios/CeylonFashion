@@ -1,6 +1,6 @@
 <?php
 session_start();
-include_once 'config.php';
+include_once 'config/config.php';
 include_once 'includes/head.php';
 
 $searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -59,7 +59,7 @@ $fallback = 'assets/no-image.png';
                         $images = array_filter(array_map('trim', explode(',', $pimg)));
                         $firstImage = !empty($images) ? $images[0] : '';
                         
-                        $imgPath = 'images/products/' . $firstImage;
+                        $imgPath = 'assets/images/products/' . $firstImage;
                         if (empty($firstImage) || !file_exists($imgPath)) {
                             $imgPath = $fallback;
                         }
@@ -81,7 +81,7 @@ $fallback = 'assets/no-image.png';
                     ?>
                         <!-- Product Card -->
                         <div class="product-card">
-                            <a href="product-view.php?id=<?php echo $productId; ?>" class="card-link">
+                            <a href="pages/products/product-view.php?id=<?php echo $productId; ?>" class="card-link">
                                 <div class="product-image">
                                     <img src="<?php echo $imgPath; ?>" alt="<?php echo $pname; ?>" />
                                     <span class="product-badge <?php echo $badgeClass; ?>"><?php echo $badgeLabel; ?></span>

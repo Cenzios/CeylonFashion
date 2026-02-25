@@ -6,7 +6,7 @@ if (!isset($_SESSION["username"])) {
     exit;
 }
 
-include 'config.php';
+include 'config/config.php';
 
 $username = $_SESSION["username"];
 
@@ -447,7 +447,7 @@ $result = $stmt->get_result();
         // Disable while updating
         selectEl.disabled = true;
 
-        fetch('update-resale-status.php', {
+        fetch('handlers/resale/update-resale-status.php', {
             method: 'POST',
             body: JSON.stringify({id: resaleId, status: status}),
             headers: {'Content-Type': 'application/json'}

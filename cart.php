@@ -1,7 +1,7 @@
 <?php
 // cart.php - show user's cart
 session_start();
-require_once 'config.php'; // must define $mysqli (mysqli object)
+require_once 'config/config.php'; // must define $mysqli (mysqli object)
 require_once 'lib/guest-cart.php';
 
 $isLoggedIn = isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
@@ -298,7 +298,7 @@ if ($isLoggedIn) {
         <?php
           $subtotal = $row['price'] * $row['quantity'];
           $grand += $subtotal;
-          $imgPath = 'images/products/' . ($row['product_img_name'] ?: 'no-image.png');
+          $imgPath = 'assets/images/products/' . ($row['product_img_name'] ?: 'no-image.png');
           if (!file_exists($imgPath)) {
               $imgPath = 'assets/no-image.png';
           }
@@ -314,7 +314,7 @@ if ($isLoggedIn) {
             <img src="<?php echo htmlspecialchars($imgPath); ?>" alt="<?php echo htmlspecialchars($row['product_name']); ?>">
             <div class="meta">
               <h5 class="mb-1">
-                <a href="product-view.php?id=<?php echo (int)$row['product_id']; ?>" class="text-decoration-none text-dark">
+                <a href="pages/products/product-view.php?id=<?php echo (int)$row['product_id']; ?>" class="text-decoration-none text-dark">
                   <?php echo htmlspecialchars($row['product_name']); ?>
                 </a>
               </h5>
@@ -380,14 +380,14 @@ if ($isLoggedIn) {
 
             <!-- Remove form (POST) -->
             <?php if ($isLoggedIn): ?>
-              <form action="cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');" class="mb-0">
+              <form action="handlers/cart/cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');" class="mb-0">
                 <input type="hidden" name="cart_id" value="<?php echo (int)$row['cart_id']; ?>">
                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
                   <i class="bi bi-trash"></i> Remove
                 </button>
               </form>
             <?php else: ?>
-              <form action="cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');" class="mb-0">
+              <form action="handlers/cart/cart-remove.php" method="post" onsubmit="return confirm('Remove this item from cart?');" class="mb-0">
                 <!-- Pass KEY as cart_id or similar -->
                 <input type="hidden" name="cart_id" value="<?php echo htmlspecialchars($row['cart_id']); ?>">
                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
@@ -564,7 +564,7 @@ if ($isLoggedIn) {
 payhere.onCompleted = function(orderId) {
     console.log("Payment completed. OrderID:" + orderId);
     alert("Payment completed! Order ID: " + orderId);
-    window.location.href = "payment-success.php?order_id=" + orderId;
+    window.location.href = "handlers/payment/payment-success.php?order_id=" + orderId;
 };
 
 payhere.onDismissed = function() {
@@ -688,7 +688,7 @@ async function processCartPayment() {
         body.append('delivery_address', deliveryAddress);
         body.append('city', customerCity);
 
-        const orderResponse = await fetch('create-order.php', {
+        const orderResponse = await fetch('handlers/cart/create-order.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString()
@@ -701,7 +701,7 @@ async function processCartPayment() {
         }
 
         // Step 2: Get payment hash
-        const hashResponse = await fetch('generate-hash.php', {
+        const hashResponse = await fetch('handlers/payment/generate-hash.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
@@ -763,7 +763,7 @@ async function processCartPayment() {
 }
 
 function updateQty(cartId, action) {
-    fetch(`cart-update.php?id=${encodeURIComponent(cartId)}&action=${action}&ajax=1`)
+    fetch(`handlers/cart/cart-update.php?id=${encodeURIComponent(cartId)}&action=${action}&ajax=1`)
     .then(response => response.json())
     .then(data => {
         if (data.success) {
